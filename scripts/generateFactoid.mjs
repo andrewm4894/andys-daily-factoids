@@ -26,7 +26,7 @@ const openai = new OpenAI({
   try {
     const prompt = "Provide a short, interesting educational fact in one sentence.";
     const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
       max_tokens: 100,
       temperature: 0.7,
