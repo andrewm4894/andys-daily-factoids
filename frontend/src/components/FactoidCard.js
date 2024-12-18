@@ -1,5 +1,6 @@
 // frontend/src/components/FactoidCard.js
 import React from 'react';
+import './FactoidCard.css'; // Ensure the path is correct
 
 function FactoidCard({ factoid, onVote }) {
   return (
