@@ -1,10 +1,13 @@
 name: Generate Factoid Hourly
+
 on:
   schedule:
-    - cron: "0 * * * *"
+    - cron: "0 * * * *" # runs every hour
+  workflow_dispatch: # allows manual trigger from GitHub Actions UI
+
 jobs:
   trigger-factoid:
     runs-on: ubuntu-latest
     steps:
       - name: Trigger generation
-        run: curl -X POST https://andys-daily-factoids.netlify.app/.netlify/functions/generateFactoid
+        run: curl -X POST "https://andys-daily-factoids.netlify.app/.netlify/functions/generateFactoid?token=${{ secrets.FACTOID_SECRET }}"
