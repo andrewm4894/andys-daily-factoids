@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { OpenAI } from 'openai';
 import admin from 'firebase-admin';
 
+// Set up Firebase Admin using environment variables
 const serviceAccount = {
   projectId: process.env.FIREBASE_PROJECT_ID,
   clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
@@ -16,6 +17,7 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
+// Set up OpenAI
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
@@ -29,9 +31,7 @@ const openai = new OpenAI({
       max_tokens: 100,
       temperature: 0.7,
     });
-    
-    // The returned structure may differ slightly from older versions.
-    // As of the newer API, you'll find the content here:
+
     const factoidText = response.choices[0].message.content.trim();
 
     const docRef = await db.collection('factoids').add({
@@ -45,5 +45,6 @@ const openai = new OpenAI({
     console.log(`Factoid: ${factoidText}`);
   } catch (error) {
     console.error('Error generating factoid:', error);
+    process.exit(1);
   }
 })();

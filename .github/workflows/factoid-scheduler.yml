@@ -2,12 +2,28 @@ name: Generate Factoid Hourly
 
 on:
   schedule:
-    - cron: "0 * * * *" # runs every hour
-  workflow_dispatch: # allows manual trigger from GitHub Actions UI
+    - cron: "0 * * * *"
+  workflow_dispatch:
 
 jobs:
-  trigger-factoid:
+  generate-factoid:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger generation
-        run: curl -X POST "https://andys-daily-factoids.netlify.app/.netlify/functions/generateFactoid?token=${{ secrets.FACTOID_SECRET }}"
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install openai firebase-admin dotenv
+
+      - name: Run generation script
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+          FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: node scripts/generateFactoid.mjs
