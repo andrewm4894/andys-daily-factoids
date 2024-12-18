@@ -1,0 +1,10 @@
+name: Generate Factoid Hourly
+on:
+  schedule:
+    - cron: "0 * * * *"
+jobs:
+  trigger-factoid:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger generation
+        run: curl -X POST https://andys-daily-factoids.netlify.app/.netlify/functions/generateFactoid
