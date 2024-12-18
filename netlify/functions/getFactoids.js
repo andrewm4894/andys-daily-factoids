@@ -24,7 +24,7 @@ export const handler = async (event) => {
   }
 
   try {
-    const snapshot = await db.collection('factoids').orderBy('createdAt', 'desc').get();
+    const snapshot = await db.collection('factoids').orderBy('createdAt', 'desc').limit(500).get();
     const factoids = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
