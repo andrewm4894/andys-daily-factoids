@@ -1,4 +1,6 @@
+// frontend/src/App.js
 import React, { useEffect, useState } from 'react';
+import './App.css';
 import FactoidCard from './components/FactoidCard';
 
 function App() {
@@ -15,11 +17,10 @@ function App() {
     fetch('/.netlify/functions/voteFactoid', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ factoidId: id, voteType })
+      body: JSON.stringify({ factoidId: id, voteType }),
     })
     .then(res => res.json())
     .then(updatedFactoid => {
-      // Update the factoids state with the updated factoid
       setFactoids(prev =>
         prev.map(f => f.id === updatedFactoid.id ? updatedFactoid : f)
       );
