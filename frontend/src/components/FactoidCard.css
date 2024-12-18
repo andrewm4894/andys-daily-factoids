@@ -1,44 +1,62 @@
 /* frontend/src/components/FactoidCard.css */
 
 .factoid-card {
-    background: #fafafa;
-    border-radius: 8px;
-    padding: 16px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    transition: transform 0.2s;
+    background-color: #fafafa;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s, box-shadow 0.2s;
   }
   
   .factoid-card:hover {
-    transform: scale(1.02);
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   }
   
-  .factoid-card p {
-    margin: 0 0 8px;
-    line-height: 1.5;
-    color: #333;
+  .factoid-text {
+    font-size: 1.1rem;
+    color: #333333;
+    margin-bottom: 15px;
   }
   
-  .factoid-card .meta {
-    font-size: 0.9rem;
-    color: #555;
+  .meta {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 10px;
-    margin-top: 8px;
-  }
-  
-  .factoid-card button {
-    background: #007acc;
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    padding: 6px 10px;
-    cursor: pointer;
     font-size: 0.9rem;
-    transition: background 0.3s;
+    color: #555555;
   }
   
-  .factoid-card button:hover {
-    background: #005fa3;
+  .vote-button {
+    background-color: #007bff;
+    color: #ffffff;
+    border: none;
+    border-radius: 5px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+  
+  .vote-button:hover {
+    background-color: #0056b3;
+  }
+  
+  .vote-button.downvote {
+    background-color: #dc3545;
+  }
+  
+  .vote-button.downvote:hover {
+    background-color: #a71d2a;
+  }
+  
+  .votes {
+    margin-right: 10px;
+  }
+  
+  .created-at {
+    margin-left: auto;
+    font-style: italic;
   }
   

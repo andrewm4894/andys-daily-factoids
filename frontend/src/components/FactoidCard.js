@@ -1,15 +1,17 @@
 // frontend/src/components/FactoidCard.js
 import React from 'react';
-import './FactoidCard.css'; // Ensure the path is correct
+import './FactoidCard.css';
 
 function FactoidCard({ factoid, onVote }) {
   return (
     <div className="factoid-card">
-      <p>{factoid.text}</p>
+      <p className="factoid-text">{factoid.text}</p>
       <div className="meta">
-        <button onClick={() => onVote(factoid.id, 'up')}>👍<span> ({factoid.votesUp})</span></button>
-        <button onClick={() => onVote(factoid.id, 'down')}>👎<span> ({factoid.votesDown})</span></button>
-        <span>{new Date(factoid.createdAt._seconds * 1000).toLocaleString()}</span>
+        <button className="vote-button upvote" onClick={() => onVote(factoid.id, 'up')}>👍 Upvote</button>
+        <button className="vote-button downvote" onClick={() => onVote(factoid.id, 'down')}>👎 Downvote</button>
+        <span className="votes">Upvotes: {factoid.votesUp}</span>
+        <span className="votes">Downvotes: {factoid.votesDown}</span>
+        <span className="created-at">{new Date(factoid.createdAt._seconds * 1000).toLocaleString()}</span>
       </div>
     </div>
   );

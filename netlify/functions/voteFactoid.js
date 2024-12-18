@@ -1,3 +1,4 @@
+// netlify/functions/voteFactoid.js
 import admin from 'firebase-admin';
 
 if (!admin.apps.length) {
@@ -14,9 +15,26 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 
 export const handler = async (event) => {
+  // CORS headers
+  const headers = {
+    'Access-Control-Allow-Origin': '*', // Allow all origins or specify your domain
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  };
+
+  if (event.httpMethod === 'OPTIONS') {
+    // Handle preflight request
+    return {
+      statusCode: 200,
+      headers,
+      body: '',
+    };
+  }
+
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
+      headers,
       body: JSON.stringify({ error: 'Method not allowed. Use POST.' }),
     };
   }
@@ -27,6 +45,7 @@ export const handler = async (event) => {
     if (!factoidId || !voteType || !['up', 'down'].includes(voteType)) {
       return {
         statusCode: 400,
+        headers,
         body: JSON.stringify({ error: 'Invalid request body' }),
       };
     }
@@ -37,6 +56,7 @@ export const handler = async (event) => {
     if (!factoidSnap.exists) {
       return {
         statusCode: 404,
+        headers,
         body: JSON.stringify({ error: 'Factoid not found' }),
       };
     }
@@ -50,12 +70,14 @@ export const handler = async (event) => {
 
     return {
       statusCode: 200,
+      headers,
       body: JSON.stringify(updatedFactoid),
     };
   } catch (error) {
     console.error('Error voting on factoid:', error);
     return {
       statusCode: 500,
+      headers,
       body: JSON.stringify({ error: 'Failed to update factoid vote' }),
     };
   }
