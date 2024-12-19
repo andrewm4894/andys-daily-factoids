@@ -3,7 +3,6 @@ name: Generate Factoid Hourly
 on:
   schedule:
     - cron: "0/5 * * * *"
-  workflow_dispatch:
 
 jobs:
   generate-factoid:
