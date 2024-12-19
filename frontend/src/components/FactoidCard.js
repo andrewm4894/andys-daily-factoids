@@ -37,6 +37,10 @@ function FactoidCard({ factoid, onVote }) {
     }
   };
 
+  const getTeaser = (text) => {
+    return text.length > 50 ? text.substring(0, 50) + "..." : text;
+  };
+
   return (
     <div
       className={`factoid-card ${isRevealed ? "revealed" : ""}`}
@@ -56,7 +60,7 @@ function FactoidCard({ factoid, onVote }) {
       )}
       {!isRevealed ? (
         <div className="factoid-content">
-          <p className="factoid-subject">{factoid.subject || "Surprise"}</p>
+          <p className="factoid-subject">{getTeaser(factoid.text) || "Surprise"}</p>
         </div>
       ) : (
         <p className="factoid-text">{factoid.text}</p>
