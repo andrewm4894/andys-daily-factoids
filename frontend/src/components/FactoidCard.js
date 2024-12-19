@@ -37,8 +37,9 @@ function FactoidCard({ factoid, onVote }) {
     }
   };
 
-  const getTeaser = (text) => {
-    return text.length > 50 ? text.substring(0, 50) + "..." : text;
+  const getTeaser = (text, emoji) => {
+    const teaser = text.length > 50 ? text.substring(0, 50) + "..." : text;
+    return emoji ? `${emoji} ${teaser}` : teaser;
   };
 
   return (
@@ -60,7 +61,7 @@ function FactoidCard({ factoid, onVote }) {
       )}
       {!isRevealed ? (
         <div className="factoid-content">
-          <p className="factoid-subject">{getTeaser(factoid.text) || "Surprise"}</p>
+          <p className="factoid-subject">{getTeaser(factoid.text, factoid.emoji) || "Surprise"}</p>
         </div>
       ) : (
         <p className="factoid-text">{factoid.text}</p>
