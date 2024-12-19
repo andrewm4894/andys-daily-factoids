@@ -32,3 +32,44 @@ body {
   flex-direction: column;
   gap: 20px;
 }
+
+.generate-factoid-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  font-size: 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.generate-factoid-button:hover {
+  background-color: #0056b3;
+}
+
+.ReactModal__Content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.ReactModal__Content h2 {
+  margin-bottom: 20px;
+}
+
+.ReactModal__Content button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  font-size: 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.ReactModal__Content button:hover {
+  background-color: #0056b3;
+}
