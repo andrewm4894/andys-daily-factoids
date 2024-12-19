@@ -24,7 +24,18 @@ const openai = new OpenAI({
 
 (async () => {
   try {
-    const prompt = "Provide a short, interesting educational fact in one or two sentences. Think about some novel and intriguing facts that people might not know.";
+    // Fetch the last 100 factoids from the database
+    const factoidsSnapshot = await db.collection('factoids')
+      .orderBy('createdAt', 'desc')
+      .limit(100)
+      .get();
+
+    const factoids = factoidsSnapshot.docs.map(doc => doc.data().text);
+
+    // Create the prompt with the last 100 factoids
+    const examples = factoids.join('\n');
+    const prompt = `Here are some examples of interesting educational facts:\n${examples}\n\nProvide a short, interesting educational fact in one or two sentences. Do not repeat any of the provided facts. Think about some novel and intriguing facts that people might not know.`;
+
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }]
