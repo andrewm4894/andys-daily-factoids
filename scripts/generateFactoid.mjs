@@ -30,10 +30,15 @@ const openai = new OpenAI({
       .limit(100)
       .get();
 
-    const factoids = factoidsSnapshot.docs.map(doc => doc.data().text);
+    const factoids = factoidsSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        text: data.text
+      };
+    });
 
     // Create the multi-line prompt
-    const examples = factoids.join('\n');
+    const examples = factoids.map(factoid => `- ${factoid.text}`).join('\n');
     const prompt = `
       Here are some examples of interesting educational facts:
 
