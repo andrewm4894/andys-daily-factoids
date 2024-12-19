@@ -1,6 +1,7 @@
 /* frontend/src/components/FactoidCard.css */
 
 .factoid-card {
+    position: relative;
     background-color: #fafafa;
     border: 1px solid #e0e0e0;
     border-radius: 10px;
@@ -73,4 +74,21 @@
   
   .google-button:hover {
     background-color: #357ae8;
+  }
+
+  .copy-button {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background-color: transparent;
+    color: #333;
+    border: none;
+    padding: 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: color 0.3s;
+  }
+  
+  .copy-button:hover {
+    color: #000;
   }
