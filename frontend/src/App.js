@@ -57,7 +57,8 @@ function App() {
     return (
       <div className="App">
         <header className="App-header">
-          <h1>Andy's Daily Factoids</h1>
+        <h1>Andy's Daily Factoids</h1>
+        <p>(llm powered of course)</p>
         </header>
         <p>Loading factoids...</p>
       </div>
@@ -69,6 +70,7 @@ function App() {
       <div className="App">
         <header className="App-header">
           <h1>Andy's Daily Factoids</h1>
+          <p>(llm powered of course)</p>
         </header>
         <p style={{ color: 'red' }}>Error: {error}</p>
       </div>
@@ -79,6 +81,7 @@ function App() {
     <div className="App">
       <header className="App-header">
         <h1>Andy's Daily Factoids</h1>
+        <p>(llm powered of course)</p>
       </header>
       <div className="factoid-list">
         {factoids.length > 0 ? (
