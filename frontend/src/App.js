@@ -16,6 +16,11 @@ function App() {
   const [loading, setLoading] = useState(true); // For loading state
   const [error, setError] = useState(null); // For error handling
 
+  const shuffleFactoids = () => {
+    const shuffled = [...factoids].sort(() => Math.random() - 0.5);
+    setFactoids(shuffled);
+  };
+
   // Determine API base URL based on environment
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "";
 
@@ -105,9 +110,14 @@ function App() {
         </a>
       </header>
       <div className="factoid-list">
-        <button className="generate-factoid-button" onClick={openModal}>
-          Generate Factoid
-        </button>
+      <div className="button-container">
+          <button className="factoid-button generate-button" onClick={openModal}>
+            Generate Factoid 🧙
+          </button>
+          <button className="factoid-button transparent-button" title="shuffle" onClick={shuffleFactoids}>
+            🔀
+          </button>
+        </div>
         {factoids.length > 0 ? (
           factoids.map((factoid) => (
             <FactoidCard
