@@ -1,94 +1,237 @@
 /* frontend/src/components/FactoidCard.css */
 
+/* ------------------------------
+   Global Box Sizing
+   ------------------------------ */
+/* Ensures padding and borders are included in the element's total width and height */
+.factoid-card *,
+.factoid-card *::before,
+.factoid-card *::after {
+  box-sizing: border-box;
+}
+
+/* ------------------------------
+   Card Container
+   ------------------------------ */
 .factoid-card {
-    position: relative;
-    background-color: #fafafa;
-    border: 1px solid #e0e0e0;
-    border-radius: 10px;
-    padding: 20px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    transition: transform 0.2s, box-shadow 0.2s;
-  }
-  
-  .factoid-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  }
-  
-  .factoid-text {
-    font-size: 1.1rem;
-    color: #333333;
-    margin-bottom: 15px;
-  }
-  
-  .meta {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 10px;
-    font-size: 0.9rem;
-    color: #555555;
-  }
-  
-  .vote-button {
-    background-color: #007bff;
-    color: #ffffff;
-    border: none;
-    border-radius: 5px;
-    padding: 3px 3px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-  }
-  
-  .vote-button:hover {
-    background-color: #0056b3;
-  }
-  
-  .vote-button.downvote {
-    background-color: #dc3545;
-  }
-  
-  .vote-button.downvote:hover {
-    background-color: #a71d2a;
-  }
-  
-  .votes {
-    margin-right: 3px;
-    margin-left: 3px;
-  }
-  
-  .created-at {
-    margin-left: auto;
-    font-style: italic;
-  }
-  
-  .google-button {
-    background-color: #4285F4; /* Google Blue */
-    color: white;
-    border: none;
-    border-radius: 5px;
-    padding: 6px 6px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-  }
-  
-  .google-button:hover {
-    background-color: #357ae8;
+  position: relative;
+  background-color: #fafafa;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  padding: 20px;
+  min-height: 20px; /* Adjust as needed for your design */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+
+  /* Flex Layout */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center; /* Center content vertically */
+}
+
+.factoid-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* ------------------------------
+   Content Containers
+   ------------------------------ */
+.factoid-content,
+.factoid-text {
+  flex-grow: 1; /* Allow these elements to grow and fill available space */
+
+  /* Flex Layout */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.factoid-content {
+  /* Additional styles for factoid-content can be added here if needed */
+}
+
+.factoid-subject {
+  font-size: 1.2rem;
+  color: #333;
+  text-align: center;
+  font-weight: bold;
+  margin: 0;
+
+  /* Flex Layout */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.factoid-text {
+  font-size: 1.1rem;
+  color: #333;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+/* ------------------------------
+   Meta Information
+   ------------------------------ */
+.meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 15px;
+
+  /* Typography */
+  font-size: 0.9rem;
+  color: #555;
+
+  /* Transition */
+  transition: opacity 0.3s;
+}
+
+.meta.hidden {
+  display: none; /* Completely remove from layout when hidden */
+}
+
+/* ------------------------------
+   Common Button Styles
+   ------------------------------ */
+.button {
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  padding: 6px 12px; /* Standardize padding */
+  transition: background-color 0.3s;
+  color: #fff; /* Shared text color */
+  font-size: 1rem; /* Standardize font size */
+  display: flex; /* Use flex to align content */
+  align-items: center; /* Vertically center content */
+  justify-content: center; /* Horizontally center content */
+  height: 30px; /* Fixed height for consistency */
+  box-sizing: border-box; /* Include padding and border in height */
+  white-space: nowrap; /* Prevent text from wrapping */
+  overflow: hidden; /* Hide overflow */
+  text-overflow: ellipsis; /* Add ellipsis if text is too long */
+}
+
+/* ------------------------------
+   Upvote and Downvote Buttons
+   ------------------------------ */
+.vote-button {
+  background-color: #007bff;
+}
+
+.vote-button:hover {
+  background-color: #0056b3;
+}
+
+.vote-button.downvote {
+  background-color: #dc3545;
+}
+
+.vote-button.downvote:hover {
+  background-color: #a71d2a;
+}
+
+/* ------------------------------
+   Google Button
+   ------------------------------ */
+.google-button {
+  background-color: #4285F4; /* Google Blue */
+  padding: 6px 16px; /* Slightly wider padding for longer text */
+}
+
+.google-button:hover {
+  background-color: #357ae8;
+}
+
+/* ------------------------------
+   Vote Count
+   ------------------------------ */
+.votes {
+  margin: 0 3px; /* Combined margin for left and right */
+}
+
+/* ------------------------------
+   Created At Timestamp
+   ------------------------------ */
+.created-at {
+  margin-left: auto;
+  font-style: italic;
+  color: #555;
+}
+
+/* ------------------------------
+   Copy Button
+   ------------------------------ */
+.copy-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: transparent;
+  color: #333;
+  border: none;
+  padding: 5px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: color 0.3s;
+  display: none;
+  /* Aligns the copy button vertically with the top of the card */
+}
+
+.factoid-card.revealed .copy-button {
+  display: block;
+}
+
+.copy-button:hover {
+  color: #000;
+}
+
+/* ------------------------------
+   Responsive Design
+   ------------------------------ */
+@media (max-width: 600px) {
+  .factoid-card {
+    min-height: 150px; /* Adjust for smaller screens */
+    padding: 15px;
   }
 
-  .copy-button {
-    position: absolute;
-    top: 0;
-    right: 0;
-    background-color: transparent;
-    color: #333;
-    border: none;
-    padding: 5px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    transition: color 0.3s;
+  .button {
+    padding: 5px 10px; /* Reduce padding on smaller screens */
+    font-size: 0.9rem; /* Slightly smaller font */
+    height: 35px; /* Adjust height accordingly */
   }
-  
-  .copy-button:hover {
-    color: #000;
+
+  .google-button {
+    padding: 5px 10px; /* Ensure Google button padding matches */
   }
+
+  .meta {
+    gap: 8px; /* Reduce gap between buttons */
+  }
+}
+
+/* ------------------------------
+   Accessibility Enhancements
+   ------------------------------ */
+/* Focus States for Keyboard Navigation */
+.button:focus {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* Ensure sufficient color contrast */
+.vote-button,
+.google-button {
+  color: #fff;
+}
+
+.copy-button {
+  color: #333;
+}
+
+.copy-button:hover {
+  color: #000;
+}
