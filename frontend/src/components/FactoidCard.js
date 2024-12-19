@@ -10,17 +10,21 @@ function FactoidCard({ factoid, onVote }) {
     window.open(url, '_blank');
   };
 
-  const handleCopy = () => {
+  const handleCopy = (event) => {
     const textToCopy = factoid.text;
+    const button = event.target;
+  
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(textToCopy).then(() => {
-        alert('Text copied to clipboard');
+        button.textContent = '✅';
+        setTimeout(() => {
+          button.textContent = '📋';
+        }, 2000);
       }).catch(err => {
         console.error('Failed to copy text: ', err);
       });
     } else {
       console.error('Clipboard API not supported or not available over HTTP');
-      alert('Clipboard API not supported or not available over HTTP');
     }
   };
 
