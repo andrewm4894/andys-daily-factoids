@@ -34,7 +34,7 @@ const openai = new OpenAI({
 
     // Create the prompt with the last 100 factoids
     const examples = factoids.join('\n');
-    const prompt = `Here are some examples of interesting educational facts:\n${examples}\n\nProvide a short, interesting educational fact in one or two sentences. Do not repeat any of the provided facts. Think about some novel and intriguing facts that people might not know.`;
+    const prompt = `Here are some examples of interesting educational facts:\n${examples}\n\nProvide a short, interesting educational fact in one or two sentences. Do not repeat any of the provided facts. Think about some novel and intriguing facts that people might not know. Do not start with "Did you know" - we just want the fact's, no boiler plate as it gets repetitive.`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
