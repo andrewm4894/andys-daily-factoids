@@ -91,10 +91,6 @@ body {
   flex-grow: 1; /* Allow buttons to grow */
 }
 
-.factoid-button:hover {
-  background-color: #0056b3;
-}
-
 .generate-button {
   flex-grow: 4; /* Make the generate button 4 times wider */
   font-size: 1.2em; /* Increase the font size */
