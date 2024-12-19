@@ -136,6 +136,7 @@ function App() {
         contentLabel="Coming Soon Modal"
         style={{
           content: {
+            color: '#333',
             top: "50%",
             left: "50%",
             right: "auto",
