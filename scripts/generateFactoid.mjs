@@ -24,12 +24,10 @@ const openai = new OpenAI({
 
 (async () => {
   try {
-    const prompt = "Provide a short, interesting educational fact in one sentence.";
+    const prompt = "Provide a short, interesting educational fact in one or two sentences. Think about some novel and intriguing facts that people might not know.";
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-      max_tokens: 100,
-      temperature: 0.7,
+      messages: [{ role: "user", content: prompt }]
     });
 
     const factoidText = response.choices[0].message.content.trim();
