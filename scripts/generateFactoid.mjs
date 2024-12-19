@@ -44,13 +44,14 @@ const openai = new OpenAI({
 
       ${examples}
 
-      Please provide a new, short, interesting educational fact in one or two sentences, along with its subject.
+      Please provide a new, short, interesting educational fact in one or two sentences, along with its subject and an emoji that represents the fact.
       - The fact should not repeat any of the provided examples.
       - Do not start with "Did you know" - we just want the fact's, no boiler plate as it gets repetitive.
       - Minimal commentary, just the facts.
-      - The response should return two fields: 
+      - The response should return three fields: 
         1. "factoidText": The text of the factoid.
         2. "factoidSubject": The subject or category of the factoid.
+        3. "factoidEmoji": An emoji that represents the factoid.
 
       Think about novel and intriguing facts that people might not know.
     `;
@@ -61,25 +62,27 @@ const openai = new OpenAI({
       messages: [{ role: "user", content: prompt.trim() }],
       functions: [{
         name: "generate_factoid",
-        description: "Generate an interesting factoid with its subject.",
+        description: "Generate an interesting factoid with its subject and an emoji.",
         parameters: {
           type: "object",
           properties: {
             factoidText: { type: "string", description: "The text of the factoid." },
-            factoidSubject: { type: "string", description: "The subject of the factoid." }
+            factoidSubject: { type: "string", description: "The subject of the factoid." },
+            factoidEmoji: { type: "string", description: "An emoji representing the factoid." }
           },
-          required: ["factoidText", "factoidSubject"]
+          required: ["factoidText", "factoidSubject", "factoidEmoji"]
         }
       }],
       function_call: { name: "generate_factoid" }
     });
 
-    const { factoidText, factoidSubject } = JSON.parse(response.choices[0].message.function_call.arguments);
+    const { factoidText, factoidSubject, factoidEmoji } = JSON.parse(response.choices[0].message.function_call.arguments);
 
     // Save the generated factoid to Firestore
     const docRef = await db.collection('factoids').add({
       text: factoidText,
       subject: factoidSubject,
+      emoji: factoidEmoji,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       votesUp: 0,
       votesDown: 0,
@@ -88,6 +91,7 @@ const openai = new OpenAI({
     console.log(`Factoid generated and stored. ID: ${docRef.id}`);
     console.log(`Subject: ${factoidSubject}`);
     console.log(`Factoid: ${factoidText}`);
+    console.log(`Emoji: ${factoidEmoji}`);
   } catch (error) {
     console.error('Error generating factoid:', error);
     process.exit(1);
