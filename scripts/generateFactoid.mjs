@@ -49,6 +49,7 @@ const openai = new OpenAI({
       - Do not start with "Did you know" - we just want the fact's, no boiler plate as it gets repetitive.
       - Minimal commentary, just the facts.
       - Don't tell us what the factoid "showcases" as that's often considered commentary too.
+      - No commentary about what the fact "reflects" or "highlights" as tjats also usually commentary we don't want.
       - The response should return three fields: 
         1. "factoidText": The text of the factoid.
         2. "factoidSubject": The subject or category of the factoid.
