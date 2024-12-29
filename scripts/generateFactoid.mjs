@@ -44,7 +44,7 @@ const openai = new OpenAI({
 
       ${examples}
 
-      Please provide a new, short, interesting educational fact in one or two sentences, along with its subject and an emoji that represents the fact.
+      Please provide a new, short, interesting educational fact in one sentence, along with its subject and an emoji that represents the fact.
       - The fact should not repeat any of the provided examples.
       - Do not start with "Did you know" - we just want the fact's, no boiler plate as it gets repetitive.
       - Minimal commentary, just the facts.
