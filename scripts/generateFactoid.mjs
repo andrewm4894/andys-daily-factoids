@@ -48,6 +48,7 @@ const openai = new OpenAI({
       - The fact should not repeat any of the provided examples.
       - Do not start with "Did you know" - we just want the fact's, no boiler plate as it gets repetitive.
       - Minimal commentary, just the facts.
+      - Don't tell us what the factoid "showcases" as that's often considered commentary too.
       - The response should return three fields: 
         1. "factoidText": The text of the factoid.
         2. "factoidSubject": The subject or category of the factoid.
