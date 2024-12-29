@@ -27,7 +27,7 @@ const openai = new OpenAI({
     // Fetch the last 100 factoids from the database
     const factoidsSnapshot = await db.collection('factoids')
       .orderBy('createdAt', 'desc')
-      .limit(100)
+      .limit(10)
       .get();
 
     const factoids = factoidsSnapshot.docs.map(doc => {
