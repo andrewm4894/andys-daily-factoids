@@ -16,6 +16,21 @@ function FactoidCard({ factoid, onVote }) {
     window.open(url, "_blank");
   };
 
+  const handleVote = (event, voteType) => {
+  const button = event.target;
+  // Call the onVote function
+  onVote(factoid.id, voteType);
+  // Change button text to green tick
+  button.innerHTML = "✅";
+  setTimeout(() => {
+    if (voteType === "up") {
+      button.innerHTML = `🤯 <span class="votes">${factoid.votesUp}</span>`;
+    } else {
+      button.innerHTML = `😒 <span class="votes">${factoid.votesDown}</span>`;
+    }
+  }, 3000);
+};
+
   const handleCopy = (event) => {
     const textToCopy = factoid.text;
     const button = event.target;
@@ -68,25 +83,25 @@ function FactoidCard({ factoid, onVote }) {
       )}
       <div className={`meta ${isRevealed ? "" : "hidden"}`}>
         <button
-          className="button vote-button upvote"
-          onClick={(e) => {
-            e.stopPropagation();
-            onVote(factoid.id, "up");
-          }}
-          title="My mind is blown!"
-        >
-          🤯 <span className="votes">{factoid.votesUp}</span>
-        </button>
-        <button
-          className="button vote-button downvote"
-          onClick={(e) => {
-            e.stopPropagation();
-            onVote(factoid.id, "down");
-          }}
-          title="Meh"
-        >
-          😒 <span className="votes">{factoid.votesDown}</span>
-        </button>
+  className="button vote-button upvote"
+  onClick={(e) => {
+    e.stopPropagation();
+    handleVote(e, "up");
+  }}
+  title="My mind is blown!"
+>
+  🤯 <span className="votes">{factoid.votesUp}</span>
+</button>
+<button
+  className="button vote-button downvote"
+  onClick={(e) => {
+    e.stopPropagation();
+    handleVote(e, "down");
+  }}
+  title="Meh"
+>
+  😒 <span className="votes">{factoid.votesDown}</span>
+</button>
         <button
           className="button google-button"
           onClick={(e) => {
