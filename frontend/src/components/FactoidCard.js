@@ -16,6 +16,21 @@ function FactoidCard({ factoid, onVote }) {
     window.open(url, "_blank");
   };
 
+  const handleVote = (event, voteType) => {
+  const button = event.target;
+  // Call the onVote function
+  onVote(factoid.id, voteType);
+  // Change button text to green tick
+  button.innerHTML = "✅";
+  setTimeout(() => {
+    if (voteType === "up") {
+      button.innerHTML = `🤯 <span class="votes">${factoid.votesUp}</span>`;
+    } else {
+      button.innerHTML = `😒 <span class="votes">${factoid.votesDown}</span>`;
+    }
+  }, 2000);
+};
+
   const handleCopy = (event) => {
     const textToCopy = factoid.text;
     const button = event.target;
