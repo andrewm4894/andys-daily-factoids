@@ -83,25 +83,25 @@ function FactoidCard({ factoid, onVote }) {
       )}
       <div className={`meta ${isRevealed ? "" : "hidden"}`}>
         <button
-          className="button vote-button upvote"
-          onClick={(e) => {
-            e.stopPropagation();
-            onVote(factoid.id, "up");
-          }}
-          title="My mind is blown!"
-        >
-          🤯 <span className="votes">{factoid.votesUp}</span>
-        </button>
-        <button
-          className="button vote-button downvote"
-          onClick={(e) => {
-            e.stopPropagation();
-            onVote(factoid.id, "down");
-          }}
-          title="Meh"
-        >
-          😒 <span className="votes">{factoid.votesDown}</span>
-        </button>
+  className="button vote-button upvote"
+  onClick={(e) => {
+    e.stopPropagation();
+    handleVote(e, "up");
+  }}
+  title="My mind is blown!"
+>
+  🤯 <span className="votes">{factoid.votesUp}</span>
+</button>
+<button
+  className="button vote-button downvote"
+  onClick={(e) => {
+    e.stopPropagation();
+    handleVote(e, "down");
+  }}
+  title="Meh"
+>
+  😒 <span className="votes">{factoid.votesDown}</span>
+</button>
         <button
           className="button google-button"
           onClick={(e) => {
