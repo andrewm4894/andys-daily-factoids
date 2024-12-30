@@ -28,7 +28,7 @@ function FactoidCard({ factoid, onVote }) {
     } else {
       button.innerHTML = `😒 <span class="votes">${factoid.votesDown}</span>`;
     }
-  }, 2000);
+  }, 3000);
 };
 
   const handleCopy = (event) => {
