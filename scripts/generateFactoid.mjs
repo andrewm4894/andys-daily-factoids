@@ -24,7 +24,7 @@ const openai = new OpenAI({
 
 (async () => {
   try {
-    // Fetch the last 100 factoids from the database
+    // Fetch the last 250 factoids from the database
     const factoidsSnapshot = await db.collection('factoids')
       .orderBy('createdAt', 'desc')
       .limit(250)
