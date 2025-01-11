@@ -62,14 +62,6 @@ function FactoidCard({ factoid, onVote, initiallyRevealed = false }) {
     return emoji ? `${emoji} ${teaser}` : teaser;
   };
 
-  // Safely get `_seconds` using optional chaining
-  const createdAtSeconds = factoid?.createdAt?._seconds;
-
-  // If `createdAtSeconds` exists, convert to date, otherwise fallback
-  const createdAtDisplay = createdAtSeconds
-    ? new Date(createdAtSeconds * 1000).toLocaleString()
-    : "";
-
   return (
     <div
       className={`factoid-card ${isRevealed ? "revealed" : ""}`}
@@ -118,9 +110,6 @@ function FactoidCard({ factoid, onVote, initiallyRevealed = false }) {
         >
           📋
         </button>
-        <span className="created-at" title="Created At">
-          {createdAtDisplay}
-        </span>
       </div>
     </div>
   );

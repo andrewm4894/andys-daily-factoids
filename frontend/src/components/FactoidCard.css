@@ -102,18 +102,18 @@
   border: none;
   border-radius: 5px;
   cursor: pointer;
-  padding: 6px 12px; /* Standardize padding */
+  padding: 5px 5px;
   transition: background-color 0.3s;
-  color: #fff; /* Shared text color */
-  font-size: 1rem; /* Standardize font size */
-  display: flex; /* Use flex to align content */
-  align-items: center; /* Vertically center content */
-  justify-content: center; /* Horizontally center content */
-  height: 30px; /* Fixed height for consistency */
-  box-sizing: border-box; /* Include padding and border in height */
-  white-space: nowrap; /* Prevent text from wrapping */
-  overflow: hidden; /* Hide overflow */
-  text-overflow: ellipsis; /* Add ellipsis if text is too long */
+  color: #fff;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  box-sizing: border-box;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ------------------------------
@@ -126,6 +126,10 @@
 .vote-button:hover {
   background-color: #0056b3;
 }
+
+.vote-button.upvote {
+    background-color: darkgreen;
+  }
 
 .vote-button.downvote {
   background-color: #dc3545;
@@ -140,7 +144,7 @@
    ------------------------------ */
 .google-button {
   background-color: #4285F4; /* Google Blue */
-  padding: 6px 16px; /* Slightly wider padding for longer text */
+  padding: 5px 10px;
 }
 
 .google-button:hover {
@@ -151,7 +155,7 @@
    Vote Count
    ------------------------------ */
 .votes {
-  margin: 0 3px; /* Combined margin for left and right */
+  margin: 0 3px;
 }
 
 /* ------------------------------
