@@ -24,7 +24,7 @@ const openai = new OpenAI({
 });
 
 export async function handler(event) {
-  const API_KEY = process.env.FUNCTIONS_API_KEY; // Set your secret API key here
+  const API_KEY = process.env.FUNCTIONS_API_KEY;
 
   // Check for valid API key
   const providedKey = event.headers['x-api-key'];
