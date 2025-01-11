@@ -3,8 +3,8 @@
 import React, { useState } from "react";
 import "./FactoidCard.css";
 
-function FactoidCard({ factoid, onVote }) {
-  const [isRevealed, setIsRevealed] = useState(false);
+function FactoidCard({ factoid, onVote, initiallyRevealed = false }) {
+  const [isRevealed, setIsRevealed] = useState(initiallyRevealed);
 
   const handleCardClick = () => {
     setIsRevealed(!isRevealed);
@@ -17,21 +17,26 @@ function FactoidCard({ factoid, onVote }) {
   };
 
   const handleVote = (event, voteType) => {
-  const button = event.target;
-  // Call the onVote function
-  onVote(factoid.id, voteType);
-  // Change button text to green tick
-  button.innerHTML = "✅";
-  setTimeout(() => {
-    if (voteType === "up") {
-      button.innerHTML = `🤯 <span class="votes">${factoid.votesUp}</span>`;
-    } else {
-      button.innerHTML = `😒 <span class="votes">${factoid.votesDown}</span>`;
-    }
-  }, 3000);
-};
+    event.stopPropagation();
+    const button = event.target;
+
+    // Call the onVote function
+    onVote(factoid.id, voteType);
+
+    // Change button text to green tick
+    button.innerHTML = "✅";
+
+    setTimeout(() => {
+      if (voteType === "up") {
+        button.innerHTML = `🤯 <span class="votes">${factoid.votesUp}</span>`;
+      } else {
+        button.innerHTML = `😒 <span class="votes">${factoid.votesDown}</span>`;
+      }
+    }, 3000);
+  };
 
   const handleCopy = (event) => {
+    event.stopPropagation();
     const textToCopy = factoid.text;
     const button = event.target;
 
@@ -57,51 +62,45 @@ function FactoidCard({ factoid, onVote }) {
     return emoji ? `${emoji} ${teaser}` : teaser;
   };
 
+  // Safely get `_seconds` using optional chaining
+  const createdAtSeconds = factoid?.createdAt?._seconds;
+
+  // If `createdAtSeconds` exists, convert to date, otherwise fallback
+  const createdAtDisplay = createdAtSeconds
+    ? new Date(createdAtSeconds * 1000).toLocaleString()
+    : "";
+
   return (
     <div
       className={`factoid-card ${isRevealed ? "revealed" : ""}`}
       onClick={handleCardClick}
     >
-      {isRevealed && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleCopy(e);
-          }}
-          className="copy-button"
-          title="Copy"
-        >
-          📋
-        </button>
-      )}
+
       {!isRevealed ? (
         <div className="factoid-content">
-          <p className="factoid-subject">{getTeaser(factoid.text, factoid.emoji) || "Surprise"}</p>
+          <p className="factoid-subject">
+            {getTeaser(factoid.text, factoid.emoji) || "Surprise"}
+          </p>
         </div>
       ) : (
         <p className="factoid-text">{factoid.text}</p>
       )}
+
       <div className={`meta ${isRevealed ? "" : "hidden"}`}>
         <button
-  className="button vote-button upvote"
-  onClick={(e) => {
-    e.stopPropagation();
-    handleVote(e, "up");
-  }}
-  title="My mind is blown!"
->
-  🤯 <span className="votes">{factoid.votesUp}</span>
-</button>
-<button
-  className="button vote-button downvote"
-  onClick={(e) => {
-    e.stopPropagation();
-    handleVote(e, "down");
-  }}
-  title="Meh"
->
-  😒 <span className="votes">{factoid.votesDown}</span>
-</button>
+          className="button vote-button upvote"
+          onClick={(e) => handleVote(e, "up")}
+          title="My mind is blown!"
+        >
+          🤯 <span className="votes">{factoid.votesUp}</span>
+        </button>
+        <button
+          className="button vote-button downvote"
+          onClick={(e) => handleVote(e, "down")}
+          title="Meh"
+        >
+          😒 <span className="votes">{factoid.votesDown}</span>
+        </button>
         <button
           className="button google-button"
           onClick={(e) => {
@@ -112,8 +111,15 @@ function FactoidCard({ factoid, onVote }) {
         >
           Google this ASAP!
         </button>
+        <button
+          className="button copy-button"
+          onClick={(e) => handleCopy(e)}
+          title="Copy"
+        >
+          📋
+        </button>
         <span className="created-at" title="Created At">
-          {new Date(factoid.createdAt._seconds * 1000).toLocaleString()}
+          {createdAtDisplay}
         </span>
       </div>
     </div>
