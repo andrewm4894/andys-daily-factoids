@@ -31,7 +31,7 @@ export async function handler(event) {
     return {
       statusCode: 200,
       headers: {
-        'Access-Control-Allow-Origin': '*',            // or "http://localhost:3000" if you want to limit
+        'Access-Control-Allow-Origin': '*', // Allow all domains
         'Access-Control-Allow-Headers': 'Content-Type, x-api-key',
         'Access-Control-Allow-Methods': 'OPTIONS, POST',
       },
