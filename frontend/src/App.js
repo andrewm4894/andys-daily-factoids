@@ -1,235 +1,143 @@
-import React, { useEffect, useState, useCallback } from "react";
+// src/App.js
+import React, { useState } from "react";
 import Modal from "react-modal";
+
 import "./App.css";
+
+import { useFactoids } from "./hooks/useFactoids";
+import { useGenerateFactoid } from "./hooks/useGenerateFactoid";
+
+import Header from "./components/Header";
+import Loader from "./components/Loader";
+import ErrorMessage from "./components/ErrorMessage";
 import FactoidCard from "./components/FactoidCard";
 
+import { customModalStyles } from "./styles/ModalStyles"; // optional
+
 function App() {
-    const [modalIsOpen, setModalIsOpen] = useState(false);
-    const [factoids, setFactoids] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+  const API_BASE_URL =
+    process.env.REACT_APP_API_BASE_URL || "https://andys-daily-factoids.com";
 
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [generatedFactoid, setGeneratedFactoid] = useState(null);
+  // From custom hooks
+  const {
+    factoids,
+    loading,
+    error,
+    fetchFactoids,
+    voteFactoid,
+    shuffleFactoids,
+  } = useFactoids(API_BASE_URL);
 
-    const API_BASE_URL =
-        process.env.REACT_APP_API_BASE_URL || "https://andys-daily-factoids.com";
+  const {
+    isGenerating,
+    generatedFactoid,
+    generateFactoid,
+    setGeneratedFactoid,
+  } = useGenerateFactoid(API_BASE_URL);
 
-    // === Fetch existing factoids ===
-    const fetchFactoids = useCallback(async () => {
-        setLoading(true);
-        try {
-            const response = await fetch(
-                `${API_BASE_URL}/.netlify/functions/getFactoids`
-            );
-            if (!response.ok) {
-                throw new Error(`Error: ${response.status} ${response.statusText}`);
-            }
-            const data = await response.json();
-            setFactoids(data);
-        } catch (err) {
-            console.error("Failed to fetch factoids:", err);
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    }, [API_BASE_URL]);
+  // Local state for controlling the modal
+  const [modalIsOpen, setModalIsOpen] = useState(false);
 
-    useEffect(() => {
-        fetchFactoids();
-    }, [fetchFactoids]);
+  // Handle generation + open modal
+  const handleGenerateFactoid = async () => {
+    await generateFactoid();
+    setModalIsOpen(true);
+  };
 
-    // === Voting logic ===
-    const handleVote = async (id, voteType) => {
-        try {
-            const response = await fetch(
-                `${API_BASE_URL}/.netlify/functions/voteFactoid`,
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ factoidId: id, voteType }),
-                }
-            );
-            if (!response.ok) {
-                throw new Error(`Vote failed: ${response.status} ${response.statusText}`);
-            }
-            const updatedFactoid = await response.json();
-            setFactoids((prev) =>
-                prev.map((f) => (f.id === updatedFactoid.id ? updatedFactoid : f))
-            );
-        } catch (err) {
-            console.error("Failed to vote:", err);
-            alert("Failed to register your vote. Please try again.");
-        }
-    };
+  // Close modal and refresh the factoids
+  const handleCloseModal = () => {
+    setModalIsOpen(false);
+    setGeneratedFactoid(null);
+    fetchFactoids();
+  };
 
-    // === Shuffle factoids ===
-    const shuffleFactoids = () => {
-        const shuffled = [...factoids].sort(() => Math.random() - 0.5);
-        setFactoids(shuffled);
-    };
-
-    // === Generate new factoid (calls Netlify) ===
-    const handleGenerateFactoid = async () => {
-        setIsGenerating(true);
-        setGeneratedFactoid(null);
-        try {
-            const response = await fetch(
-                `${API_BASE_URL}/.netlify/functions/generateFactoid`,
-                {
-                    method: "POST",
-                    headers: {
-                        "x-api-key": process.env.REACT_APP_FUNCTIONS_API_KEY || "",
-                    },
-                }
-            );
-            if (!response.ok) {
-                throw new Error(
-                    `Error generating factoid: ${response.status} ${response.statusText}`
-                );
-            }
-            const data = await response.json();
-            // data: { id, factoidText, factoidSubject, factoidEmoji }
-            setGeneratedFactoid(data);
-            setModalIsOpen(true);
-        } catch (err) {
-            console.error("Failed to generate factoid:", err);
-            alert("Failed to generate factoid. Please try again.");
-        } finally {
-            setIsGenerating(false);
-        }
-    };
-
-    // === Close modal and refresh factoids ===
-    const handleCloseModal = () => {
-        setModalIsOpen(false);
-        fetchFactoids();
-    };
-
-    // === Loading / error states ===
-    if (loading) {
-        return (
-            <div className="App">
-                <header className="App-header">
-                    <h1>Andy's Daily Factoids 🤯</h1>
-                    <p>(llm powered of course)</p>
-                </header>
-                <p>Loading factoids...</p>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="App">
-                <header className="App-header">
-                    <h1>Andy's Daily Factoids 🤯</h1>
-                    <p>(llm powered of course)</p>
-                </header>
-                <p style={{ color: "red" }}>Error: {error}</p>
-            </div>
-        );
-    }
-
-    // === Main UI ===
+  if (loading) {
     return (
-        <div className="App">
-            <header className="App-header">
-                <h1>Andy's Daily Factoids 🤯</h1>
-                <a
-                    href="https://github.com/andrewm4894/andys-daily-factoids/blob/main/scripts/generateFactoid.mjs"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                >
-                    (llm powered of course)
-                </a>
-            </header>
-
-            <div className="factoid-list">
-                <div className="button-container">
-                    <button
-                        className="factoid-button generate-button"
-                        onClick={handleGenerateFactoid}
-                        disabled={isGenerating}
-                    >
-                        {isGenerating ? "Generating...🪄" : "Generate Factoid 🧙"}
-                    </button>
-                    <button
-                        className="factoid-button transparent-button"
-                        title="shuffle"
-                        onClick={shuffleFactoids}
-                    >
-                        🔀
-                    </button>
-                </div>
-
-                {factoids.length > 0 ? (
-                    factoids.map((factoid) => (
-                        <FactoidCard factoid={factoid} onVote={handleVote} key={factoid.id} />
-                    ))
-                ) : (
-                    <p>No factoids available.</p>
-                )}
-            </div>
-
-            <Modal
-                isOpen={modalIsOpen}
-                onRequestClose={handleCloseModal}
-                contentLabel="Generated Factoid Modal"
-                style={{
-                    content: {
-                        color: "#333",
-                        top: "50%",
-                        left: "50%",
-                        right: "auto",
-                        bottom: "auto",
-                        marginRight: "-50%",
-                        transform: "translate(-50%, -50%)",
-                        padding: "20px",
-                        borderRadius: "10px",
-                        border: "1px solid #ccc",
-                        background: "#fff",
-                        boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
-                        width: "80%",
-                        maxWidth: "700px",
-                        minHeight: "300px",
-                        overflow: "auto",
-                    },
-                    overlay: {
-                        backgroundColor: "rgba(0, 0, 0, 0.5)",
-                    },
-                }}
-            >
-                {isGenerating ? (
-                    <p>Generating a new factoid...🪄</p>
-                ) : generatedFactoid ? (
-                    <>
-                        <h2>New Factoid Generated!</h2>
-                        <FactoidCard
-                            factoid={{
-                                id: generatedFactoid.id,
-                                text: generatedFactoid.factoidText,
-                                subject: generatedFactoid.factoidSubject,
-                                emoji: generatedFactoid.factoidEmoji,
-                                votesUp: 0,
-                                votesDown: 0,
-                            }}
-                            onVote={() => { }}
-                            initiallyRevealed={true}
-                        />
-                        <p>
-                            <em>
-                                Close and refresh the page to see this new factoid on the homepage.
-                            </em>
-                        </p>
-                    </>
-                ) : (
-                    <p>Something went wrong, please try again.</p>
-                )}
-                <button onClick={handleCloseModal}>Close</button>
-            </Modal>
-        </div>
+      <div className="App">
+        <Header />
+        <Loader message="Loading factoids..." />
+      </div>
     );
+  }
+
+  if (error) {
+    return (
+      <div className="App">
+        <Header />
+        <ErrorMessage error={error} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="App">
+      <Header />
+
+      <div className="factoid-list">
+        <div className="button-container">
+          <button
+            className="factoid-button generate-button"
+            onClick={handleGenerateFactoid}
+            disabled={isGenerating}
+          >
+            {isGenerating ? "Generating...🪄" : "Generate Factoid 🧙"}
+          </button>
+          <button
+            className="factoid-button transparent-button"
+            title="shuffle"
+            onClick={shuffleFactoids}
+          >
+            🔀
+          </button>
+        </div>
+
+        {factoids.length > 0 ? (
+          factoids.map((factoid) => (
+            <FactoidCard
+              key={factoid.id}
+              factoid={factoid}
+              onVote={voteFactoid}
+            />
+          ))
+        ) : (
+          <p>No factoids available.</p>
+        )}
+      </div>
+
+      <Modal
+        isOpen={modalIsOpen}
+        onRequestClose={handleCloseModal}
+        contentLabel="Generated Factoid Modal"
+        style={customModalStyles} // from external file
+      >
+        {isGenerating ? (
+          <p>Generating a new factoid...🪄</p>
+        ) : generatedFactoid ? (
+          <>
+            <h2>New Factoid Generated!</h2>
+            <FactoidCard
+              factoid={{
+                id: generatedFactoid.id,
+                text: generatedFactoid.factoidText,
+                subject: generatedFactoid.factoidSubject,
+                emoji: generatedFactoid.factoidEmoji,
+                votesUp: 0,
+                votesDown: 0,
+              }}
+              onVote={() => {}}
+              initiallyRevealed={true}
+            />
+            <p>
+              <em>Close and refresh the page to see this new factoid on the homepage.</em>
+            </p>
+          </>
+        ) : (
+          <p>Something went wrong, please try again.</p>
+        )}
+        <button onClick={handleCloseModal}>Close</button>
+      </Modal>
+    </div>
+  );
 }
 
 export default App;
