@@ -19,10 +19,10 @@ function App() {
   const API_BASE_URL =
     process.env.REACT_APP_API_BASE_URL || "https://andys-daily-factoids.com";
 
-  // Stripe price ID for “pay per factoid”
-  const priceId = "price_1QgDv7RiHmpzPgOD6eti4W83";
+  // Stripe price ID
+  const priceId = "price_1Qg9W2DuK9b9aydC1SXsQob8";
 
-  // Track loading states
+  // Track states
   const [isProcessing, setIsProcessing] = useState(false);
   const [modalIsOpen, setModalIsOpen] = useState(false);
 
@@ -44,28 +44,54 @@ function App() {
     setGeneratedFactoid,
   } = useGenerateFactoid(API_BASE_URL);
 
-  // When the user comes back from Stripe, we check the URL for a session_id.
-  // If present, we assume payment was successful and then generate a factoid.
   useEffect(() => {
     const queryParams = new URLSearchParams(window.location.search);
     const sessionId = queryParams.get("session_id");
     const canceled = queryParams.get("canceled");
 
-    // If user just got back from successful Stripe checkout:
+    // If user just got back from Stripe with a session_id,
+    // attempt to verify the payment was successful.
     if (sessionId && !canceled) {
-      // Generate a new factoid
-      generateFactoid().then(() => {
-        // Once generated, open the modal
-        setModalIsOpen(true);
+      verifyPayment(sessionId).then((paid) => {
+        if (paid) {
+          // Payment is verified, now generate the factoid
+          generateFactoid().then(() => {
+            // Open the modal
+            setModalIsOpen(true);
 
-        // Optionally, clean up the URL so it doesn't permanently show session_id
-        window.history.replaceState({}, document.title, window.location.pathname);
+            // Remove ?session_id from the URL so it doesn't linger
+            window.history.replaceState(
+              {},
+              document.title,
+              window.location.pathname
+            );
+          });
+        } else {
+          alert("Payment not verified. Please try again.");
+        }
       });
     }
   }, [generateFactoid]);
 
-  // Handle the “Generate Factoid” button. This first creates a Stripe Checkout Session,
-  // then redirects the user to Stripe for payment.
+  // Helper function to verify the Stripe session
+  async function verifyPayment(sessionId) {
+    try {
+      const response = await fetch("/.netlify/functions/verifyPayment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId }),
+      });
+      const { paymentStatus, error } = await response.json();
+      if (error) throw new Error(error);
+
+      return paymentStatus === "paid";
+    } catch (err) {
+      console.error("Error verifying payment:", err);
+      return false;
+    }
+  }
+
+  // Creates a new Stripe Checkout Session and redirects for payment
   const handlePayAndGenerateFactoid = async () => {
     setIsProcessing(true);
     try {
@@ -103,7 +129,7 @@ function App() {
     }
   };
 
-  // Closes the modal and refreshes the factoids list
+  // Close modal and refresh the factoids list
   const handleCloseModal = () => {
     setModalIsOpen(false);
     setGeneratedFactoid(null);
@@ -120,7 +146,7 @@ function App() {
     );
   }
 
-  // === Error state ===
+  // === Error states ===
   if (error) {
     return (
       <div className="App">
