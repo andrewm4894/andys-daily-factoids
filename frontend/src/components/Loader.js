@@ -1,4 +1,4 @@
-// src/components/Loader.js
+// frontend/src/components/Loader.js
 import React from "react";
 
 const Loader = ({ message = "Loading..." }) => {

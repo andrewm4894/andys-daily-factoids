@@ -1,4 +1,4 @@
-// src/hooks/useFactoids.js
+// frontend/src/hooks/useFactoids.js
 import { useState, useCallback, useEffect } from "react";
 
 export function useFactoids(API_BASE_URL) {

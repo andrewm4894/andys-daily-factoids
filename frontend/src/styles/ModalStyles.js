@@ -1,4 +1,4 @@
-// src/styles/ModalStyles.js
+// frontend/src/styles/ModalStyles.js
 export const customModalStyles = {
     content: {
       color: "#333",

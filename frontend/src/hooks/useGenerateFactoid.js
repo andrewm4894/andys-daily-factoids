@@ -1,4 +1,4 @@
-// src/hooks/useGenerateFactoid.js
+// frontend/src/hooks/useGenerateFactoid.js
 import { useState } from "react";
 
 export function useGenerateFactoid(API_BASE_URL) {

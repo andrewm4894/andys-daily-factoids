@@ -1,4 +1,4 @@
-// src/App.js
+// frontend/src/App.js
 import React, { useState } from "react";
 import Modal from "react-modal";
 
@@ -108,7 +108,7 @@ function App() {
         isOpen={modalIsOpen}
         onRequestClose={handleCloseModal}
         contentLabel="Generated Factoid Modal"
-        style={customModalStyles} // from external file
+        style={customModalStyles}
       >
         {isGenerating ? (
           <p>Generating a new factoid...🪄</p>
