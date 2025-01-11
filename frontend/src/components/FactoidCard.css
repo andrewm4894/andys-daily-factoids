@@ -167,18 +167,15 @@
    Copy Button
    ------------------------------ */
 .copy-button {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: transparent;
-  color: #333;
+  background: none;
+  background-color: none;
+  color: none;
   border: none;
   padding: 5px;
   cursor: pointer;
   font-size: 0.9rem;
   transition: color 0.3s;
   display: none;
-  /* Aligns the copy button vertically with the top of the card */
 }
 
 .factoid-card.revealed .copy-button {
@@ -226,10 +223,6 @@
 .vote-button,
 .google-button {
   color: #fff;
-}
-
-.copy-button {
-  color: #333;
 }
 
 .copy-button:hover {
