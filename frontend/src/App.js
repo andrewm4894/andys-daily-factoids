@@ -1,6 +1,7 @@
 // frontend/src/App.js
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Modal from "react-modal";
+import { getStripe } from "./stripe";
 
 import "./App.css";
 
@@ -18,7 +19,14 @@ function App() {
   const API_BASE_URL =
     process.env.REACT_APP_API_BASE_URL || "https://andys-daily-factoids.com";
 
-  // From custom hooks
+  // Stripe price ID for “pay per factoid”
+  const priceId = "price_1QgDv7RiHmpzPgOD6eti4W83";
+
+  // Track loading states
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [modalIsOpen, setModalIsOpen] = useState(false);
+
+  // Hooks for factoids
   const {
     factoids,
     loading,
@@ -28,6 +36,7 @@ function App() {
     shuffleFactoids,
   } = useFactoids(API_BASE_URL);
 
+  // Hooks for generating a new factoid
   const {
     isGenerating,
     generatedFactoid,
@@ -35,22 +44,73 @@ function App() {
     setGeneratedFactoid,
   } = useGenerateFactoid(API_BASE_URL);
 
-  // Local state for controlling the modal
-  const [modalIsOpen, setModalIsOpen] = useState(false);
+  // When the user comes back from Stripe, we check the URL for a session_id.
+  // If present, we assume payment was successful and then generate a factoid.
+  useEffect(() => {
+    const queryParams = new URLSearchParams(window.location.search);
+    const sessionId = queryParams.get("session_id");
+    const canceled = queryParams.get("canceled");
 
-  // Handle generation + open modal
-  const handleGenerateFactoid = async () => {
-    await generateFactoid();
-    setModalIsOpen(true);
+    // If user just got back from successful Stripe checkout:
+    if (sessionId && !canceled) {
+      // Generate a new factoid
+      generateFactoid().then(() => {
+        // Once generated, open the modal
+        setModalIsOpen(true);
+
+        // Optionally, clean up the URL so it doesn't permanently show session_id
+        window.history.replaceState({}, document.title, window.location.pathname);
+      });
+    }
+  }, [generateFactoid]);
+
+  // Handle the “Generate Factoid” button. This first creates a Stripe Checkout Session,
+  // then redirects the user to Stripe for payment.
+  const handlePayAndGenerateFactoid = async () => {
+    setIsProcessing(true);
+    try {
+      const response = await fetch("/.netlify/functions/createCheckoutSession", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          priceId,
+          successUrl:
+            window.location.origin + "/?session_id={CHECKOUT_SESSION_ID}",
+          cancelUrl: window.location.origin + "/?canceled=true",
+        }),
+      });
+
+      const data = await response.json();
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      // Redirect to Stripe Checkout
+      const stripe = await getStripe();
+      const { error } = await stripe.redirectToCheckout({
+        sessionId: data.sessionId,
+      });
+
+      if (error) {
+        console.warn("Stripe redirect failed", error);
+        alert(error.message);
+      }
+    } catch (err) {
+      console.error("Error creating checkout session:", err);
+      alert(err.message);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  // Close modal and refresh the factoids
+  // Closes the modal and refreshes the factoids list
   const handleCloseModal = () => {
     setModalIsOpen(false);
     setGeneratedFactoid(null);
     fetchFactoids();
   };
 
+  // === Loading states ===
   if (loading) {
     return (
       <div className="App">
@@ -60,6 +120,7 @@ function App() {
     );
   }
 
+  // === Error state ===
   if (error) {
     return (
       <div className="App">
@@ -69,6 +130,7 @@ function App() {
     );
   }
 
+  // === Main UI ===
   return (
     <div className="App">
       <Header />
@@ -77,10 +139,14 @@ function App() {
         <div className="button-container">
           <button
             className="factoid-button generate-button"
-            onClick={handleGenerateFactoid}
-            disabled={isGenerating}
+            onClick={handlePayAndGenerateFactoid}
+            disabled={isProcessing || isGenerating}
           >
-            {isGenerating ? "Generating...🪄" : "Generate Factoid 🧙"}
+            {isProcessing
+              ? "Processing Payment..."
+              : isGenerating
+              ? "Generating...🪄"
+              : "Generate Factoid 🧙"}
           </button>
           <button
             className="factoid-button transparent-button"
@@ -128,7 +194,10 @@ function App() {
               initiallyRevealed={true}
             />
             <p>
-              <em>Close and refresh the page to see this new factoid on the homepage.</em>
+              <em>
+                Close and refresh the page to see this new factoid on the
+                homepage.
+              </em>
             </p>
           </>
         ) : (
