@@ -5,15 +5,11 @@ import "./App.css";
 import FactoidCard from "./components/FactoidCard";
 
 function App() {
-    // Modal control
     const [modalIsOpen, setModalIsOpen] = useState(false);
-
-    // Factoids displayed on homepage
     const [factoids, setFactoids] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // Store the most recently generated factoid for the modal
     const [isGenerating, setIsGenerating] = useState(false);
     const [generatedFactoid, setGeneratedFactoid] = useState(null);
 
@@ -78,14 +74,12 @@ function App() {
     const handleGenerateFactoid = async () => {
         setIsGenerating(true);
         setGeneratedFactoid(null);
-
         try {
             const response = await fetch(
                 `${API_BASE_URL}/.netlify/functions/generateFactoid`,
                 {
                     method: "POST",
                     headers: {
-                        // Provide x-api-key if your Netlify function requires it.
                         "x-api-key": process.env.REACT_APP_FUNCTIONS_API_KEY || "",
                     },
                 }
@@ -96,10 +90,9 @@ function App() {
                 );
             }
             const data = await response.json();
-            // data should contain: { id, factoidText, factoidSubject, factoidEmoji }
-
-            setGeneratedFactoid(data); // store the newly generated factoid
-            setModalIsOpen(true);      // open the modal to display it
+            // data: { id, factoidText, factoidSubject, factoidEmoji }
+            setGeneratedFactoid(data);
+            setModalIsOpen(true);
         } catch (err) {
             console.error("Failed to generate factoid:", err);
             alert("Failed to generate factoid. Please try again.");
@@ -146,6 +139,7 @@ function App() {
                     (llm powered of course)
                 </a>
             </header>
+
             <div className="factoid-list">
                 <div className="button-container">
                     <button
@@ -153,7 +147,7 @@ function App() {
                         onClick={handleGenerateFactoid}
                         disabled={isGenerating}
                     >
-                        {isGenerating ? "Generating..." : "Generate Factoid 🧙"}
+                        {isGenerating ? "Generating...🪄" : "Generate Factoid 🧙"}
                     </button>
                     <button
                         className="factoid-button transparent-button"
@@ -163,6 +157,7 @@ function App() {
                         🔀
                     </button>
                 </div>
+
                 {factoids.length > 0 ? (
                     factoids.map((factoid) => (
                         <FactoidCard factoid={factoid} onVote={handleVote} key={factoid.id} />
@@ -172,7 +167,7 @@ function App() {
                 )}
             </div>
 
-            {/* 
+            {/*
         Modal that appears after generateFactoid is done. 
         The user can close it. If they refresh the page, 
         they will see the newly created factoid on the homepage.
@@ -195,8 +190,10 @@ function App() {
                         border: "1px solid #ccc",
                         background: "#fff",
                         boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
-                        maxWidth: "400px", // for nicer styling
-                        width: "90%",
+                        width: "80%",
+                        maxWidth: "700px",
+                        minHeight: "300px",
+                        overflow: "auto",
                     },
                     overlay: {
                         backgroundColor: "rgba(0, 0, 0, 0.5)",
@@ -204,23 +201,33 @@ function App() {
                 }}
             >
                 {isGenerating ? (
-                    <p>Generating a new factoid...</p>
+                    <p>Generating a new factoid...🪄</p>
                 ) : generatedFactoid ? (
                     <>
                         <h2>New Factoid Generated!</h2>
-                        <p style={{ fontSize: "2rem" }}>{generatedFactoid.factoidEmoji}</p>
-                        <p>
-                            <strong>{generatedFactoid.factoidText}</strong>
-                        </p>
-                        <p>Subject: {generatedFactoid.factoidSubject}</p>
+                        {/* Reuse FactoidCard to show what we got back */}
+                        <FactoidCard
+                            factoid={{
+                                id: generatedFactoid.id,
+                                text: generatedFactoid.factoidText,
+                                subject: generatedFactoid.factoidSubject,
+                                emoji: generatedFactoid.factoidEmoji,
+                                // Hardcode new factoid vote counts (0)
+                                votesUp: 0,
+                                votesDown: 0,
+                            }}
+                            // We'll pass a no-op for onVote, since we want the user
+                            // to refresh before actually voting.
+                            onVote={() => { }}
+                            initiallyRevealed={true}
+                        />
                         <p>
                             <em>
-                                Refresh the page to see this new factoid on the homepage.
+                                Close and refresh the page to see this new factoid on the homepage.
                             </em>
                         </p>
                     </>
                 ) : (
-                    // fallback if somehow we have no generated factoid
                     <p>Something went wrong, please try again.</p>
                 )}
                 <button onClick={() => setModalIsOpen(false)}>Close</button>
