@@ -24,8 +24,9 @@ const openai = new OpenAI({
 
 (async () => {
   try {
-    // Fetch the last 250 factoids from the database
+    // Fetch the last 250 factoids (with at least one up vote) from the database
     const factoidsSnapshot = await db.collection('factoids')
+      .where('votesUp', '>', 0)
       .orderBy('createdAt', 'desc')
       .limit(250)
       .get();
