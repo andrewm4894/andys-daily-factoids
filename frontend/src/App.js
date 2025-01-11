@@ -21,15 +21,16 @@ function App() {
     setFactoids(shuffled);
   };
 
-  // Determine API base URL based on environment
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "";
+  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "https://andys-daily-factoids.com";
 
   useEffect(() => {
     const fetchFactoids = async () => {
       try {
+
         const response = await fetch(
           `${API_BASE_URL}/.netlify/functions/getFactoids`
         );
+
         if (!response.ok) {
           throw new Error(`Error: ${response.status} ${response.statusText}`);
         }
@@ -110,7 +111,7 @@ function App() {
         </a>
       </header>
       <div className="factoid-list">
-      <div className="button-container">
+        <div className="button-container">
           <button className="factoid-button generate-button" onClick={openModal}>
             Generate Factoid 🧙
           </button>
