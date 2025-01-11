@@ -4,7 +4,8 @@
     "@stripe/stripe-js": "^5.5.0",
     "dotenv": "^16.4.7",
     "firebase-admin": "^11.5.0",
-    "openai": "^4.77.0"
+    "openai": "^4.77.0",
+    "stripe": "^17.5.0"
   },
   "scripts": {
     "build": "npm run build --prefix frontend"
