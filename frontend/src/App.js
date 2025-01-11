@@ -1,5 +1,4 @@
-// frontend/src/App.js
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Modal from "react-modal";
 import "./App.css";
 import FactoidCard from "./components/FactoidCard";
@@ -16,29 +15,29 @@ function App() {
     const API_BASE_URL =
         process.env.REACT_APP_API_BASE_URL || "https://andys-daily-factoids.com";
 
-    // === Fetch existing factoids on page load ===
-    useEffect(() => {
-        const fetchFactoids = async () => {
-            setLoading(true);
-            try {
-                const response = await fetch(
-                    `${API_BASE_URL}/.netlify/functions/getFactoids`
-                );
-                if (!response.ok) {
-                    throw new Error(`Error: ${response.status} ${response.statusText}`);
-                }
-                const data = await response.json();
-                setFactoids(data);
-            } catch (err) {
-                console.error("Failed to fetch factoids:", err);
-                setError(err.message);
-            } finally {
-                setLoading(false);
+    // === Fetch existing factoids ===
+    const fetchFactoids = useCallback(async () => {
+        setLoading(true);
+        try {
+            const response = await fetch(
+                `${API_BASE_URL}/.netlify/functions/getFactoids`
+            );
+            if (!response.ok) {
+                throw new Error(`Error: ${response.status} ${response.statusText}`);
             }
-        };
-
-        fetchFactoids();
+            const data = await response.json();
+            setFactoids(data);
+        } catch (err) {
+            console.error("Failed to fetch factoids:", err);
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
     }, [API_BASE_URL]);
+
+    useEffect(() => {
+        fetchFactoids();
+    }, [fetchFactoids]);
 
     // === Voting logic ===
     const handleVote = async (id, voteType) => {
@@ -99,6 +98,12 @@ function App() {
         } finally {
             setIsGenerating(false);
         }
+    };
+
+    // === Close modal and refresh factoids ===
+    const handleCloseModal = () => {
+        setModalIsOpen(false);
+        fetchFactoids();
     };
 
     // === Loading / error states ===
@@ -167,14 +172,9 @@ function App() {
                 )}
             </div>
 
-            {/*
-        Modal that appears after generateFactoid is done. 
-        The user can close it. If they refresh the page, 
-        they will see the newly created factoid on the homepage.
-      */}
             <Modal
                 isOpen={modalIsOpen}
-                onRequestClose={() => setModalIsOpen(false)}
+                onRequestClose={handleCloseModal}
                 contentLabel="Generated Factoid Modal"
                 style={{
                     content: {
@@ -205,19 +205,15 @@ function App() {
                 ) : generatedFactoid ? (
                     <>
                         <h2>New Factoid Generated!</h2>
-                        {/* Reuse FactoidCard to show what we got back */}
                         <FactoidCard
                             factoid={{
                                 id: generatedFactoid.id,
                                 text: generatedFactoid.factoidText,
                                 subject: generatedFactoid.factoidSubject,
                                 emoji: generatedFactoid.factoidEmoji,
-                                // Hardcode new factoid vote counts (0)
                                 votesUp: 0,
                                 votesDown: 0,
                             }}
-                            // We'll pass a no-op for onVote, since we want the user
-                            // to refresh before actually voting.
                             onVote={() => { }}
                             initiallyRevealed={true}
                         />
@@ -230,7 +226,7 @@ function App() {
                 ) : (
                     <p>Something went wrong, please try again.</p>
                 )}
-                <button onClick={() => setModalIsOpen(false)}>Close</button>
+                <button onClick={handleCloseModal}>Close</button>
             </Modal>
         </div>
     );
