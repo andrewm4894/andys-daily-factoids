@@ -3,56 +3,59 @@ import 'dotenv/config';
 import { OpenAI } from 'openai';
 import admin from 'firebase-admin';
 
-// Set up Firebase Admin using environment variables
+// Get Firebase credentials from environment variables
 const serviceAccount = {
-  projectId: process.env.FIREBASE_PROJECT_ID,
-  clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-  privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
 };
 
+// Initialize Firebase Admin if not already initialized
 if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
+    admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+    });
 }
 
 const db = admin.firestore();
 
 // Set up OpenAI
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+    apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Function to generate a new factoid
 export async function handler(event) {
-  const API_KEY = process.env.FUNCTIONS_API_KEY;
+    const API_KEY = process.env.FUNCTIONS_API_KEY;
 
-  // Check for valid API key
-  const providedKey = event.headers['x-api-key'];
-  if (!providedKey || providedKey !== API_KEY) {
-    return {
-      statusCode: 401,
-      body: JSON.stringify({ error: 'Unauthorized' }),
-    };
-  }
+    // Check for valid API key
+    const providedKey = event.headers['x-api-key'];
+    if (!providedKey || providedKey !== API_KEY) {
+        return {
+            statusCode: 401,
+            body: JSON.stringify({ error: 'Unauthorized' }),
+        };
+    }
 
-  try {
-    // Fetch the last 250 factoids (with at least one up vote) from the database
-    const factoidsSnapshot = await db.collection('factoids')
-      .where('votesUp', '>', 0)
-      .orderBy('createdAt', 'desc')
-      .limit(250)
-      .get();
+    try {
+        // Fetch some recent factoids (with at least one up vote) from the database
+        const factoidsSnapshot = await db.collection('factoids')
+            .where('votesUp', '>', 0)
+            .orderBy('createdAt', 'desc')
+            .limit(100)
+            .get();
 
-    const factoids = factoidsSnapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        text: data.text,
-      };
-    });
+        // Map the factoids to their text
+        const factoids = factoidsSnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                text: data.text,
+            };
+        });
 
-    // Create the multi-line prompt
-    const examples = factoids.map(factoid => `- ${factoid.text}`).join('\n');
-    const prompt = `
+        // Create the multi-line prompt
+        const examples = factoids.map(factoid => `- ${factoid.text}`).join('\n');
+        const prompt = `
       Here are some examples of interesting factoids:
 
       ${examples}
@@ -73,57 +76,60 @@ export async function handler(event) {
       Think about novel and intriguing facts that people might not know.
     `;
 
-    // Use function calling to structure the response
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt.trim() }],
-      functions: [{
-        name: "generate_factoid",
-        description: "Generate an interesting factoid with its subject and an emoji.",
-        parameters: {
-          type: "object",
-          properties: {
-            factoidText: { type: "string", description: "The text of the factoid." },
-            factoidSubject: { type: "string", description: "The subject of the factoid." },
-            factoidEmoji: { type: "string", description: "An emoji representing the factoid." },
-          },
-          required: ["factoidText", "factoidSubject", "factoidEmoji"],
-        },
-      }],
-      function_call: { name: "generate_factoid" },
-    });
+        // Use function calling to structure the response
+        const response = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [{ role: "user", content: prompt.trim() }],
+            functions: [{
+                name: "generate_factoid",
+                description: "Generate an interesting factoid with its subject and an emoji.",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        factoidText: { type: "string", description: "The text of the factoid." },
+                        factoidSubject: { type: "string", description: "The subject of the factoid." },
+                        factoidEmoji: { type: "string", description: "An emoji representing the factoid." },
+                    },
+                    required: ["factoidText", "factoidSubject", "factoidEmoji"],
+                },
+            }],
+            function_call: { name: "generate_factoid" },
+        });
 
-    const { factoidText, factoidSubject, factoidEmoji } = JSON.parse(response.choices[0].message.function_call.arguments);
 
-    // Log the generated factoid for debugging purposes
-    console.log(`Generated Factoid: ${factoidText}`);
-    console.log(`Subject: ${factoidSubject}`);
-    console.log(`Emoji: ${factoidEmoji}`);
+        // Parse the response to get the generated factoid
+        const { factoidText, factoidSubject, factoidEmoji } = JSON.parse(response.choices[0].message.function_call.arguments);
 
-    // Save the generated factoid to Firestore
-    const docRef = await db.collection('factoids').add({
-      text: factoidText,
-      subject: factoidSubject,
-      emoji: factoidEmoji,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      votesUp: 0,
-      votesDown: 0,
-    });
+        // Log the generated factoid for debugging purposes
+        console.log(`Subject: ${factoidSubject}`);
+        console.log(`Emoji: ${factoidEmoji}`);
+        console.log(`Generated Factoid: ${factoidText}`);
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        id: docRef.id,
-        factoidText,
-        factoidSubject,
-        factoidEmoji,
-      }),
-    };
-  } catch (error) {
-    console.error('Error generating factoid:', error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Internal Server Error' }),
-    };
-  }
+        // Save the generated factoid to Firestore
+        const docRef = await db.collection('factoids').add({
+            text: factoidText,
+            subject: factoidSubject,
+            emoji: factoidEmoji,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            votesUp: 0,
+            votesDown: 0,
+        });
+
+        // Return the generated factoid as a JSON response
+        return {
+            statusCode: 200,
+            body: JSON.stringify({
+                id: docRef.id,
+                factoidText,
+                factoidSubject,
+                factoidEmoji,
+            }),
+        };
+    } catch (error) {
+        console.error('Error generating factoid:', error);
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ error: 'Internal Server Error' }),
+        };
+    }
 }
