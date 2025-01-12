@@ -1,37 +1,36 @@
-// src/hooks/usePayPerFactoid.js
+// frontend/src/hooks/usePayPerFactoid.js
 import { useState, useEffect } from "react";
 import { getStripe } from "../stripe";
 
 export function usePayPerFactoid({ generateFactoid }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [sessionVerified, setSessionVerified] = useState(false);
+  const [hasVerifiedSession, setHasVerifiedSession] = useState(false);
 
   // Detect Stripe session on page load
   useEffect(() => {
+
+    if (hasVerifiedSession) return; // skip if already ran
+
     const queryParams = new URLSearchParams(window.location.search);
     const sessionId = queryParams.get("session_id");
     const canceled = queryParams.get("canceled");
 
     if (sessionId && !canceled) {
-      verifyPayment(sessionId).then((paid) => {
-        if (paid) {
-          // Payment is verified, proceed with factoid generation
-          generateFactoid().then(() => {
-            setSessionVerified(true);
-
-            // Remove ?session_id and ?canceled from the URL
-            window.history.replaceState(
-              {},
-              document.title,
-              window.location.pathname
-            );
-          });
-        } else {
-          alert("Payment not verified. Please try again.");
-        }
-      });
-    }
-  }, [generateFactoid]);
+        verifyPayment(sessionId).then((paid) => {
+          if (paid) {
+            generateFactoid().then(() => {
+              setSessionVerified(true);
+              setHasVerifiedSession(true);
+    
+              window.history.replaceState({}, document.title, window.location.pathname);
+            });
+          } else {
+            alert("Payment not verified. Please try again.");
+          }
+        });
+      }
+    }, [generateFactoid, hasVerifiedSession]);
 
   // Creates a new Stripe Checkout Session and redirects for payment
   const handlePayAndGenerateFactoid = async (priceId) => {
