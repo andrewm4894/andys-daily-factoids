@@ -199,6 +199,10 @@
     padding: 15px;
   }
 
+  .factoid-text {
+    font-size: 28px; /* Adjust the size as needed */
+  }
+
   .button {
     padding: 5px 10px; /* Reduce padding on smaller screens */
     font-size: 0.9rem; /* Slightly smaller font */
