@@ -6,7 +6,7 @@ const Header = () => {
     <header className="App-header">
       <h1>Andy's Daily Factoids 🤯</h1>
       <a
-        href="https://github.com/andrewm4894/andys-daily-factoids/blob/main/scripts/generateFactoid.mjs"
+        href="https://github.com/andrewm4894/andys-daily-factoids/blob/main/netlify/functions/generateFactoid.js"
         target="_blank"
         rel="noopener noreferrer"
       >
