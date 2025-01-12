@@ -57,53 +57,31 @@ export async function handler(event) {
 
     try {
 
-        // Fetch some good and bad factoids to provide as examples
-        const goodFactoidsSnapshot = await db
+        // Fetch some recent factoids to provide as examples
+        const factoidsSnapshot = await db
             .collection('factoids')
-            .where('votesUp', '>', 0)
             .orderBy('createdAt', 'desc')
             .limit(100)
             .get();
 
-        const badFactoidsSnapshot = await db
-            .collection('factoids')
-            .where('votesDown', '>', 0)
-            .orderBy('createdAt', 'desc')
-            .limit(100)
-            .get();
-
-        const goodFactoids = goodFactoidsSnapshot.docs.map((doc) => {
+        const factoids = factoidsSnapshot.docs.map((doc) => {
             const data = doc.data();
             return {
                 text: data.text,
+                votesUp: data.votesUp,
+                votesDown: data.votesDown,
             };
         });
 
-        const badFactoids = badFactoidsSnapshot.docs.map((doc) => {
-            const data = doc.data();
-            return {
-                text: data.text,
-            };
-        });
-
-        const examplesGood = goodFactoids.map((factoid) => `- ${factoid.text}`).join('\n');
-        const examplesBad = badFactoids.map((factoid) => `- ${factoid.text}`).join('\n');
+        const examples = factoids.map((factoid) => `- ${factoid.text} (votes up = ${factoid.votesUp}, votes down = ${factoid.votesDown})`).join('\n');
         
         // Prompt to generate a new factoid
         const prompt = `
-Here are some good and bad examples of interesting factoids:
+Here are some examples of interesting factoids (note the votes up and down counts which comes from user feedback):
 
-## Good Examples:
+## Examples:
 
-Some recent factoids voted as good by users.
-
-${examplesGood}
-
-## Bad Examples:
-
-Some recent factoids voted as bad by users.
-
-${examplesBad}
+${examples}
 
 Please provide a new, concise, interesting fact in one sentence, along with its subject and an emoji that represents the fact.
 - Do not repeat any of the provided examples.
@@ -113,7 +91,6 @@ Please provide a new, concise, interesting fact in one sentence, along with its 
 - No commentary about what the fact "reflects" or "highlights" as that's also usually commentary we don't want.
 - Bonus points if it's unlike anything in the examples above.
 - Try to come up with something new that's not similar to any of the examples.
-- No Octopus, Koala, or Honeybee facts as we already have enough.
 - The response should return three fields: 
   1. "factoidText": The text of the factoid.
   2. "factoidSubject": The subject or category of the factoid.
