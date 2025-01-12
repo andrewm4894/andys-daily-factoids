@@ -96,7 +96,7 @@ function App() {
             disabled={isProcessing || isGenerating}
           >
             {isProcessing
-              ? "Processing Payment..."
+              ? "Loading Stripe checkout...💸"
               : isGenerating
               ? "Generating...🪄"
               : "Generate Factoid 🧙"}

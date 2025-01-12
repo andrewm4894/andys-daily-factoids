@@ -31,16 +31,12 @@ export function usePayPerFactoid({ generateFactoid }) {
                 }
             });
         } else if (canceled) {
-            // Handle the canceled payment scenario
-            alert('Payment was canceled.');
             // Remove ?canceled from the URL
             window.history.replaceState(
                 {},
                 document.title,
                 window.location.pathname
             );
-            // Optionally, you can redirect the user to a different page
-            // window.location.href = '/';
         }
     },
         // eslint-disable-next-line react-hooks/exhaustive-deps
