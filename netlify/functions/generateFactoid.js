@@ -113,6 +113,7 @@ Please provide a new, concise, interesting fact in one sentence, along with its 
 - No commentary about what the fact "reflects" or "highlights" as that's also usually commentary we don't want.
 - Bonus points if it's unlike anything in the examples above.
 - Try to come up with something new that's not similar to any of the examples.
+- No Octopus, Koala, or Honeybee facts as we already have enough.
 - The response should return three fields: 
   1. "factoidText": The text of the factoid.
   2. "factoidSubject": The subject or category of the factoid.
