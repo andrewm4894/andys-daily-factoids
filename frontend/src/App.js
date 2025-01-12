@@ -20,7 +20,7 @@ function App() {
   const API_BASE_URL =
     process.env.REACT_APP_API_BASE_URL || "https://andys-daily-factoids.com";
 
-  // Our Stripe price ID for pay-per-factoid
+  // Stripe price ID for pay-per-factoid
   const priceId = "price_1Qg9W2DuK9b9aydC1SXsQob8";
 
   // Local state for controlling the modal
