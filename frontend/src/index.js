@@ -7,15 +7,16 @@ import posthog from 'posthog-js'
 
 // Google Analytics setup
 (function() {
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){ window.dataLayer.push(arguments); }
+    window.gtag = gtag;
+  
     const script = document.createElement('script');
     script.async = true;
     script.src = 'https://www.googletagmanager.com/gtag/js?id=G-166EKKM3RW';
     document.head.appendChild(script);
   
     script.onload = () => {
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      window.gtag = gtag;
       gtag('js', new Date());
       gtag('config', 'G-166EKKM3RW');
     };
