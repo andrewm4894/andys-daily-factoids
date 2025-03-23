@@ -89,8 +89,12 @@ Please provide a new, concise, interesting fact in one sentence, along with its 
 - Minimal commentary, just the facts.
 - Don't tell us what the factoid "showcases" as that's often considered commentary too.
 - No commentary about what the fact "reflects" or "highlights" as that's also usually commentary we don't want.
+- Things not to mention:
+  - jellyfish
+  - octopus
+  - whales
 - Bonus points if it's unlike anything in the examples above.
-- Try to come up with something new that's not similar to any of the examples.
+- Try to come up with something new that's not similar to any of the examples or something that's more novel than usual facts we come across on the internet.
 - The response should return three fields: 
   1. "factoidText": The text of the factoid.
   2. "factoidSubject": The subject or category of the factoid.
