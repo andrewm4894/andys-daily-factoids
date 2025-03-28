@@ -17,7 +17,9 @@ export function useFactoids(API_BASE_URL) {
         throw new Error(`Error: ${response.status} ${response.statusText}`);
       }
       const data = await response.json();
-      setFactoids(data);
+      // Shuffle factoids
+      const shuffledFactoids = data.sort(() => Math.random() - 0.5);
+      setFactoids(shuffledFactoids);
       setError(null);
     } catch (err) {
       console.error("Failed to fetch factoids:", err);
