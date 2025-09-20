@@ -69,6 +69,17 @@ function App() {
       generateFactoid: () => generateFactoid(selectedModel, parameters, useRandomParams)
     });
 
+  // Handle the generate button click - check rate limits first
+  const handleGenerateClick = async () => {
+    if (canGenerateMore()) {
+      // User has free generations available - generate directly
+      await generateFactoid(selectedModel, parameters, useRandomParams);
+    } else {
+      // User is rate limited - redirect to Stripe
+      await handlePayAndGenerateFactoid(priceId);
+    }
+  };
+
   // Close the modal and refresh the factoids list
   const handleCloseModal = () => {
     setModalIsOpen(false);
@@ -130,8 +141,8 @@ function App() {
         <div className="button-container">
           <button
             className="factoid-button generate-button"
-            onClick={() => handlePayAndGenerateFactoid(priceId)}
-            disabled={isProcessing || isGenerating || (!canGenerateMore() && !rateLimitError)}
+            onClick={handleGenerateClick}
+            disabled={isProcessing || isGenerating}
             title={!canGenerateMore() && !rateLimitError ? getStatusMessage() : ""}
           >
             {isProcessing
@@ -139,7 +150,7 @@ function App() {
               : isGenerating
               ? "Generating...🪄"
               : !canGenerateMore() && !rateLimitError
-              ? "Rate Limit Reached 🚫"
+              ? "Upgrade to Generate More 🚀"
               : "Generate Factoid 🧙"}
           </button>
           <button
