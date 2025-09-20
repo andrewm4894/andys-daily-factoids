@@ -1,5 +1,5 @@
 // frontend/src/components/ModelSelector.js
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useModels } from "../hooks/useModels";
 
 function ModelSelector({ 

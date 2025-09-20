@@ -1,12 +1,12 @@
 // frontend/src/hooks/useModels.js
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 export function useModels(API_BASE_URL) {
   const [models, setModels] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchModels = async () => {
+  const fetchModels = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -35,11 +35,11 @@ export function useModels(API_BASE_URL) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [API_BASE_URL]);
 
   useEffect(() => {
     fetchModels();
-  }, []);
+  }, [fetchModels]);
 
   return { models, isLoading, error, refetch: fetchModels };
 }
