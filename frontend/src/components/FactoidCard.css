@@ -23,6 +23,7 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   transition: transform 0.2s, box-shadow 0.2s;
   cursor: pointer;
+  z-index: 0;
 
   /* Flex Layout */
   display: flex;
@@ -31,9 +32,11 @@
   justify-content: center; /* Center content vertically */
 }
 
-.factoid-card:hover {
+.factoid-card:hover,
+.factoid-card:focus-within {
   transform: translateY(-5px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  z-index: 20;
 }
 
 /* ------------------------------
@@ -193,12 +196,20 @@
 /* ------------------------------
    Info Button
    ------------------------------ */
-.info-button {
+.info-button-wrapper {
   position: absolute;
   top: 10px;
   right: 10px;
-  background: #6c757d;
-  color: white;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  z-index: 10;
+}
+
+.info-button {
+  background: transparent;
+  color: #495057;
   border: none;
   padding: 5px 8px;
   border-radius: 50%;
@@ -209,33 +220,40 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.3s;
-  z-index: 10;
+  transition: color 0.3s;
 }
 
 .info-button:hover {
-  background: #495057;
+  color: #212529;
 }
 
-/* ------------------------------
-   Metadata Panel
-   ------------------------------ */
-.metadata-panel {
+.metadata-tooltip {
   position: absolute;
-  top: 100%;
-  left: 0;
+  top: calc(100% + 8px);
   right: 0;
   background: white;
   border: 1px solid #dee2e6;
   border-radius: 8px;
   padding: 15px;
-  margin-top: 5px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  z-index: 20;
-  max-width: 300px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  width: 360px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(-6px);
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
 }
 
-.metadata-panel h4 {
+.info-button-wrapper:hover .metadata-tooltip,
+.info-button-wrapper:focus-within .metadata-tooltip {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.metadata-tooltip h4 {
   margin: 0 0 10px 0;
   color: #333;
   font-size: 1rem;

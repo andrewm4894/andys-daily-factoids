@@ -5,7 +5,6 @@ import "./FactoidCard.css";
 
 function FactoidCard({ factoid, onVote, initiallyRevealed = false }) {
   const [isRevealed, setIsRevealed] = useState(initiallyRevealed);
-  const [showMetadata, setShowMetadata] = useState(false);
 
   const handleCardClick = () => {
     setIsRevealed(!isRevealed);
@@ -63,11 +62,6 @@ function FactoidCard({ factoid, onVote, initiallyRevealed = false }) {
     return emoji ? `${emoji} ${teaser}` : teaser;
   };
 
-  const handleInfoClick = (event) => {
-    event.stopPropagation();
-    setShowMetadata(!showMetadata);
-  };
-
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return 'Unknown';
     const date = new Date(timestamp);
@@ -92,13 +86,42 @@ function FactoidCard({ factoid, onVote, initiallyRevealed = false }) {
 
       {/* Information icon */}
       {factoid.generationMetadata && (
-        <button
-          className="button info-button"
-          onClick={handleInfoClick}
-          title="Show generation details"
+        <div
+          className="info-button-wrapper"
+          onClick={(event) => event.stopPropagation()}
         >
-          ℹ️
-        </button>
+          <button
+            className="button info-button"
+            onClick={(event) => event.stopPropagation()}
+            title="Generation details"
+            type="button"
+          >
+            ℹ️
+          </button>
+          <div className="metadata-tooltip">
+            <h4>Generation Details</h4>
+            <div className="metadata-content">
+              <div className="metadata-item">
+                <strong>Model:</strong> {factoid.generationMetadata.modelName} ({factoid.generationMetadata.provider})
+              </div>
+              <div className="metadata-item">
+                <strong>Temperature:</strong> {factoid.generationMetadata.parameters?.temperature || 'N/A'}
+              </div>
+              <div className="metadata-item">
+                <strong>Top P:</strong> {factoid.generationMetadata.parameters?.top_p || 'N/A'}
+              </div>
+              <div className="metadata-item">
+                <strong>Max Tokens:</strong> {factoid.generationMetadata.parameters?.max_tokens || 'N/A'}
+              </div>
+              <div className="metadata-item">
+                <strong>Generated:</strong> {formatTimestamp(factoid.generationMetadata.timestamp)}
+              </div>
+              <div className="metadata-item">
+                <strong>Cost:</strong> ${factoid.generationMetadata.costPer1kTokens}/1k tokens
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       <div className={`meta ${isRevealed ? "" : "hidden"}`}>
@@ -136,31 +159,7 @@ function FactoidCard({ factoid, onVote, initiallyRevealed = false }) {
       </div>
 
       {/* Metadata display */}
-      {showMetadata && factoid.generationMetadata && (
-        <div className="metadata-panel">
-          <h4>Generation Details</h4>
-          <div className="metadata-content">
-            <div className="metadata-item">
-              <strong>Model:</strong> {factoid.generationMetadata.modelName} ({factoid.generationMetadata.provider})
-            </div>
-            <div className="metadata-item">
-              <strong>Temperature:</strong> {factoid.generationMetadata.parameters?.temperature || 'N/A'}
-            </div>
-            <div className="metadata-item">
-              <strong>Top P:</strong> {factoid.generationMetadata.parameters?.top_p || 'N/A'}
-            </div>
-            <div className="metadata-item">
-              <strong>Max Tokens:</strong> {factoid.generationMetadata.parameters?.max_tokens || 'N/A'}
-            </div>
-            <div className="metadata-item">
-              <strong>Generated:</strong> {formatTimestamp(factoid.generationMetadata.timestamp)}
-            </div>
-            <div className="metadata-item">
-              <strong>Cost:</strong> ${factoid.generationMetadata.costPer1kTokens}/1k tokens
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Metadata tooltip content lives next to the info button */}
     </div>
   );
 }
