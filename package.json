@@ -9,7 +9,11 @@
     "posthog-node": "^5.8.6",
     "stripe": "^17.5.0"
   },
+  "devDependencies": {
+    "eslint": "^8.57.0"
+  },
   "scripts": {
-    "build": "npm run build --prefix frontend"
+    "build": "npm run build --prefix frontend",
+    "lint": "eslint scripts/ tests/backend/ tests/integration/ --ext .js,.mjs"
   }
 }

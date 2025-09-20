@@ -1,4 +1,4 @@
-.PHONY: install install-frontend local factoid test test-backend test-frontend test-rate-limit
+.PHONY: install install-frontend local factoid test test-backend test-frontend test-rate-limit lint lint-backend lint-frontend
 
 install:
 	npm install
@@ -34,3 +34,16 @@ test-integration:
 test-rate-limit:
 	@echo "Testing rate limit functionality..."
 	node scripts/testRateLimit.mjs
+
+lint:
+	@echo "Running all linting..."
+	$(MAKE) lint-backend
+	$(MAKE) lint-frontend
+
+lint-backend:
+	@echo "Linting backend files..."
+	npm run lint
+
+lint-frontend:
+	@echo "Linting frontend files..."
+	cd ./frontend && npm run lint

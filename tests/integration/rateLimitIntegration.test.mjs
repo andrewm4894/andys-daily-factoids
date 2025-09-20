@@ -108,7 +108,7 @@ describe('Rate Limit Integration Tests', () => {
     }
     
     // All requests should succeed
-    results.forEach((result, index) => {
+    results.forEach((result) => {
       expect(result).toBeDefined();
       expect(typeof result.isAllowed).toBe('boolean');
     });

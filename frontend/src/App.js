@@ -70,7 +70,7 @@ function App() {
   } = useGenerateFactoid(API_BASE_URL, updateFromGenerationResponse);
 
   // Our new custom hook for the pay-per-factoid flow
-  const { isProcessing, sessionVerified, handlePayAndGenerateFactoid } =
+  const { isProcessing, handlePayAndGenerateFactoid } =
     usePayPerFactoid({
       generateFactoid: () => {
         const config = latestGenerationConfigRef.current;

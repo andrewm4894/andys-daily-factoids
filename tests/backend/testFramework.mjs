@@ -1,7 +1,7 @@
 // tests/backend/testFramework.mjs
 // Simple test framework for backend tests
 
-let testResults = {
+const testResults = {
   passed: 0,
   failed: 0,
   tests: []

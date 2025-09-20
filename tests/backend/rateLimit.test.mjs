@@ -1,5 +1,5 @@
 // tests/backend/rateLimit.test.mjs
-import { describe, it, expect, beforeEach, afterEach } from './testFramework.mjs';
+// Test framework functions are defined locally to avoid conflicts
 import { checkRateLimit, recordGeneration } from '../../netlify/functions/checkRateLimit.js';
 
 // Mock Firebase Admin
@@ -28,8 +28,8 @@ jest.mock('firebase-admin', () => ({
   firestore: () => mockFirestore
 }));
 
-describe('Rate Limiting Tests', () => {
-  beforeEach(() => {
+describeTest('Rate Limiting Tests', () => {
+  beforeEachTest(() => {
     // Reset all mocks before each test
     jest.clearAllMocks();
     
@@ -48,8 +48,8 @@ describe('Rate Limiting Tests', () => {
     });
   });
 
-  describe('IP Detection', () => {
-    it('should extract IP from cf-connecting-ip header', async () => {
+  describeTest('IP Detection', () => {
+    itTest('should extract IP from cf-connecting-ip header', async () => {
       const event = {
         headers: {
           'cf-connecting-ip': '192.168.1.1'
@@ -58,11 +58,11 @@ describe('Rate Limiting Tests', () => {
 
       const result = await checkRateLimit(event);
       
-      expect(result.clientIP).toBe('192.168.1.1');
-      expect(result.isAllowed).toBe(true);
+      expectTest(result.clientIP).toBe('192.168.1.1');
+      expectTest(result.isAllowed).toBe(true);
     });
 
-    it('should extract IP from x-forwarded-for header', async () => {
+    itTest('should extract IP from x-forwarded-for header', async () => {
       const event = {
         headers: {
           'x-forwarded-for': '192.168.1.1, 10.0.0.1'
@@ -71,10 +71,10 @@ describe('Rate Limiting Tests', () => {
 
       const result = await checkRateLimit(event);
       
-      expect(result.clientIP).toBe('192.168.1.1');
+      expectTest(result.clientIP).toBe('192.168.1.1');
     });
 
-    it('should generate fallback ID for invalid IP', async () => {
+    itTest('should generate fallback ID for invalid IP', async () => {
       const event = {
         headers: {
           'user-agent': 'test-agent',
@@ -85,13 +85,13 @@ describe('Rate Limiting Tests', () => {
 
       const result = await checkRateLimit(event);
       
-      expect(result.clientIP).toMatch(/^fallback-/);
-      expect(result.isAllowed).toBe(true);
+      expectTest(result.clientIP).toMatch(/^fallback-/);
+      expectTest(result.isAllowed).toBe(true);
     });
   });
 
-  describe('Global Rate Limiting', () => {
-    it('should allow requests when under global limit', async () => {
+  describeTest('Global Rate Limiting', () => {
+    itTest('should allow requests when under global limit', async () => {
       const event = {
         headers: { 'cf-connecting-ip': '192.168.1.1' }
       };
@@ -108,11 +108,11 @@ describe('Rate Limiting Tests', () => {
 
       const result = await checkRateLimit(event);
       
-      expect(result.isAllowed).toBe(true);
-      expect(result.globalLimits.hourlyUsage).toBe(1);
+      expectTest(result.isAllowed).toBe(true);
+      expectTest(result.globalLimits.hourlyUsage).toBe(1);
     });
 
-    it('should block requests when global hourly limit exceeded', async () => {
+    itTest('should block requests when global hourly limit exceeded', async () => {
       const event = {
         headers: { 'cf-connecting-ip': '192.168.1.1' }
       };
@@ -132,12 +132,12 @@ describe('Rate Limiting Tests', () => {
 
       const result = await checkRateLimit(event);
       
-      expect(result.isAllowed).toBe(false);
-      expect(result.limitType).toBe('global');
-      expect(result.globalLimits.hourlyUsage).toBe(501);
+      expectTest(result.isAllowed).toBe(false);
+      expectTest(result.limitType).toBe('global');
+      expectTest(result.globalLimits.hourlyUsage).toBe(501);
     });
 
-    it('should block requests when global daily limit exceeded', async () => {
+    itTest('should block requests when global daily limit exceeded', async () => {
       const event = {
         headers: { 'cf-connecting-ip': '192.168.1.1' }
       };
@@ -157,14 +157,14 @@ describe('Rate Limiting Tests', () => {
 
       const result = await checkRateLimit(event);
       
-      expect(result.isAllowed).toBe(false);
-      expect(result.limitType).toBe('global');
-      expect(result.globalLimits.dailyUsage).toBe(5001);
+      expectTest(result.isAllowed).toBe(false);
+      expectTest(result.limitType).toBe('global');
+      expectTest(result.globalLimits.dailyUsage).toBe(5001);
     });
   });
 
-  describe('IP Rate Limiting', () => {
-    it('should block requests when IP hourly limit exceeded', async () => {
+  describeTest('IP Rate Limiting', () => {
+    itTest('should block requests when IP hourly limit exceeded', async () => {
       const event = {
         headers: { 'cf-connecting-ip': '192.168.1.1' }
       };
@@ -194,12 +194,12 @@ describe('Rate Limiting Tests', () => {
 
       const result = await checkRateLimit(event);
       
-      expect(result.isAllowed).toBe(false);
-      expect(result.limitType).toBe('ip');
-      expect(result.ipLimits.hourlyUsage).toBe(51);
+      expectTest(result.isAllowed).toBe(false);
+      expectTest(result.limitType).toBe('ip');
+      expectTest(result.ipLimits.hourlyUsage).toBe(51);
     });
 
-    it('should block requests when IP minute limit exceeded', async () => {
+    itTest('should block requests when IP minute limit exceeded', async () => {
       const event = {
         headers: { 'cf-connecting-ip': '192.168.1.1' }
       };
@@ -229,28 +229,28 @@ describe('Rate Limiting Tests', () => {
 
       const result = await checkRateLimit(event);
       
-      expect(result.isAllowed).toBe(false);
-      expect(result.limitType).toBe('ip');
-      expect(result.ipLimits.minuteUsage).toBe(11);
+      expectTest(result.isAllowed).toBe(false);
+      expectTest(result.limitType).toBe('ip');
+      expectTest(result.ipLimits.minuteUsage).toBe(11);
     });
   });
 
-  describe('Generation Recording', () => {
-    it('should record generation in global and IP stats', async () => {
+  describeTest('Generation Recording', () => {
+    itTest('should record generation in global and IP stats', async () => {
       const event = {
         headers: { 'cf-connecting-ip': '192.168.1.1' }
       };
 
       const result = await recordGeneration(event);
       
-      expect(result.success).toBe(true);
+      expectTest(result.success).toBe(true);
       
       // Verify that both global and IP collections were updated
-      expect(mockFirestore.runTransaction).toHaveBeenCalledTimes(2);
-      expect(mockDoc.set).toHaveBeenCalledTimes(2);
+      expectTest(mockFirestore.runTransaction).toHaveBeenCalledTimes(2);
+      expectTest(mockDoc.set).toHaveBeenCalledTimes(2);
     });
 
-    it('should handle Firebase errors gracefully', async () => {
+    itTest('should handle Firebase errors gracefully', async () => {
       const event = {
         headers: { 'cf-connecting-ip': '192.168.1.1' }
       };
@@ -260,13 +260,13 @@ describe('Rate Limiting Tests', () => {
 
       const result = await recordGeneration(event);
       
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Firebase error');
+      expectTest(result.success).toBe(false);
+      expectTest(result.error).toBe('Firebase error');
     });
   });
 
-  describe('Error Handling', () => {
-    it('should allow requests when Firebase is unavailable', async () => {
+  describeTest('Error Handling', () => {
+    itTest('should allow requests when Firebase is unavailable', async () => {
       const event = {
         headers: { 'cf-connecting-ip': '192.168.1.1' }
       };
@@ -276,28 +276,28 @@ describe('Rate Limiting Tests', () => {
 
       const result = await checkRateLimit(event);
       
-      expect(result.isAllowed).toBe(true);
-      expect(result.error).toBe('Rate limit check failed, allowing request');
+      expectTest(result.isAllowed).toBe(true);
+      expectTest(result.error).toBe('Rate limit check failed, allowing request');
     });
 
-    it('should handle missing headers gracefully', async () => {
+    itTest('should handle missing headers gracefully', async () => {
       const event = {};
 
       const result = await checkRateLimit(event);
       
-      expect(result.clientIP).toMatch(/^fallback-/);
-      expect(result.isAllowed).toBe(true);
+      expectTest(result.clientIP).toMatch(/^fallback-/);
+      expectTest(result.isAllowed).toBe(true);
     });
   });
 });
 
 // Simple test framework implementation
-function describe(name, fn) {
+function describeTest(name, fn) {
   console.log(`\n📋 ${name}`);
   fn();
 }
 
-function it(name, fn) {
+function itTest(name, fn) {
   try {
     fn();
     console.log(`  ✅ ${name}`);
@@ -307,7 +307,7 @@ function it(name, fn) {
   }
 }
 
-function expect(actual) {
+function expectTest(actual) {
   return {
     toBe: (expected) => {
       if (actual !== expected) {
@@ -327,18 +327,16 @@ function expect(actual) {
   };
 }
 
-function beforeEach(fn) {
+function beforeEachTest(fn) {
   fn();
 }
 
-function afterEach(fn) {
-  fn();
-}
+// afterEachTest function defined but not used in this test file
 
 // Simple Jest mock implementation
 const jest = {
   fn: () => {
-    const fn = (...args) => fn.callCount++;
+    const fn = () => fn.callCount++;
     fn.callCount = 0;
     fn.mockReturnValue = (value) => {
       fn.returnValue = value;
