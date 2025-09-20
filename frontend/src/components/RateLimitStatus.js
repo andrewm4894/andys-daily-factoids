@@ -37,7 +37,7 @@ function RateLimitStatus({
   };
 
   return (
-    <div className={`rate-limit-status ${getStatusColor()}`}>
+    <div className={`rate-limit-status ${getStatusColor()}`} data-testid="rate-limit-status">
       <div className="rate-limit-header">
         <span className="status-icon">{getStatusIcon()}</span>
         <span className="status-title">Free Generations</span>
@@ -79,6 +79,7 @@ function RateLimitStatus({
           <div className="progress-bar">
             <div 
               className="progress-fill"
+              data-testid="progress-fill"
               style={{ width: `${getProgressPercentage()}%` }}
             />
           </div>

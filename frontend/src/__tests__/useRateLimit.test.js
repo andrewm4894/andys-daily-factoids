@@ -57,7 +57,7 @@ describe('useRateLimit Hook', () => {
     );
 
     expect(result.current.rateLimitInfo.isLoading).toBe(false);
-    expect(result.current.rateLimitInfo.globalLimits.hourlyUsage).toBe(10);
+    expect(result.current.rateLimitInfo.globalLimits.hourlyUsage).toBe(5);
     expect(result.current.canGenerateMore()).toBe(true);
   });
 
@@ -140,8 +140,8 @@ describe('useRateLimit Hook', () => {
       result.current.updateFromGenerationResponse(mockGenerationResponse);
     });
 
-    expect(result.current.rateLimitInfo.globalLimits.hourlyUsage).toBe(25);
-    expect(result.current.rateLimitInfo.ipLimits.minuteUsage).toBe(2);
+    expect(result.current.rateLimitInfo.globalLimits.hourlyUsage).toBe(5);
+    expect(result.current.rateLimitInfo.ipLimits.minuteUsage).toBe(1);
   });
 
   it('should handle fetch errors gracefully', async () => {
@@ -195,6 +195,6 @@ describe('useRateLimit Hook', () => {
     });
 
     expect(fetch).toHaveBeenCalledTimes(1);
-    expect(result.current.rateLimitInfo.globalLimits.hourlyUsage).toBe(100);
+    expect(result.current.rateLimitInfo.globalLimits.hourlyUsage).toBe(10);
   });
 });

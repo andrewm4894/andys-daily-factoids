@@ -33,6 +33,13 @@ const POSTHOG_PROJECT_API_KEY = process.env.POSTHOG_PROJECT_API_KEY;
 const POSTHOG_HOST = process.env.POSTHOG_HOST || 'https://us.i.posthog.com';
 const POSTHOG_LLM_APP_NAME = process.env.POSTHOG_LLM_APP_NAME || 'factoid-generator';
 
+const DEFAULT_CONTEXT_TOKEN_FALLBACK = 16000;
+const PROMPT_TOKEN_BUFFER_MIN = 512;
+const PROMPT_TOKEN_BUFFER_RATIO = 0.1;
+const MAX_COMPLETION_TOKEN_CAP = 4096;
+const MAX_COMPLETION_RATIO = 0.6;
+const MIN_COMPLETION_TOKENS = 100;
+
 class FactoidParsingError extends Error {
     constructor(message, details = null) {
         super(message);
@@ -139,6 +146,63 @@ function findFirstJsonSubstring(content) {
     }
 
     return null;
+}
+
+function estimateTokenCountFromText(text) {
+    if (!text) {
+        return 0;
+    }
+    return Math.ceil(text.length / 4);
+}
+
+function getExampleLimitForContext(contextTokens) {
+    const ctx = contextTokens ?? DEFAULT_CONTEXT_TOKEN_FALLBACK;
+    if (ctx <= 4096) {
+        return 12;
+    }
+    if (ctx <= 8192) {
+        return 18;
+    }
+    if (ctx <= 16384) {
+        return 25;
+    }
+    if (ctx <= 32768) {
+        return 40;
+    }
+    if (ctx <= 65536) {
+        return 60;
+    }
+    if (ctx <= 131072) {
+        return 80;
+    }
+    return 100;
+}
+
+function clampParametersForContext(parameters, contextTokens, promptText) {
+    const effectiveContext = contextTokens ?? DEFAULT_CONTEXT_TOKEN_FALLBACK;
+    const promptTokens = estimateTokenCountFromText(promptText);
+    const bufferFromRatio = Math.floor(effectiveContext * PROMPT_TOKEN_BUFFER_RATIO);
+    const promptBuffer = Math.max(PROMPT_TOKEN_BUFFER_MIN, bufferFromRatio);
+    const residualBudget = Math.max(
+        MIN_COMPLETION_TOKENS,
+        effectiveContext - promptTokens - promptBuffer
+    );
+    const ratioBudget = Math.max(
+        MIN_COMPLETION_TOKENS,
+        Math.floor(effectiveContext * MAX_COMPLETION_RATIO)
+    );
+    const requestedMax = typeof parameters.max_tokens === 'number'
+        ? parameters.max_tokens
+        : MIN_COMPLETION_TOKENS;
+    const safeMaxTokens = Math.max(
+        MIN_COMPLETION_TOKENS,
+        Math.min(requestedMax, residualBudget, ratioBudget, MAX_COMPLETION_TOKEN_CAP)
+    );
+
+    return {
+        ...parameters,
+        max_tokens: safeMaxTokens,
+    };
 }
 
 function validateFactoidPayload(payload) {
@@ -296,22 +360,16 @@ export async function handler(event) {
 
         const prefersFunctionTools = /openai\/gpt-4o(:|$)/.test(selectedModel);
 
-        const parametersForLogging = {
-            ...parameters,
-            functionMode: modelConfig.supportsFunctionCalling && !prefersFunctionTools ? 'function_call' : prefersFunctionTools ? 'tools' : 'none',
-        };
-
-        console.log(`Using model: ${selectedModel} (${modelConfig.name || modelConfig.id})`);
-        console.log(`Parameters:`, parametersForLogging);
         const clients = createClients();
         openaiClient = clients.openaiClient;
         posthogClient = clients.posthogClient;
 
         // Fetch some recent factoids to provide as examples
+        const exampleLimit = getExampleLimitForContext(modelConfig.contextTokens);
         const factoidsSnapshot = await db
             .collection('factoids')
             .orderBy('createdAt', 'desc')
-            .limit(100)
+            .limit(exampleLimit)
             .get();
 
         const factoids = factoidsSnapshot.docs.map((doc) => {
@@ -353,6 +411,16 @@ Please provide a new, concise, interesting fact in one sentence, along with its 
 Think about novel and intriguing facts that people might not know.
     `;
 
+        const adjustedParameters = clampParametersForContext(parameters, modelConfig.contextTokens, prompt);
+
+        const parametersForLogging = {
+            ...adjustedParameters,
+            functionMode: modelConfig.supportsFunctionCalling && !prefersFunctionTools ? 'function_call' : prefersFunctionTools ? 'tools' : 'none',
+        };
+
+        console.log(`Using model: ${selectedModel} (${modelConfig.name || modelConfig.id})`);
+        console.log(`Parameters:`, parametersForLogging);
+
         let factoidText, factoidSubject, factoidEmoji;
         let response;
 
@@ -393,7 +461,7 @@ Think about novel and intriguing facts that people might not know.
                     },
                 ],
                 function_call: { name: 'generate_factoid' },
-                ...parameters,
+                ...adjustedParameters,
                 ...sharedPosthogOptions,
             };
 
@@ -431,7 +499,7 @@ Please respond in the following JSON format:
             const completionParams = {
                 model: selectedModel,
                 messages: [{ role: 'user', content: structuredPrompt.trim() }],
-                ...parameters,
+                ...adjustedParameters,
                 ...sharedPosthogOptions,
             };
 
@@ -461,7 +529,7 @@ Please respond in the following JSON format:
             model: selectedModel,
             modelName: modelConfig.name,
             provider: modelConfig.provider,
-            parameters: parameters,
+            parameters: adjustedParameters,
             timestamp: new Date().toISOString(),
             costPer1kTokens: modelConfig.costPer1kTokens,
         };

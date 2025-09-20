@@ -10,6 +10,8 @@ const DEFAULT_PARAMETER_TEMPLATE = {
   maxTokens: { min: 100, max: 1000, default: 750 },
 };
 
+const MAX_COMPLETION_TOKEN_CAP = 4096;
+
 const MODEL_PRESETS = {
   'openai/gpt-4o-mini': {
     displayName: 'GPT-4o Mini',
@@ -121,6 +123,57 @@ function baseModelKey(modelId) {
   return withoutColon.replace(/-\d{4,}$/g, '');
 }
 
+function toFiniteNumber(value) {
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function buildParameterTemplateFromModel(model) {
+  const defaultTemplate = DEFAULT_PARAMETER_TEMPLATE;
+
+  const providerMaxTokens = toFiniteNumber(
+    model?.top_provider?.max_completion_tokens ??
+      model?.top_provider?.max_completion_token ??
+      model?.top_provider?.context_length
+  );
+  const contextLength = toFiniteNumber(model?.context_length);
+  const candidateMaxTokens = providerMaxTokens || contextLength;
+
+  const resolvedMaxTokens = (() => {
+    if (!candidateMaxTokens) {
+      return Math.min(defaultTemplate.maxTokens.max, MAX_COMPLETION_TOKEN_CAP);
+    }
+    const clamped = Math.max(defaultTemplate.maxTokens.min, Math.round(candidateMaxTokens));
+    return Math.min(clamped, MAX_COMPLETION_TOKEN_CAP);
+  })();
+
+  const defaultMaxTokens = Math.max(
+    defaultTemplate.maxTokens.min,
+    Math.min(resolvedMaxTokens, defaultTemplate.maxTokens.default)
+  );
+
+  const temperatureRange = defaultTemplate.temperature
+    ? { ...defaultTemplate.temperature }
+    : { min: 0.0, max: 2.0, default: 0.7 };
+
+  const topPRange = defaultTemplate.topP
+    ? { ...defaultTemplate.topP }
+    : { min: 0.0, max: 1.0, default: 0.9 };
+
+  return {
+    temperature: temperatureRange,
+    topP: topPRange,
+    maxTokens: {
+      min: defaultTemplate.maxTokens.min,
+      max: resolvedMaxTokens,
+      default: defaultMaxTokens,
+    },
+  };
+}
+
 function buildParametersFromTemplate(template, mode = 'default') {
   const ranges = template || DEFAULT_PARAMETER_TEMPLATE;
   const pick = (range) => {
@@ -166,6 +219,7 @@ function buildFallbackModels() {
     supportsFunctionCalling: preset.supportsFunctionCalling ?? false,
     costPer1kTokens: preset.costPer1kTokens ?? null,
     parameters: preset.parameters ?? DEFAULT_PARAMETER_TEMPLATE,
+    contextTokens: null,
   }));
 }
 
@@ -191,26 +245,66 @@ async function fetchOpenRouterModelList() {
     }
 
     const payload = await response.json();
-    const supportedKeys = new Set(Object.keys(MODEL_PRESETS));
 
     const mapped = (payload.data || [])
       .map((model) => {
-        const baseKey = baseModelKey(model.id);
-        if (!supportedKeys.has(baseKey)) {
+        if (!model?.id) {
           return null;
         }
 
-        const preset = MODEL_PRESETS[baseKey];
-        const pricing = model.pricing?.usd;
-        const costPer1kTokens = pricing?.['input'] ?? pricing?.['output'] ?? pricing?.per_1k_input_tokens ?? preset.costPer1kTokens ?? null;
+        const baseKey = baseModelKey(model.id);
+        const preset = baseKey ? MODEL_PRESETS[baseKey] : null;
+
+        const pricing = model.pricing?.usd || model.pricing;
+        const rawCost =
+          pricing?.input ??
+          pricing?.output ??
+          pricing?.per_1k_input_tokens ??
+          pricing?.per_1k_output_tokens ??
+          pricing?.['input_token'] ??
+          pricing?.['output_token'] ??
+          preset?.costPer1kTokens ??
+          null;
+        const costPer1kTokens = toFiniteNumber(rawCost);
+
+        const supportsFunctionCalling =
+          preset?.supportsFunctionCalling ??
+          Boolean(
+            model.capabilities?.function_calling ??
+              model.capabilities?.function_call ??
+              model.capabilities?.['function_calling'] ??
+              model.capabilities?.['function_call'] ??
+              model.architecture?.function_calling ??
+              model.architecture?.function_call
+          );
+
+        const provider = (() => {
+          if (preset?.provider) {
+            return preset.provider;
+          }
+          if (typeof model.provider === 'string' && model.provider.length) {
+            return model.provider;
+          }
+          const [firstSegment = 'unknown'] = model.id.split('/');
+          return firstSegment;
+        })();
+
+        const parameters = preset?.parameters ?? buildParameterTemplateFromModel(model);
+
+        const contextTokens =
+          toFiniteNumber(model.context_length) ??
+          toFiniteNumber(model.top_provider?.context_length) ??
+          toFiniteNumber(model.architecture?.context_length) ??
+          null;
 
         return {
           id: model.id,
-          name: model.name || preset.displayName || model.id,
-          provider: baseKey.split('/')[0],
-          supportsFunctionCalling: preset.supportsFunctionCalling ?? false,
+          name: model.name || preset?.displayName || model.id,
+          provider,
+          supportsFunctionCalling,
           costPer1kTokens,
-          parameters: preset.parameters ?? DEFAULT_PARAMETER_TEMPLATE,
+          parameters,
+          contextTokens,
           baseKey,
         };
       })

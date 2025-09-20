@@ -5,11 +5,13 @@ export function useGenerateFactoid(API_BASE_URL, onRateLimitUpdate = null) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedFactoid, setGeneratedFactoid] = useState(null);
   const [rateLimitError, setRateLimitError] = useState(null);
+  const [generationError, setGenerationError] = useState(null);
 
   const generateFactoid = async (model = null, parameters = null, useRandomParams = true) => {
     setIsGenerating(true);
     setGeneratedFactoid(null);
     setRateLimitError(null);
+    setGenerationError(null);
 
     try {
       const requestBody = {
@@ -69,7 +71,7 @@ export function useGenerateFactoid(API_BASE_URL, onRateLimitUpdate = null) {
         // Don't show alert for rate limit errors, let the UI handle it
         console.warn("Rate limit exceeded:", err.message);
       } else {
-        alert(err.message || "Failed to generate factoid. Please try again.");
+        setGenerationError(err.message || "Failed to generate factoid. Please try again.");
       }
     } finally {
       setIsGenerating(false);
@@ -82,6 +84,8 @@ export function useGenerateFactoid(API_BASE_URL, onRateLimitUpdate = null) {
     generateFactoid, 
     setGeneratedFactoid,
     rateLimitError,
-    setRateLimitError
+    setRateLimitError,
+    generationError,
+    setGenerationError,
   };
 }

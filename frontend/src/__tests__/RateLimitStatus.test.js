@@ -66,7 +66,7 @@ describe('RateLimitStatus Component', () => {
 
     render(<RateLimitStatus {...highUsageProps} />);
 
-    expect(screen.getByText('Global: 40 / 50 per hour')).toBeInTheDocument();
+    expect(screen.getByText('Global: 400 / 500 per hour')).toBeInTheDocument();
     expect(screen.getByText('✅')).toBeInTheDocument(); // Still allowed
   });
 
@@ -163,8 +163,9 @@ describe('RateLimitStatus Component', () => {
   it('should render progress bar with correct percentage', () => {
     render(<RateLimitStatus {...defaultProps} />);
 
-    const progressBar = document.querySelector('.progress-fill');
-    expect(progressBar).toHaveStyle('width: 2%'); // 10/500 * 100 = 2%
+    // Find the progress bar using test ID
+    const progressFill = screen.getByTestId('progress-fill');
+    expect(progressFill).toHaveStyle('width: 10%'); // 5/50 * 100 = 10%
   });
 
   it('should handle missing rate limit info gracefully', () => {
@@ -179,15 +180,15 @@ describe('RateLimitStatus Component', () => {
 
     render(<RateLimitStatus {...minimalProps} />);
 
-    expect(screen.getByText('Global: 0 / 50 per hour')).toBeInTheDocument();
-    expect(screen.getByText('Daily: 0 / 200 per day')).toBeInTheDocument();
+    expect(screen.getByText('Global: 0 / 500 per hour')).toBeInTheDocument();
+    expect(screen.getByText('Daily: 0 / 5000 per day')).toBeInTheDocument();
   });
 
   it('should show different status colors based on usage', () => {
     const { rerender } = render(<RateLimitStatus {...defaultProps} />);
     
     // Low usage - should have status-good class
-    let statusDiv = document.querySelector('.rate-limit-status');
+    const statusDiv = screen.getByTestId('rate-limit-status');
     expect(statusDiv).toHaveClass('status-good');
 
     // High usage - should have status-exceeded class (80% is > 80% threshold)
@@ -205,7 +206,7 @@ describe('RateLimitStatus Component', () => {
     };
 
     rerender(<RateLimitStatus {...highUsageProps} />);
-    statusDiv = document.querySelector('.rate-limit-status');
-    expect(statusDiv).toHaveClass('status-exceeded');
+    const updatedStatusDiv = screen.getByTestId('rate-limit-status');
+    expect(updatedStatusDiv).toHaveClass('status-exceeded');
   });
 });

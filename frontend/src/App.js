@@ -67,6 +67,8 @@ function App() {
     generateFactoid,
     setGeneratedFactoid,
     rateLimitError,
+    generationError,
+    setGenerationError,
   } = useGenerateFactoid(API_BASE_URL, updateFromGenerationResponse);
 
   // Our new custom hook for the pay-per-factoid flow
@@ -162,6 +164,20 @@ function App() {
           rateLimitError={rateLimitError}
           onRefresh={fetchRateLimitStatus}
         />
+
+        {generationError && (
+          <div className="error-banner" role="alert">
+            <span>{generationError}</span>
+            <button
+              type="button"
+              className="error-banner__dismiss"
+              onClick={() => setGenerationError(null)}
+              aria-label="Dismiss error"
+            >
+              Close
+            </button>
+          </div>
+        )}
 
         <div className="button-container">
           <button
