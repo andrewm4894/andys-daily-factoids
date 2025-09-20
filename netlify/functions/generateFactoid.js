@@ -3,6 +3,7 @@ import 'dotenv/config';
 import { OpenAI } from 'openai';
 import admin from 'firebase-admin';
 import { getRandomModel, getRandomParameters, getDefaultParameters, MODEL_CONFIGS } from './modelConfig.js';
+import { checkRateLimit, recordGeneration } from './checkRateLimit.js';
 
 // Get Firebase credentials from environment variables
 const serviceAccount = {
@@ -58,6 +59,31 @@ export async function handler(event) {
     }
 
     try {
+        // Check rate limit first
+        const rateLimitStatus = await checkRateLimit(event);
+        
+        if (!rateLimitStatus.isAllowed) {
+            return {
+                statusCode: 429,
+                headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Headers': 'Content-Type, x-api-key',
+                    'Access-Control-Allow-Methods': 'OPTIONS, POST',
+                    'Retry-After': rateLimitStatus.resetTime ? Math.ceil((rateLimitStatus.resetTime - Date.now()) / 1000) : 3600
+                },
+                body: JSON.stringify({ 
+                    error: 'Rate limit exceeded',
+                    message: `You have reached the limit of ${rateLimitStatus.limit} free factoid generations per hour. Please try again later or upgrade to generate more.`,
+                    rateLimitInfo: {
+                        currentUsage: rateLimitStatus.currentUsage,
+                        limit: rateLimitStatus.limit,
+                        remainingGenerations: rateLimitStatus.remainingGenerations,
+                        resetTime: rateLimitStatus.resetTime
+                    }
+                }),
+            };
+        }
+
         // Parse request body to get model and parameter preferences
         const body = event.body ? JSON.parse(event.body) : {};
         const selectedModel = body.model || getRandomModel();
@@ -217,6 +243,12 @@ Please respond in the following JSON format:
             generationMetadata: generationMetadata,
         });
 
+        // Record this generation for rate limiting
+        await recordGeneration(event);
+
+        // Get updated rate limit status for response
+        const updatedRateLimitStatus = await checkRateLimit(event);
+
         // Return the generated factoid as a JSON response (with CORS)
         return {
             statusCode: 200,
@@ -231,6 +263,12 @@ Please respond in the following JSON format:
                 factoidSubject,
                 factoidEmoji,
                 generationMetadata,
+                rateLimitInfo: {
+                    currentUsage: updatedRateLimitStatus.currentUsage,
+                    limit: updatedRateLimitStatus.limit,
+                    remainingGenerations: updatedRateLimitStatus.remainingGenerations,
+                    resetTime: updatedRateLimitStatus.resetTime
+                }
             }),
         };
     } catch (error) {
