@@ -191,6 +191,75 @@
 }
 
 /* ------------------------------
+   Info Button
+   ------------------------------ */
+.info-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 5px 8px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 0.8rem;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s;
+  z-index: 10;
+}
+
+.info-button:hover {
+  background: #495057;
+}
+
+/* ------------------------------
+   Metadata Panel
+   ------------------------------ */
+.metadata-panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 15px;
+  margin-top: 5px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  z-index: 20;
+  max-width: 300px;
+}
+
+.metadata-panel h4 {
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.metadata-content {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.metadata-item {
+  font-size: 0.85rem;
+  color: #555;
+  line-height: 1.4;
+}
+
+.metadata-item strong {
+  color: #333;
+  font-weight: 600;
+}
+
+/* ------------------------------
    Responsive Design
    ------------------------------ */
 @media (max-width: 600px) {

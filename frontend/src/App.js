@@ -13,6 +13,7 @@ import Loader from "./components/Loader";
 import ErrorMessage from "./components/ErrorMessage";
 import FactoidCard from "./components/FactoidCard";
 import ModalContent from "./components/ModalContent";
+import ModelSelector from "./components/ModelSelector";
 
 import { customModalStyles } from "./styles/ModalStyles";
 
@@ -25,6 +26,11 @@ function App() {
 
   // Local state for controlling the modal
   const [modalIsOpen, setModalIsOpen] = useState(false);
+  
+  // State for model selection
+  const [selectedModel, setSelectedModel] = useState("");
+  const [parameters, setParameters] = useState({});
+  const [useRandomParams, setUseRandomParams] = useState(true);
 
   // Hooks for existing factoids
   const {
@@ -46,7 +52,9 @@ function App() {
 
   // Our new custom hook for the pay-per-factoid flow
   const { isProcessing, sessionVerified, handlePayAndGenerateFactoid } =
-    usePayPerFactoid({ generateFactoid });
+    usePayPerFactoid({ 
+      generateFactoid: () => generateFactoid(selectedModel, parameters, useRandomParams)
+    });
 
   // Close the modal and refresh the factoids list
   const handleCloseModal = () => {
@@ -89,6 +97,16 @@ function App() {
       <Header />
 
       <div className="factoid-list">
+        <ModelSelector
+          selectedModel={selectedModel}
+          onModelChange={setSelectedModel}
+          parameters={parameters}
+          onParametersChange={setParameters}
+          useRandomParams={useRandomParams}
+          onUseRandomParamsChange={setUseRandomParams}
+          API_BASE_URL={API_BASE_URL}
+        />
+        
         <div className="button-container">
           <button
             className="factoid-button generate-button"
