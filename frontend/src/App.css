@@ -107,10 +107,13 @@ body {
 }
 
 .generation-config-modal {
-  width: min(580px, 92vw);
+  width: min(560px, 92vw);
+  max-height: 82vh;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 18px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .generation-config-header {

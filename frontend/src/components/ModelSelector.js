@@ -1,6 +1,8 @@
 // frontend/src/components/ModelSelector.js
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { useModels } from "../hooks/useModels";
+
+import "./ModelSelector.css";
 
 function ModelSelector({ 
   selectedModel, 
@@ -12,7 +14,6 @@ function ModelSelector({
   API_BASE_URL 
 }) {
   const { models, isLoading, error } = useModels(API_BASE_URL);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const hasAutoSelected = useRef(false);
 
   const handleModelChange = (event) => {
@@ -144,34 +145,31 @@ function ModelSelector({
 
   return (
     <div className="model-selector">
-      <div className="model-selector-top">
-        <div>
-          <h3>Model Selection</h3>
-          <p className="model-selector-hint">Pick the model you want or let us surprise you.</p>
-        </div>
-        <button
-          type="button"
-          className="toggle-advanced"
-          onClick={() => setShowAdvanced(!showAdvanced)}
-        >
-          {showAdvanced ? 'Hide advanced controls' : 'Show advanced controls'}
-        </button>
+      <div className="model-selector-header">
+        <h3>Pick a model</h3>
+        <p className="model-selector-hint">
+          Choose a specific model or let us keep things spontaneous.
+        </p>
       </div>
 
-      <div className="model-selector-control-group">
-        <label htmlFor="model-select">AI Model</label>
-        <div className="model-selector-control">
+      <div className="model-selector-field">
+        <label htmlFor="model-select" className="field-label">
+          <span>AI model</span>
+          <span className="field-helper">Leave blank for a curated random pick.</span>
+        </label>
+        <div className="model-selector-input-row">
           <select
             id="model-select"
             value={selectedModel}
             onChange={handleModelChange}
             className="model-dropdown"
           >
-            <option value="">Random Model</option>
+            <option value="">Random model</option>
             {models.map((model) => {
-              const costLabel = model.costPer1kTokens != null
-                ? `$${model.costPer1kTokens}/1k tokens`
-                : 'Cost unknown';
+              const costLabel =
+                model.costPer1kTokens != null
+                  ? `$${model.costPer1kTokens}/1k tokens`
+                  : "Cost unavailable";
               return (
                 <option key={model.id} value={model.id}>
                   {model.name} ({model.provider}) · {costLabel}
@@ -191,53 +189,65 @@ function ModelSelector({
         </div>
       </div>
 
-      <label className="random-params-toggle">
+      <label className="checkbox-card">
         <input
           type="checkbox"
           checked={useRandomParams}
           onChange={handleUseRandomChange}
         />
-        Use random parameters for more variety
+        <div className="checkbox-copy">
+          <span className="field-label">Keep the settings playful</span>
+          <span className="field-helper">
+            We will shuffle creative parameters for each run.
+          </span>
+        </div>
       </label>
 
       {selectedModelConfig && (
-        <div className="model-info-card">
-          <h4>Selected Model</h4>
-          <dl>
+        <div className="model-summary">
+          <div className="model-summary-name">
+            <span className="model-name">{selectedModelConfig.name}</span>
+            <span className="model-provider">{selectedModelConfig.provider}</span>
+          </div>
+          <dl className="model-summary-meta">
             <div>
-              <dt>Provider</dt>
-              <dd>{selectedModelConfig.provider}</dd>
-            </div>
-            <div>
-              <dt>Function Calling</dt>
-              <dd>{selectedModelConfig.supportsFunctionCalling ? 'Yes' : 'No'}</dd>
+              <dt>Function calling</dt>
+              <dd>{selectedModelConfig.supportsFunctionCalling ? "Yes" : "No"}</dd>
             </div>
             <div>
               <dt>Cost</dt>
-              <dd>{selectedModelConfig.costPer1kTokens != null ? `$${selectedModelConfig.costPer1kTokens} per 1k tokens` : 'Unknown'}</dd>
+              <dd>
+                {selectedModelConfig.costPer1kTokens != null
+                  ? `$${selectedModelConfig.costPer1kTokens} per 1k tokens`
+                  : "Unknown"}
+              </dd>
             </div>
           </dl>
         </div>
       )}
 
-      {showAdvanced && !useRandomParams && selectedModelConfig && (
+      {!useRandomParams && selectedModelConfig && (
         <div className="parameter-panel">
           <div className="parameter-panel-header">
-            <h4>Advanced parameters</h4>
+            <h4>Fine-tune response style</h4>
             <button
               type="button"
               className="randomize-button"
               onClick={randomizeParameters}
             >
               <span aria-hidden="true">🎯</span>
-              <span> Randomize</span>
+              <span> Shuffle values</span>
             </button>
           </div>
 
           <div className="parameter-group">
             <div className="parameter-label">
               <span>Temperature</span>
-              <span className="parameter-value">{parameters.temperature ?? selectedModelConfig.parameters?.temperature?.default ?? 0.7}</span>
+              <span className="parameter-value">
+                {parameters.temperature ??
+                  selectedModelConfig.parameters?.temperature?.default ??
+                  0.7}
+              </span>
             </div>
             <input
               id="temperature"
@@ -245,16 +255,24 @@ function ModelSelector({
               min={selectedModelConfig.parameters?.temperature?.min ?? 0.1}
               max={selectedModelConfig.parameters?.temperature?.max ?? 2.0}
               step={0.1}
-              value={parameters.temperature ?? selectedModelConfig.parameters?.temperature?.default ?? 0.7}
-              onChange={(e) => handleParameterChange('temperature', e.target.value)}
+              value={
+                parameters.temperature ??
+                selectedModelConfig.parameters?.temperature?.default ??
+                0.7
+              }
+              onChange={(e) => handleParameterChange("temperature", e.target.value)}
             />
-            <small>Lower values are focused, higher values are more creative.</small>
+            <small>Lower values keep it precise. Higher values let it riff.</small>
           </div>
 
           <div className="parameter-group">
             <div className="parameter-label">
               <span>Top P</span>
-              <span className="parameter-value">{parameters.top_p ?? selectedModelConfig.parameters?.topP?.default ?? 0.9}</span>
+              <span className="parameter-value">
+                {parameters.top_p ??
+                  selectedModelConfig.parameters?.topP?.default ??
+                  0.9}
+              </span>
             </div>
             <input
               id="top_p"
@@ -262,16 +280,23 @@ function ModelSelector({
               min={selectedModelConfig.parameters?.topP?.min ?? 0.1}
               max={selectedModelConfig.parameters?.topP?.max ?? 1.0}
               step={0.1}
-              value={parameters.top_p ?? selectedModelConfig.parameters?.topP?.default ?? 0.9}
-              onChange={(e) => handleParameterChange('top_p', e.target.value)}
+              value={
+                parameters.top_p ??
+                selectedModelConfig.parameters?.topP?.default ??
+                0.9
+              }
+              onChange={(e) => handleParameterChange("top_p", e.target.value)}
             />
-            <small>Adjusts diversity of the generated wording.</small>
+            <small>A gentle nudge for wording variety.</small>
           </div>
 
           <div className="parameter-group">
             <div className="parameter-label">
-              <span>Max Tokens</span>
-              <span className="parameter-value">{parameters.max_tokens ?? Math.min(selectedModelConfig.parameters?.maxTokens ?? 1000, 1000)}</span>
+              <span>Max tokens</span>
+              <span className="parameter-value">
+                {parameters.max_tokens ??
+                  Math.min(selectedModelConfig.parameters?.maxTokens ?? 1000, 1000)}
+              </span>
             </div>
             <input
               id="max_tokens"
@@ -279,8 +304,11 @@ function ModelSelector({
               min="100"
               max={Math.min(selectedModelConfig.parameters?.maxTokens ?? 1000, 1000)}
               step="50"
-              value={parameters.max_tokens ?? Math.min(selectedModelConfig.parameters?.maxTokens ?? 1000, 1000)}
-              onChange={(e) => handleParameterChange('max_tokens', e.target.value)}
+              value={
+                parameters.max_tokens ??
+                Math.min(selectedModelConfig.parameters?.maxTokens ?? 1000, 1000)
+              }
+              onChange={(e) => handleParameterChange("max_tokens", e.target.value)}
             />
             <small>The upper limit for how long the model can respond.</small>
           </div>
