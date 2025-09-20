@@ -7,6 +7,7 @@ import "./App.css";
 import { useFactoids } from "./hooks/useFactoids";
 import { useGenerateFactoid } from "./hooks/useGenerateFactoid";
 import { usePayPerFactoid } from "./hooks/usePayPerFactoid";
+import { useRateLimit } from "./hooks/useRateLimit";
 
 import Header from "./components/Header";
 import Loader from "./components/Loader";
@@ -14,6 +15,7 @@ import ErrorMessage from "./components/ErrorMessage";
 import FactoidCard from "./components/FactoidCard";
 import ModalContent from "./components/ModalContent";
 import ModelSelector from "./components/ModelSelector";
+import RateLimitStatus from "./components/RateLimitStatus";
 
 import { customModalStyles } from "./styles/ModalStyles";
 
@@ -42,13 +44,24 @@ function App() {
     shuffleFactoids,
   } = useFactoids(API_BASE_URL);
 
+  // Hook for rate limiting
+  const {
+    rateLimitInfo,
+    isCheckingRateLimit,
+    fetchRateLimitStatus,
+    updateFromGenerationResponse,
+    canGenerateMore,
+    getStatusMessage,
+  } = useRateLimit(API_BASE_URL);
+
   // Hook for generating a new factoid
   const {
     isGenerating,
     generatedFactoid,
     generateFactoid,
     setGeneratedFactoid,
-  } = useGenerateFactoid(API_BASE_URL);
+    rateLimitError,
+  } = useGenerateFactoid(API_BASE_URL, updateFromGenerationResponse);
 
   // Our new custom hook for the pay-per-factoid flow
   const { isProcessing, sessionVerified, handlePayAndGenerateFactoid } =
@@ -97,6 +110,13 @@ function App() {
       <Header />
 
       <div className="factoid-list">
+        <RateLimitStatus
+          rateLimitInfo={rateLimitInfo}
+          isCheckingRateLimit={isCheckingRateLimit}
+          rateLimitError={rateLimitError}
+          onRefresh={fetchRateLimitStatus}
+        />
+
         <ModelSelector
           selectedModel={selectedModel}
           onModelChange={setSelectedModel}
@@ -111,12 +131,15 @@ function App() {
           <button
             className="factoid-button generate-button"
             onClick={() => handlePayAndGenerateFactoid(priceId)}
-            disabled={isProcessing || isGenerating}
+            disabled={isProcessing || isGenerating || (!canGenerateMore() && !rateLimitError)}
+            title={!canGenerateMore() && !rateLimitError ? getStatusMessage() : ""}
           >
             {isProcessing
               ? "Loading Stripe checkout...💸"
               : isGenerating
               ? "Generating...🪄"
+              : !canGenerateMore() && !rateLimitError
+              ? "Rate Limit Reached 🚫"
               : "Generate Factoid 🧙"}
           </button>
           <button
