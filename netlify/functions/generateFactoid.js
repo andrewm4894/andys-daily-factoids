@@ -4,7 +4,12 @@ import OpenAI from 'openai';
 import { OpenAI as PostHogOpenAI } from '@posthog/ai';
 import { PostHog } from 'posthog-node';
 import admin from 'firebase-admin';
-import { getRandomModel, getRandomParameters, getDefaultParameters, MODEL_CONFIGS } from './modelConfig.js';
+import {
+    getAvailableModels,
+    getRandomParameters,
+    getDefaultParameters,
+    mergeWithModelDefaults,
+} from './modelConfig.js';
 import { checkRateLimit, recordGeneration } from './checkRateLimit.js';
 
 // Get Firebase credentials from environment variables
@@ -27,6 +32,149 @@ const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 const POSTHOG_PROJECT_API_KEY = process.env.POSTHOG_PROJECT_API_KEY;
 const POSTHOG_HOST = process.env.POSTHOG_HOST || 'https://us.i.posthog.com';
 const POSTHOG_LLM_APP_NAME = process.env.POSTHOG_LLM_APP_NAME || 'factoid-generator';
+
+class FactoidParsingError extends Error {
+    constructor(message, details = null) {
+        super(message);
+        this.name = 'FactoidParsingError';
+        this.statusCode = 422;
+        this.details = details;
+    }
+}
+
+function createPreview(value) {
+    if (value === undefined || value === null) {
+        return null;
+    }
+
+    if (typeof value === 'string') {
+        return value.slice(0, 200);
+    }
+
+    try {
+        return JSON.stringify(value, null, 2).slice(0, 200);
+    } catch (error) {
+        return '[unserializable preview]';
+    }
+}
+
+function parseJsonContent(rawContent) {
+    if (typeof rawContent !== 'string') {
+        return null;
+    }
+
+    const trimmed = rawContent.trim();
+    if (!trimmed) {
+        return null;
+    }
+
+    const attempts = [];
+
+    // If wrapped in a code fence, try just the inner content first
+    const fenceMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    if (fenceMatch && fenceMatch[1]) {
+        attempts.push(fenceMatch[1].trim());
+    }
+
+    attempts.push(trimmed);
+
+    // Attempt to find the first balanced JSON object inside the content
+    const jsonSubstring = findFirstJsonSubstring(trimmed);
+    if (jsonSubstring) {
+        attempts.push(jsonSubstring.trim());
+    }
+
+    for (const attempt of attempts) {
+        if (!attempt) {
+            continue;
+        }
+        try {
+            return JSON.parse(attempt);
+        } catch (error) {
+            // Continue trying other candidates
+        }
+    }
+
+    return null;
+}
+
+function findFirstJsonSubstring(content) {
+    let inString = false;
+    let escapeNext = false;
+    let depth = 0;
+    let startIndex = -1;
+
+    for (let i = 0; i < content.length; i++) {
+        const char = content[i];
+
+        if (inString) {
+            if (escapeNext) {
+                escapeNext = false;
+            } else if (char === '\\') {
+                escapeNext = true;
+            } else if (char === '"') {
+                inString = false;
+            }
+            continue;
+        }
+
+        if (char === '"') {
+            inString = true;
+            continue;
+        }
+
+        if (char === '{') {
+            if (depth === 0) {
+                startIndex = i;
+            }
+            depth++;
+        } else if (char === '}') {
+            if (depth > 0) {
+                depth--;
+                if (depth === 0 && startIndex !== -1) {
+                    return content.slice(startIndex, i + 1);
+                }
+            }
+        }
+    }
+
+    return null;
+}
+
+function validateFactoidPayload(payload) {
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+        throw new FactoidParsingError('Model response was not a JSON object.', {
+            payloadPreview: createPreview(payload),
+        });
+    }
+
+    const cleaned = {
+        factoidText: typeof payload.factoidText === 'string' ? payload.factoidText.trim() : '',
+        factoidSubject: typeof payload.factoidSubject === 'string' ? payload.factoidSubject.trim() : '',
+        factoidEmoji: typeof payload.factoidEmoji === 'string' ? payload.factoidEmoji.trim() : '',
+    };
+
+    const errors = [];
+
+    if (!cleaned.factoidText) {
+        errors.push('factoidText must be a non-empty string');
+    }
+    if (!cleaned.factoidSubject) {
+        errors.push('factoidSubject must be a non-empty string');
+    }
+    if (!cleaned.factoidEmoji) {
+        errors.push('factoidEmoji must be a non-empty string');
+    }
+
+    if (errors.length) {
+        throw new FactoidParsingError('Generated factoid did not match the expected schema.', {
+            errors,
+            payloadPreview: createPreview(payload),
+        });
+    }
+
+    return cleaned;
+}
 
 function createClients() {
     const apiKey = process.env.OPENROUTER_API_KEY;
@@ -118,22 +266,43 @@ export async function handler(event) {
 
         // Parse request body to get model and parameter preferences
         const body = event.body ? JSON.parse(event.body) : {};
-        const selectedModel = body.model || getRandomModel();
         const useRandomParams = body.useRandomParams !== false; // Default to true
         const customParams = body.parameters || {};
 
-        // Get parameters for the selected model
-        const parameters = useRandomParams 
-            ? getRandomParameters(selectedModel)
-            : { ...getDefaultParameters(selectedModel), ...customParams };
-
-        const modelConfig = MODEL_CONFIGS[selectedModel];
-        if (!modelConfig) {
-            throw new Error(`Model ${selectedModel} not found in configuration`);
+        const availableModels = await getAvailableModels();
+        if (!availableModels.length) {
+            throw new Error('No models available from OpenRouter');
         }
 
-        console.log(`Using model: ${selectedModel} (${modelConfig.name})`);
-        console.log(`Parameters:`, parameters);
+        const modelIds = new Set(availableModels.map((model) => model.id));
+
+        let selectedModel = body.model;
+        if (!selectedModel || !modelIds.has(selectedModel)) {
+            if (selectedModel && !modelIds.has(selectedModel)) {
+                console.warn(`Requested model ${selectedModel} unavailable. Selecting a random model.`);
+            }
+            const randomIndex = Math.floor(Math.random() * availableModels.length);
+            selectedModel = availableModels[randomIndex].id;
+        }
+
+        const modelConfig = availableModels.find((model) => model.id === selectedModel);
+        if (!modelConfig) {
+            throw new Error(`Model ${selectedModel} configuration not found`);
+        }
+
+        const parameters = useRandomParams
+            ? await getRandomParameters(selectedModel)
+            : mergeWithModelDefaults(await getDefaultParameters(selectedModel), customParams);
+
+        const prefersFunctionTools = /openai\/gpt-4o(:|$)/.test(selectedModel);
+
+        const parametersForLogging = {
+            ...parameters,
+            functionMode: modelConfig.supportsFunctionCalling && !prefersFunctionTools ? 'function_call' : prefersFunctionTools ? 'tools' : 'none',
+        };
+
+        console.log(`Using model: ${selectedModel} (${modelConfig.name || modelConfig.id})`);
+        console.log(`Parameters:`, parametersForLogging);
         const clients = createClients();
         openaiClient = clients.openaiClient;
         posthogClient = clients.posthogClient;
@@ -203,7 +372,7 @@ Think about novel and intriguing facts that people might not know.
             : {};
 
         // Generate factoid based on model capabilities
-        if (modelConfig.supportsFunctionCalling) {
+        if (modelConfig.supportsFunctionCalling && !prefersFunctionTools) {
             // Use function calling for models that support it
             const completionParams = {
                 model: selectedModel,
@@ -232,12 +401,21 @@ Think about novel and intriguing facts that people might not know.
 
             const functionCall = response.choices[0].message.function_call;
             if (functionCall && functionCall.arguments) {
-                const parsed = JSON.parse(functionCall.arguments);
-                factoidText = parsed.factoidText;
-                factoidSubject = parsed.factoidSubject;
-                factoidEmoji = parsed.factoidEmoji;
+                let parsedArguments;
+                try {
+                    parsedArguments = JSON.parse(functionCall.arguments);
+                } catch (parseError) {
+                    throw new FactoidParsingError('Model returned malformed JSON during function call.', {
+                        rawPreview: createPreview(functionCall.arguments),
+                    });
+                }
+
+                const validated = validateFactoidPayload(parsedArguments);
+                factoidText = validated.factoidText;
+                factoidSubject = validated.factoidSubject;
+                factoidEmoji = validated.factoidEmoji;
             } else {
-                throw new Error('Function call not returned by model');
+                throw new FactoidParsingError('Model did not return a function call payload.');
             }
         } else {
             // Use structured prompt for models that don't support function calling
@@ -260,18 +438,17 @@ Please respond in the following JSON format:
             response = await openaiClient.chat.completions.create(completionParams);
 
             const content = response.choices[0].message.content;
-            try {
-                const parsed = JSON.parse(content);
-                factoidText = parsed.factoidText;
-                factoidSubject = parsed.factoidSubject;
-                factoidEmoji = parsed.factoidEmoji;
-            } catch (parseError) {
-                // Fallback: try to extract from text if JSON parsing fails
-                console.warn('Failed to parse JSON response, attempting text extraction');
-                factoidText = content;
-                factoidSubject = 'General';
-                factoidEmoji = '📝';
+            const parsed = parseJsonContent(content);
+            if (!parsed) {
+                throw new FactoidParsingError('Model response did not contain valid JSON.', {
+                    rawPreview: createPreview(content),
+                });
             }
+
+            const validated = validateFactoidPayload(parsed);
+            factoidText = validated.factoidText;
+            factoidSubject = validated.factoidSubject;
+            factoidEmoji = validated.factoidEmoji;
         }
 
         // Log the generated factoid for debugging purposes
@@ -330,14 +507,22 @@ Please respond in the following JSON format:
         };
     } catch (error) {
         console.error('Error generating factoid:', error);
+        const isParsingError = error instanceof FactoidParsingError;
         return {
-            statusCode: 500,
+            statusCode: isParsingError ? error.statusCode : 500,
             headers: {
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Headers': 'Content-Type, x-api-key',
                 'Access-Control-Allow-Methods': 'OPTIONS, POST',
             },
-            body: JSON.stringify({ error: 'Internal Server Error' }),
+            body: JSON.stringify(
+                isParsingError
+                    ? {
+                          error: 'The AI response was invalid and could not be parsed into a factoid. Please try again.',
+                          details: error.details || null,
+                      }
+                    : { error: 'Internal Server Error' }
+            ),
         };
     } finally {
         if (posthogClient) {

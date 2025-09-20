@@ -30,19 +30,33 @@ export function useGenerateFactoid(API_BASE_URL, onRateLimitUpdate = null) {
         }
       );
 
-      if (!response.ok) {
-        if (response.status === 429) {
-          // Rate limit exceeded
-          const errorData = await response.json();
-          setRateLimitError(errorData);
-          throw new Error(errorData.message || "Rate limit exceeded");
-        }
-        throw new Error(
-          `Error generating factoid: ${response.status} ${response.statusText}`
-        );
+      let responseData = null;
+      try {
+        responseData = await response.json();
+      } catch (parseError) {
+        console.warn("Failed to parse response JSON:", parseError);
       }
-      
-      const data = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 429 && responseData) {
+          // Rate limit exceeded
+          setRateLimitError(responseData);
+          throw new Error(responseData.message || "Rate limit exceeded");
+        }
+
+        const errorMessage =
+          responseData?.error ||
+          responseData?.message ||
+          `Error generating factoid: ${response.status} ${response.statusText}`;
+
+        throw new Error(errorMessage);
+      }
+
+      if (!responseData) {
+        throw new Error("Unexpected empty response from factoid generator.");
+      }
+
+      const data = responseData;
       setGeneratedFactoid(data);
       
       // Update rate limit info if callback provided
@@ -55,7 +69,7 @@ export function useGenerateFactoid(API_BASE_URL, onRateLimitUpdate = null) {
         // Don't show alert for rate limit errors, let the UI handle it
         console.warn("Rate limit exceeded:", err.message);
       } else {
-        alert("Failed to generate factoid. Please try again.");
+        alert(err.message || "Failed to generate factoid. Please try again.");
       }
     } finally {
       setIsGenerating(false);
