@@ -2,6 +2,7 @@
 import 'dotenv/config';
 import { OpenAI } from 'openai';
 import admin from 'firebase-admin';
+import { getRandomModel, getRandomParameters, getDefaultParameters, MODEL_CONFIGS } from './modelConfig.js';
 
 // Get Firebase credentials from environment variables
 const serviceAccount = {
@@ -19,9 +20,10 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-// Set up OpenAI
+// Set up OpenAI client for OpenRouter
 const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+    apiKey: process.env.OPENROUTER_API_KEY,
+    baseURL: 'https://openrouter.ai/api/v1',
 });
 
 // Function to generate a new factoid
@@ -56,6 +58,24 @@ export async function handler(event) {
     }
 
     try {
+        // Parse request body to get model and parameter preferences
+        const body = event.body ? JSON.parse(event.body) : {};
+        const selectedModel = body.model || getRandomModel();
+        const useRandomParams = body.useRandomParams !== false; // Default to true
+        const customParams = body.parameters || {};
+
+        // Get parameters for the selected model
+        const parameters = useRandomParams 
+            ? getRandomParameters(selectedModel)
+            : { ...getDefaultParameters(selectedModel), ...customParams };
+
+        const modelConfig = MODEL_CONFIGS[selectedModel];
+        if (!modelConfig) {
+            throw new Error(`Model ${selectedModel} not found in configuration`);
+        }
+
+        console.log(`Using model: ${selectedModel} (${modelConfig.name})`);
+        console.log(`Parameters:`, parameters);
 
         // Fetch some recent factoids to provide as examples
         const factoidsSnapshot = await db
@@ -103,39 +123,90 @@ Please provide a new, concise, interesting fact in one sentence, along with its 
 Think about novel and intriguing facts that people might not know.
     `;
 
-        // Use function calling to structure the response
-        const response = await openai.chat.completions.create({
-            model: 'gpt-5-mini',
-            messages: [{ role: 'user', content: prompt.trim() }],
-            functions: [
-                {
-                    name: 'generate_factoid',
-                    description: 'Generate an interesting factoid with its subject and an emoji.',
-                    parameters: {
-                        type: 'object',
-                        properties: {
-                            factoidText: { type: 'string', description: 'The text of the factoid.' },
-                            factoidSubject: { type: 'string', description: 'The subject of the factoid.' },
-                            factoidEmoji: { type: 'string', description: 'An emoji representing the factoid.' },
-                        },
-                        required: ['factoidText', 'factoidSubject', 'factoidEmoji'],
-                    },
-                },
-            ],
-            function_call: { name: 'generate_factoid' },
-        });
+        let factoidText, factoidSubject, factoidEmoji;
 
-        // Parse the response to get the generated factoid
-        const { factoidText, factoidSubject, factoidEmoji } = JSON.parse(
-            response.choices[0].message.function_call.arguments
-        );
+        // Generate factoid based on model capabilities
+        if (modelConfig.supportsFunctionCalling) {
+            // Use function calling for models that support it
+            const response = await openai.chat.completions.create({
+                model: selectedModel,
+                messages: [{ role: 'user', content: prompt.trim() }],
+                functions: [
+                    {
+                        name: 'generate_factoid',
+                        description: 'Generate an interesting factoid with its subject and an emoji.',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                factoidText: { type: 'string', description: 'The text of the factoid.' },
+                                factoidSubject: { type: 'string', description: 'The subject of the factoid.' },
+                                factoidEmoji: { type: 'string', description: 'An emoji representing the factoid.' },
+                            },
+                            required: ['factoidText', 'factoidSubject', 'factoidEmoji'],
+                        },
+                    },
+                ],
+                function_call: { name: 'generate_factoid' },
+                ...parameters,
+            });
+
+            const functionCall = response.choices[0].message.function_call;
+            if (functionCall && functionCall.arguments) {
+                const parsed = JSON.parse(functionCall.arguments);
+                factoidText = parsed.factoidText;
+                factoidSubject = parsed.factoidSubject;
+                factoidEmoji = parsed.factoidEmoji;
+            } else {
+                throw new Error('Function call not returned by model');
+            }
+        } else {
+            // Use structured prompt for models that don't support function calling
+            const structuredPrompt = `${prompt}
+
+Please respond in the following JSON format:
+{
+  "factoidText": "Your factoid text here",
+  "factoidSubject": "Subject category",
+  "factoidEmoji": "🎯"
+}`;
+
+            const response = await openai.chat.completions.create({
+                model: selectedModel,
+                messages: [{ role: 'user', content: structuredPrompt.trim() }],
+                ...parameters,
+            });
+
+            const content = response.choices[0].message.content;
+            try {
+                const parsed = JSON.parse(content);
+                factoidText = parsed.factoidText;
+                factoidSubject = parsed.factoidSubject;
+                factoidEmoji = parsed.factoidEmoji;
+            } catch (parseError) {
+                // Fallback: try to extract from text if JSON parsing fails
+                console.warn('Failed to parse JSON response, attempting text extraction');
+                factoidText = content;
+                factoidSubject = 'General';
+                factoidEmoji = '📝';
+            }
+        }
 
         // Log the generated factoid for debugging purposes
         console.log(`Subject: ${factoidSubject}`);
         console.log(`Emoji: ${factoidEmoji}`);
         console.log(`Generated Factoid: ${factoidText}`);
 
-        // Save the generated factoid to Firestore
+        // Prepare generation metadata
+        const generationMetadata = {
+            model: selectedModel,
+            modelName: modelConfig.name,
+            provider: modelConfig.provider,
+            parameters: parameters,
+            timestamp: new Date().toISOString(),
+            costPer1kTokens: modelConfig.costPer1kTokens,
+        };
+
+        // Save the generated factoid to Firestore with metadata
         const docRef = await db.collection('factoids').add({
             text: factoidText,
             subject: factoidSubject,
@@ -143,6 +214,7 @@ Think about novel and intriguing facts that people might not know.
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             votesUp: 0,
             votesDown: 0,
+            generationMetadata: generationMetadata,
         });
 
         // Return the generated factoid as a JSON response (with CORS)
@@ -158,6 +230,7 @@ Think about novel and intriguing facts that people might not know.
                 factoidText,
                 factoidSubject,
                 factoidEmoji,
+                generationMetadata,
             }),
         };
     } catch (error) {

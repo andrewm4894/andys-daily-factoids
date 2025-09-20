@@ -5,18 +5,26 @@ export function useGenerateFactoid(API_BASE_URL) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedFactoid, setGeneratedFactoid] = useState(null);
 
-  const generateFactoid = async () => {
+  const generateFactoid = async (model = null, parameters = null, useRandomParams = true) => {
     setIsGenerating(true);
     setGeneratedFactoid(null);
 
     try {
+      const requestBody = {
+        model,
+        parameters,
+        useRandomParams,
+      };
+
       const response = await fetch(
         `${API_BASE_URL}/.netlify/functions/generateFactoid`,
         {
           method: "POST",
           headers: {
+            "Content-Type": "application/json",
             "x-api-key": process.env.REACT_APP_FUNCTIONS_API_KEY || "",
           },
+          body: JSON.stringify(requestBody),
         }
       );
 
