@@ -34,7 +34,7 @@ export async function handler(event) {
     }
 
     try {
-        const models = getAvailableModels();
+        const models = await getAvailableModels();
 
         return {
             statusCode: 200,

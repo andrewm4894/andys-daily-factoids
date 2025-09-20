@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import Modal from 'react-modal';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
@@ -29,6 +30,8 @@ posthog.init('phc_FBwJgNVOyAez7il4IvxxhzPuB4YFFBGtanSfm3InYJ5',
         person_profiles: 'always'
     }
 )
+
+Modal.setAppElement('#root');
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

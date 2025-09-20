@@ -1,5 +1,5 @@
 // frontend/src/App.js
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Modal from "react-modal";
 
 import "./App.css";
@@ -26,13 +26,19 @@ function App() {
   // Stripe price ID for pay-per-factoid
   const priceId = "price_1Qg9W2DuK9b9aydC1SXsQob8";
 
-  // Local state for controlling the modal
+  // Local state for controlling modals
   const [modalIsOpen, setModalIsOpen] = useState(false);
+  const [configModalIsOpen, setConfigModalIsOpen] = useState(false);
   
   // State for model selection
   const [selectedModel, setSelectedModel] = useState("");
   const [parameters, setParameters] = useState({});
   const [useRandomParams, setUseRandomParams] = useState(true);
+  const latestGenerationConfigRef = useRef({
+    model: null,
+    parameters: null,
+    useRandomParams: true,
+  });
 
   // Hooks for existing factoids
   const {
@@ -65,17 +71,45 @@ function App() {
 
   // Our new custom hook for the pay-per-factoid flow
   const { isProcessing, sessionVerified, handlePayAndGenerateFactoid } =
-    usePayPerFactoid({ 
-      generateFactoid: () => generateFactoid(selectedModel, parameters, useRandomParams)
+    usePayPerFactoid({
+      generateFactoid: () => {
+        const config = latestGenerationConfigRef.current;
+        return generateFactoid(
+          config.model,
+          config.parameters,
+          config.useRandomParams
+        );
+      },
     });
 
-  // Handle the generate button click - check rate limits first
-  const handleGenerateClick = async () => {
+  const resetGenerationConfig = () => {
+    setSelectedModel("");
+    setParameters({});
+    setUseRandomParams(true);
+  };
+
+  const openGenerationConfigModal = () => {
+    resetGenerationConfig();
+    setConfigModalIsOpen(true);
+  };
+
+  const closeGenerationConfigModal = () => {
+    setConfigModalIsOpen(false);
+  };
+
+  const handleGenerationConfigSubmit = async () => {
+    const config = {
+      model: selectedModel || null,
+      parameters: useRandomParams ? null : parameters,
+      useRandomParams,
+    };
+
+    latestGenerationConfigRef.current = config;
+    setConfigModalIsOpen(false);
+
     if (canGenerateMore()) {
-      // User has free generations available - generate directly
-      await generateFactoid(selectedModel, parameters, useRandomParams);
+      await generateFactoid(config.model, config.parameters, config.useRandomParams);
     } else {
-      // User is rate limited - redirect to Stripe
       await handlePayAndGenerateFactoid(priceId);
     }
   };
@@ -90,10 +124,11 @@ function App() {
   // We only open the modal if we do have a generated factoid
   // (the hook calls generateFactoid once payment is verified)
   // so we can check if we should show the modal here.
-  if (sessionVerified && generatedFactoid && !modalIsOpen) {
-    // Open the modal once session verified & factoid is generated
-    setModalIsOpen(true);
-  }
+  useEffect(() => {
+    if (generatedFactoid) {
+      setModalIsOpen(true);
+    }
+  }, [generatedFactoid]);
 
   // === Loading states ===
   if (loading) {
@@ -128,20 +163,10 @@ function App() {
           onRefresh={fetchRateLimitStatus}
         />
 
-        <ModelSelector
-          selectedModel={selectedModel}
-          onModelChange={setSelectedModel}
-          parameters={parameters}
-          onParametersChange={setParameters}
-          useRandomParams={useRandomParams}
-          onUseRandomParamsChange={setUseRandomParams}
-          API_BASE_URL={API_BASE_URL}
-        />
-        
         <div className="button-container">
           <button
             className="factoid-button generate-button"
-            onClick={handleGenerateClick}
+            onClick={openGenerationConfigModal}
             disabled={isProcessing || isGenerating}
             title={!canGenerateMore() && !rateLimitError ? getStatusMessage() : ""}
           >
@@ -174,6 +199,53 @@ function App() {
           <p>No factoids available.</p>
         )}
       </div>
+
+      <Modal
+        isOpen={configModalIsOpen}
+        onRequestClose={closeGenerationConfigModal}
+        contentLabel="Configure Factoid Generation"
+        style={customModalStyles}
+      >
+        <div className="generation-config-modal">
+          <div className="generation-config-header">
+            <h2>Configure your generation</h2>
+            <p className="modal-subtitle">
+              We picked a random model and creative settings to keep things fresh. Tweak anything before you roll!
+            </p>
+          </div>
+          <ModelSelector
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
+            parameters={parameters}
+            onParametersChange={setParameters}
+            useRandomParams={useRandomParams}
+            onUseRandomParamsChange={setUseRandomParams}
+            API_BASE_URL={API_BASE_URL}
+          />
+          <div className="modal-actions">
+            <button
+              className="factoid-button transparent-button"
+              onClick={closeGenerationConfigModal}
+              disabled={isProcessing || isGenerating}
+            >
+              Cancel
+            </button>
+            <button
+              className="factoid-button generate-button"
+              onClick={handleGenerationConfigSubmit}
+              disabled={isProcessing || isGenerating}
+            >
+              {isProcessing
+                ? "Loading Stripe checkout...💸"
+                : isGenerating
+                ? "Generating...🪄"
+                : canGenerateMore()
+                ? "Generate Factoid 🧙"
+                : "Upgrade & Generate 🚀"}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         isOpen={modalIsOpen}

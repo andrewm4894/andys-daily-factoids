@@ -105,3 +105,39 @@ body {
 .transparent-button:hover {
   background-color: rgba(0, 123, 255, 0.1);
 }
+
+.generation-config-modal {
+  width: min(580px, 92vw);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.generation-config-header {
+  text-align: center;
+}
+
+.generation-config-header h2 {
+  margin: 0;
+  font-size: 1.6rem;
+  color: #1f2933;
+}
+
+.modal-subtitle {
+  margin-top: 12px;
+  margin-bottom: 0;
+  color: #64748b;
+  text-align: center;
+  font-size: 0.95rem;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  margin-top: 20px;
+}
+
+.modal-actions .factoid-button {
+  flex: 1;
+}

@@ -7,7 +7,7 @@ install-frontend:
 	cd ./frontend && npm install
 
 local:
-	cd ./frontend && npm run start
+	@bash -lc 'set -a; source frontend/.env; export REACT_APP_API_BASE_URL=http://localhost:8888; set +a; netlify dev --dir frontend --command "npm start --prefix frontend"'
 
 factoid:
 	node scripts/generateFactoid.mjs

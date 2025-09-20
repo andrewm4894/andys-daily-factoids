@@ -1,150 +1,274 @@
-// Model configuration for multi-provider factoid generation
-export const MODEL_CONFIGS = {
-  // OpenAI Models
+// netlify/functions/modelConfig.js
+
+const DEFAULT_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
+let cachedModels = null;
+let cachedAt = 0;
+
+const DEFAULT_PARAMETER_TEMPLATE = {
+  temperature: { min: 0.1, max: 2.0, default: 0.7 },
+  topP: { min: 0.1, max: 1.0, default: 0.9 },
+  maxTokens: { min: 100, max: 1000, default: 750 },
+};
+
+const MODEL_PRESETS = {
   'openai/gpt-4o-mini': {
-    provider: 'OpenAI',
-    name: 'GPT-4o Mini',
-    maxTokens: 4096,
-    temperature: { min: 0.1, max: 2.0, default: 0.7 },
-    topP: { min: 0.1, max: 1.0, default: 0.9 },
-    supportsFunctionCalling: true,
-    costPer1kTokens: 0.00015, // Approximate
+    displayName: 'GPT-4o Mini',
+    supportsFunctionCalling: false,
+    costPer1kTokens: 0.00015,
+    parameters: {
+      temperature: { min: 0.1, max: 1.2, default: 0.7 },
+      topP: { min: 0.1, max: 1.0, default: 0.9 },
+      maxTokens: { min: 100, max: 1000, default: 750 },
+    },
   },
   'openai/gpt-4o': {
-    provider: 'OpenAI',
-    name: 'GPT-4o',
-    maxTokens: 4096,
-    temperature: { min: 0.1, max: 2.0, default: 0.7 },
-    topP: { min: 0.1, max: 1.0, default: 0.9 },
-    supportsFunctionCalling: true,
+    displayName: 'GPT-4o',
+    supportsFunctionCalling: false,
     costPer1kTokens: 0.005,
+    parameters: {
+      temperature: { min: 0.1, max: 1.2, default: 0.7 },
+      topP: { min: 0.1, max: 1.0, default: 0.9 },
+      maxTokens: { min: 100, max: 1000, default: 750 },
+    },
   },
   'openai/gpt-3.5-turbo': {
-    provider: 'OpenAI',
-    name: 'GPT-3.5 Turbo',
-    maxTokens: 4096,
-    temperature: { min: 0.1, max: 2.0, default: 0.7 },
-    topP: { min: 0.1, max: 1.0, default: 0.9 },
+    displayName: 'GPT-3.5 Turbo',
     supportsFunctionCalling: true,
     costPer1kTokens: 0.0005,
+    parameters: {
+      temperature: { min: 0.1, max: 1.5, default: 0.8 },
+      topP: { min: 0.1, max: 1.0, default: 0.9 },
+      maxTokens: { min: 100, max: 1000, default: 750 },
+    },
   },
-
-  // Anthropic Models
-  'anthropic/claude-3-5-sonnet-20241022': {
-    provider: 'Anthropic',
-    name: 'Claude 3.5 Sonnet',
-    maxTokens: 4096,
-    temperature: { min: 0.0, max: 1.0, default: 0.7 },
-    topP: { min: 0.0, max: 1.0, default: 0.9 },
+  'anthropic/claude-3-5-sonnet': {
+    displayName: 'Claude 3.5 Sonnet',
     supportsFunctionCalling: false,
     costPer1kTokens: 0.003,
+    parameters: {
+      temperature: { min: 0.0, max: 1.0, default: 0.7 },
+      topP: { min: 0.0, max: 1.0, default: 0.9 },
+      maxTokens: { min: 100, max: 1000, default: 600 },
+    },
   },
-  'anthropic/claude-3-haiku-20240307': {
-    provider: 'Anthropic',
-    name: 'Claude 3 Haiku',
-    maxTokens: 4096,
-    temperature: { min: 0.0, max: 1.0, default: 0.7 },
-    topP: { min: 0.0, max: 1.0, default: 0.9 },
+  'anthropic/claude-3-haiku': {
+    displayName: 'Claude 3 Haiku',
     supportsFunctionCalling: false,
     costPer1kTokens: 0.00025,
+    parameters: {
+      temperature: { min: 0.0, max: 1.0, default: 0.7 },
+      topP: { min: 0.0, max: 1.0, default: 0.9 },
+      maxTokens: { min: 100, max: 1000, default: 600 },
+    },
   },
-
-  // Google Models
   'google/gemini-pro-1.5': {
-    provider: 'Google',
-    name: 'Gemini Pro 1.5',
-    maxTokens: 8192,
-    temperature: { min: 0.0, max: 2.0, default: 0.7 },
-    topP: { min: 0.0, max: 1.0, default: 0.9 },
+    displayName: 'Gemini Pro 1.5',
     supportsFunctionCalling: false,
     costPer1kTokens: 0.00125,
+    parameters: {
+      temperature: { min: 0.0, max: 2.0, default: 0.7 },
+      topP: { min: 0.0, max: 1.0, default: 0.9 },
+      maxTokens: { min: 100, max: 1000, default: 750 },
+    },
   },
-
-  // Meta Models
   'meta-llama/llama-3.1-8b-instruct': {
-    provider: 'Meta',
-    name: 'Llama 3.1 8B',
-    maxTokens: 8192,
-    temperature: { min: 0.0, max: 2.0, default: 0.7 },
-    topP: { min: 0.0, max: 1.0, default: 0.9 },
+    displayName: 'Llama 3.1 8B Instruct',
     supportsFunctionCalling: false,
     costPer1kTokens: 0.0002,
+    parameters: {
+      temperature: { min: 0.0, max: 1.5, default: 0.7 },
+      topP: { min: 0.0, max: 1.0, default: 0.9 },
+      maxTokens: { min: 100, max: 1000, default: 700 },
+    },
   },
   'meta-llama/llama-3.1-70b-instruct': {
-    provider: 'Meta',
-    name: 'Llama 3.1 70B',
-    maxTokens: 8192,
-    temperature: { min: 0.0, max: 2.0, default: 0.7 },
-    topP: { min: 0.0, max: 1.0, default: 0.9 },
+    displayName: 'Llama 3.1 70B Instruct',
     supportsFunctionCalling: false,
     costPer1kTokens: 0.0009,
+    parameters: {
+      temperature: { min: 0.0, max: 1.5, default: 0.7 },
+      topP: { min: 0.0, max: 1.0, default: 0.9 },
+      maxTokens: { min: 100, max: 1000, default: 700 },
+    },
   },
-
-  // Mistral Models
   'mistralai/mistral-7b-instruct': {
-    provider: 'Mistral',
-    name: 'Mistral 7B',
-    maxTokens: 8192,
-    temperature: { min: 0.0, max: 2.0, default: 0.7 },
-    topP: { min: 0.0, max: 1.0, default: 0.9 },
+    displayName: 'Mistral 7B Instruct',
     supportsFunctionCalling: false,
     costPer1kTokens: 0.0002,
+    parameters: {
+      temperature: { min: 0.0, max: 1.5, default: 0.7 },
+      topP: { min: 0.0, max: 1.0, default: 0.9 },
+      maxTokens: { min: 100, max: 1000, default: 600 },
+    },
   },
   'mistralai/mixtral-8x7b-instruct': {
-    provider: 'Mistral',
-    name: 'Mixtral 8x7B',
-    maxTokens: 32768,
-    temperature: { min: 0.0, max: 2.0, default: 0.7 },
-    topP: { min: 0.0, max: 1.0, default: 0.9 },
+    displayName: 'Mixtral 8x7B Instruct',
     supportsFunctionCalling: false,
     costPer1kTokens: 0.00027,
+    parameters: {
+      temperature: { min: 0.0, max: 1.5, default: 0.7 },
+      topP: { min: 0.0, max: 1.0, default: 0.9 },
+      maxTokens: { min: 100, max: 1000, default: 700 },
+    },
   },
 };
 
-// Function to get a random model
-export function getRandomModel() {
-  const modelIds = Object.keys(MODEL_CONFIGS);
-  return modelIds[Math.floor(Math.random() * modelIds.length)];
+function baseModelKey(modelId) {
+  if (!modelId) {
+    return null;
+  }
+  const [withoutColon] = modelId.split(':');
+  return withoutColon.replace(/-\d{4,}$/g, '');
 }
 
-// Function to get random parameters for a model
-export function getRandomParameters(modelId) {
-  const config = MODEL_CONFIGS[modelId];
-  if (!config) {
-    throw new Error(`Model ${modelId} not found in configuration`);
+function buildParametersFromTemplate(template, mode = 'default') {
+  const ranges = template || DEFAULT_PARAMETER_TEMPLATE;
+  const pick = (range) => {
+    if (!range) {
+      range = DEFAULT_PARAMETER_TEMPLATE.temperature;
+    }
+    if (mode === 'random') {
+      const min = typeof range.min === 'number' ? range.min : 0.1;
+      const max = typeof range.max === 'number' ? range.max : 1.0;
+      const value = min + Math.random() * (max - min);
+      return parseFloat(value.toFixed(2));
+    }
+    return range.default ?? 0.7;
+  };
+
+  const temperatureRange = ranges.temperature || DEFAULT_PARAMETER_TEMPLATE.temperature;
+  const topPRange = ranges.topP || DEFAULT_PARAMETER_TEMPLATE.topP;
+  const maxTokensRange = ranges.maxTokens || DEFAULT_PARAMETER_TEMPLATE.maxTokens;
+
+  const temperature = pick(temperatureRange);
+  const topP = pick(topPRange);
+  let maxTokens;
+  if (mode === 'random') {
+    const min = maxTokensRange.min ?? 100;
+    const max = maxTokensRange.max ?? 1000;
+    maxTokens = Math.round(min + Math.random() * (max - min));
+  } else {
+    maxTokens = maxTokensRange.default ?? 750;
   }
 
-  const temperature = Math.random() * (config.temperature.max - config.temperature.min) + config.temperature.min;
-  const topP = Math.random() * (config.topP.max - config.topP.min) + config.topP.min;
-  
   return {
-    temperature: parseFloat(temperature.toFixed(2)),
-    top_p: parseFloat(topP.toFixed(2)),
-    max_tokens: Math.min(1000, config.maxTokens), // Limit for factoid generation
+    temperature,
+    top_p: topP,
+    max_tokens: maxTokens,
   };
 }
 
-// Function to get default parameters for a model
-export function getDefaultParameters(modelId) {
-  const config = MODEL_CONFIGS[modelId];
-  if (!config) {
-    throw new Error(`Model ${modelId} not found in configuration`);
-  }
-
-  return {
-    temperature: config.temperature.default,
-    top_p: config.topP.default,
-    max_tokens: Math.min(1000, config.maxTokens),
-  };
-}
-
-// Function to get all available models for UI
-export function getAvailableModels() {
-  return Object.entries(MODEL_CONFIGS).map(([id, config]) => ({
-    id,
-    name: config.name,
-    provider: config.provider,
-    supportsFunctionCalling: config.supportsFunctionCalling,
-    costPer1kTokens: config.costPer1kTokens,
+function buildFallbackModels() {
+  return Object.entries(MODEL_PRESETS).map(([key, preset]) => ({
+    id: key,
+    name: preset.displayName || key,
+    provider: key.split('/')[0],
+    supportsFunctionCalling: preset.supportsFunctionCalling ?? false,
+    costPer1kTokens: preset.costPer1kTokens ?? null,
+    parameters: preset.parameters ?? DEFAULT_PARAMETER_TEMPLATE,
   }));
+}
+
+async function fetchOpenRouterModelList() {
+  if (!process.env.OPENROUTER_API_KEY) {
+    return buildFallbackModels();
+  }
+
+  if (cachedModels && Date.now() - cachedAt < DEFAULT_CACHE_TTL_MS) {
+    return cachedModels;
+  }
+
+  try {
+    const response = await fetch('https://openrouter.ai/api/v1/models', {
+      headers: {
+        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenRouter model fetch failed with status ${response.status}`);
+    }
+
+    const payload = await response.json();
+    const supportedKeys = new Set(Object.keys(MODEL_PRESETS));
+
+    const mapped = (payload.data || [])
+      .map((model) => {
+        const baseKey = baseModelKey(model.id);
+        if (!supportedKeys.has(baseKey)) {
+          return null;
+        }
+
+        const preset = MODEL_PRESETS[baseKey];
+        const pricing = model.pricing?.usd;
+        const costPer1kTokens = pricing?.['input'] ?? pricing?.['output'] ?? pricing?.per_1k_input_tokens ?? preset.costPer1kTokens ?? null;
+
+        return {
+          id: model.id,
+          name: model.name || preset.displayName || model.id,
+          provider: baseKey.split('/')[0],
+          supportsFunctionCalling: preset.supportsFunctionCalling ?? false,
+          costPer1kTokens,
+          parameters: preset.parameters ?? DEFAULT_PARAMETER_TEMPLATE,
+          baseKey,
+        };
+      })
+      .filter(Boolean);
+
+    if (mapped.length === 0) {
+      cachedModels = buildFallbackModels();
+    } else {
+      cachedModels = mapped;
+    }
+    cachedAt = Date.now();
+    return cachedModels;
+  } catch (error) {
+    console.warn('Failed to fetch models from OpenRouter, using fallback list.', error);
+    cachedModels = buildFallbackModels();
+    cachedAt = Date.now();
+    return cachedModels;
+  }
+}
+
+export async function getAvailableModels() {
+  return fetchOpenRouterModelList();
+}
+
+export async function getModelById(modelId) {
+  const models = await fetchOpenRouterModelList();
+  return models.find((model) => model.id === modelId) || null;
+}
+
+export async function getRandomModelId() {
+  const models = await fetchOpenRouterModelList();
+  if (!models.length) {
+    throw new Error('No models available for selection');
+  }
+  const random = Math.floor(Math.random() * models.length);
+  return models[random].id;
+}
+
+export async function getRandomParameters(modelId) {
+  const model = await getModelById(modelId);
+  const template = model?.parameters ?? DEFAULT_PARAMETER_TEMPLATE;
+  return buildParametersFromTemplate(template, 'random');
+}
+
+export async function getDefaultParameters(modelId) {
+  const model = await getModelById(modelId);
+  const template = model?.parameters ?? DEFAULT_PARAMETER_TEMPLATE;
+  return buildParametersFromTemplate(template, 'default');
+}
+
+export function mergeWithModelDefaults(defaultParams, customParams = {}) {
+  return {
+    ...defaultParams,
+    ...customParams,
+  };
+}
+
+export function clearModelCache() {
+  cachedModels = null;
+  cachedAt = 0;
 }

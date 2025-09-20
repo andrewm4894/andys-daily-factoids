@@ -17,9 +17,14 @@ export function useFactoids(API_BASE_URL) {
         throw new Error(`Error: ${response.status} ${response.statusText}`);
       }
       const data = await response.json();
-      // Shuffle factoids
-      const shuffledFactoids = data.sort(() => Math.random() - 0.5);
-      setFactoids(shuffledFactoids);
+
+      const normalized = [...data].sort((a, b) => {
+        const aDate = a.createdAt?.seconds || a.createdAt?._seconds || 0;
+        const bDate = b.createdAt?.seconds || b.createdAt?._seconds || 0;
+        return bDate - aDate;
+      });
+
+      setFactoids(normalized);
       setError(null);
     } catch (err) {
       console.error("Failed to fetch factoids:", err);
