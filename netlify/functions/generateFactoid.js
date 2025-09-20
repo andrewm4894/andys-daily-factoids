@@ -105,7 +105,7 @@ Think about novel and intriguing facts that people might not know.
 
         // Use function calling to structure the response
         const response = await openai.chat.completions.create({
-            model: 'gpt-4o-mini',
+            model: 'gpt-5-mini',
             messages: [{ role: 'user', content: prompt.trim() }],
             functions: [
                 {
