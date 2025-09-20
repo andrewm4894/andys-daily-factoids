@@ -1,4 +1,4 @@
-.PHONY: install install-frontend local factoid
+.PHONY: install install-frontend local factoid test test-backend test-frontend test-rate-limit
 
 install:
 	npm install
@@ -11,3 +11,26 @@ local:
 
 factoid:
 	node scripts/generateFactoid.mjs
+
+test:
+	@echo "Running all tests..."
+	$(MAKE) test-backend
+	$(MAKE) test-frontend
+	$(MAKE) test-integration
+	$(MAKE) test-rate-limit
+
+test-backend:
+	@echo "Testing backend functions..."
+	node tests/backend/simpleRateLimit.test.mjs
+
+test-frontend:
+	@echo "Testing frontend components..."
+	cd ./frontend && npm test -- --watchAll=false
+
+test-integration:
+	@echo "Testing integration..."
+	node tests/integration/rateLimitIntegration.test.mjs
+
+test-rate-limit:
+	@echo "Testing rate limit functionality..."
+	node scripts/testRateLimit.mjs
