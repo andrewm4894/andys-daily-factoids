@@ -1,5 +1,9 @@
 # Andy's Daily Factoids
 
+[![Tests](https://github.com/andrewm4894/andys-daily-factoids/workflows/Test%20Suite/badge.svg)](https://github.com/andrewm4894/andys-daily-factoids/actions/workflows/test.yml)
+[![Deploy](https://github.com/andrewm4894/andys-daily-factoids/workflows/Deploy%20to%20Netlify/badge.svg)](https://github.com/andrewm4894/andys-daily-factoids/actions/workflows/deploy.yml)
+[![Code Quality](https://github.com/andrewm4894/andys-daily-factoids/workflows/Code%20Quality/badge.svg)](https://github.com/andrewm4894/andys-daily-factoids/actions/workflows/code-quality.yml)
+
 Fun project to get a random factoid every day: https://andys-daily-factoids.com/
 
 ## Features
