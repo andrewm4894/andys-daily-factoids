@@ -62,7 +62,7 @@ describe('Rate Limit Integration Tests', () => {
     const result = await callRateLimitEndpoint();
     
     if (result.globalLimits) {
-      // Global limits should be reasonable for cost control
+      // Global limits should be reasonable for cost control (conservative for side project)
       expect(result.globalLimits.hourlyLimit).toBeGreaterThan(0);
       expect(result.globalLimits.dailyLimit).toBeGreaterThan(result.globalLimits.hourlyLimit);
       

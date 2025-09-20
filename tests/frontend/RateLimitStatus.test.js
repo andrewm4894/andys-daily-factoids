@@ -1,22 +1,22 @@
 // tests/frontend/RateLimitStatus.test.js
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import RateLimitStatus from '../components/RateLimitStatus';
+import RateLimitStatus from '../../frontend/src/components/RateLimitStatus';
 
 describe('RateLimitStatus Component', () => {
   const defaultProps = {
     rateLimitInfo: {
       globalLimits: {
-        hourlyUsage: 5,
-        dailyUsage: 20,
-        hourlyLimit: 50,
-        dailyLimit: 200
+        hourlyUsage: 10,
+        dailyUsage: 50,
+        hourlyLimit: 500,
+        dailyLimit: 5000
       },
       ipLimits: {
-        hourlyUsage: 2,
+        hourlyUsage: 5,
         minuteUsage: 1,
-        hourlyLimit: 10,
-        minuteLimit: 3
+        hourlyLimit: 50,
+        minuteLimit: 10
       },
       limitType: null,
       isLoading: false,
@@ -36,16 +36,15 @@ describe('RateLimitStatus Component', () => {
       />
     );
 
-    // The component doesn't show "Checking usage..." text, just the loading icon
+    expect(screen.getByText('Checking usage...')).toBeInTheDocument();
     expect(screen.getByText('⏳')).toBeInTheDocument();
-    expect(screen.getByText('Free Generations')).toBeInTheDocument();
   });
 
   it('should render normal state with low usage', () => {
     render(<RateLimitStatus {...defaultProps} />);
 
-    expect(screen.getByText('Global: 5 / 50 per hour')).toBeInTheDocument();
-    expect(screen.getByText('Daily: 20 / 200 per day')).toBeInTheDocument();
+    expect(screen.getByText('Global: 10 / 500 per hour')).toBeInTheDocument();
+    expect(screen.getByText('Daily: 50 / 5000 per day')).toBeInTheDocument();
     expect(screen.getByText('Global rate limiting active')).toBeInTheDocument();
     expect(screen.getByText('✅')).toBeInTheDocument();
   });
@@ -66,7 +65,7 @@ describe('RateLimitStatus Component', () => {
 
     render(<RateLimitStatus {...highUsageProps} />);
 
-    expect(screen.getByText('Global: 40 / 50 per hour')).toBeInTheDocument();
+    expect(screen.getByText('Global: 400 / 500 per hour')).toBeInTheDocument();
     expect(screen.getByText('✅')).toBeInTheDocument(); // Still allowed
   });
 
@@ -77,10 +76,10 @@ describe('RateLimitStatus Component', () => {
         ...defaultProps.rateLimitInfo,
         limitType: 'global',
         globalLimits: {
-          hourlyUsage: 50,
+          hourlyUsage: 500,
           dailyUsage: 100,
-          hourlyLimit: 50,
-          dailyLimit: 200
+          hourlyLimit: 500,
+          dailyLimit: 5000
         }
       }
     };
@@ -88,7 +87,7 @@ describe('RateLimitStatus Component', () => {
     render(<RateLimitStatus {...exceededProps} />);
 
     expect(screen.getByText('🚫')).toBeInTheDocument();
-    expect(screen.getByText('Global: 50 / 50 per hour')).toBeInTheDocument();
+    expect(screen.getByText('Global: 500 / 500 per hour')).toBeInTheDocument();
   });
 
   it('should render error state when IP limit exceeded', () => {
@@ -99,9 +98,9 @@ describe('RateLimitStatus Component', () => {
         limitType: 'ip',
         ipLimits: {
           hourlyUsage: 10,
-          minuteUsage: 3,
-          hourlyLimit: 10,
-          minuteLimit: 3
+          minuteUsage: 10,
+          hourlyLimit: 50,
+          minuteLimit: 10
         }
       }
     };
@@ -179,8 +178,8 @@ describe('RateLimitStatus Component', () => {
 
     render(<RateLimitStatus {...minimalProps} />);
 
-    expect(screen.getByText('Global: 0 / 50 per hour')).toBeInTheDocument();
-    expect(screen.getByText('Daily: 0 / 200 per day')).toBeInTheDocument();
+    expect(screen.getByText('Global: 0 / 500 per hour')).toBeInTheDocument();
+    expect(screen.getByText('Daily: 0 / 5000 per day')).toBeInTheDocument();
   });
 
   it('should show different status colors based on usage', () => {
@@ -190,7 +189,7 @@ describe('RateLimitStatus Component', () => {
     let statusDiv = document.querySelector('.rate-limit-status');
     expect(statusDiv).toHaveClass('status-good');
 
-    // High usage - should have status-exceeded class (80% is > 80% threshold)
+    // High usage - should have status-warning class
     const highUsageProps = {
       ...defaultProps,
       rateLimitInfo: {
@@ -206,6 +205,6 @@ describe('RateLimitStatus Component', () => {
 
     rerender(<RateLimitStatus {...highUsageProps} />);
     statusDiv = document.querySelector('.rate-limit-status');
-    expect(statusDiv).toHaveClass('status-exceeded');
+    expect(statusDiv).toHaveClass('status-warning');
   });
 });

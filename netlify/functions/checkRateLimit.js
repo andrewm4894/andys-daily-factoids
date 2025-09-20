@@ -17,15 +17,15 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-// Global rate limit configuration
+// Global rate limit configuration - Conservative limits for side project
 const RATE_LIMIT = {
-    // Global limits (primary defense)
-    GLOBAL_GENERATIONS_PER_HOUR: 500, // Total factoids across all users per hour
-    GLOBAL_GENERATIONS_PER_DAY: 5000, // Total factoids across all users per day
+    // Global limits (primary defense) - Much lower for cost protection
+    GLOBAL_GENERATIONS_PER_HOUR: 50, // Total factoids across all users per hour
+    GLOBAL_GENERATIONS_PER_DAY: 200, // Total factoids across all users per day
     
-    // Per-IP limits (secondary defense - much higher)
-    PER_IP_GENERATIONS_PER_HOUR: 50, // Per IP per hour (higher than before)
-    PER_IP_GENERATIONS_PER_MINUTE: 10, // Prevent rapid-fire abuse
+    // Per-IP limits (secondary defense) - Reasonable for individual users
+    PER_IP_GENERATIONS_PER_HOUR: 10, // Per IP per hour (generous for individuals)
+    PER_IP_GENERATIONS_PER_MINUTE: 3, // Prevent rapid-fire abuse
     
     // Window durations
     HOUR_WINDOW_MS: 60 * 60 * 1000, // 1 hour

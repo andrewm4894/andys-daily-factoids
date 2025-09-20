@@ -7,15 +7,15 @@ export function useRateLimit(API_BASE_URL) {
     globalLimits: {
       hourlyUsage: 0,
       dailyUsage: 0,
-      hourlyLimit: 500,
-      dailyLimit: 5000
+      hourlyLimit: 50,
+      dailyLimit: 200
     },
     // IP limits
     ipLimits: {
       hourlyUsage: 0,
       minuteUsage: 0,
-      hourlyLimit: 50,
-      minuteLimit: 10
+      hourlyLimit: 10,
+      minuteLimit: 3
     },
     limitType: null, // 'global', 'ip', or null
     isLoading: true,

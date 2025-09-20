@@ -21,16 +21,16 @@ describe('useRateLimit Hook', () => {
     const mockResponse = {
       isAllowed: true,
       globalLimits: {
-        hourlyUsage: 10,
-        dailyUsage: 50,
-        hourlyLimit: 500,
-        dailyLimit: 5000
+        hourlyUsage: 5,
+        dailyUsage: 20,
+        hourlyLimit: 50,
+        dailyLimit: 200
       },
       ipLimits: {
-        hourlyUsage: 5,
+        hourlyUsage: 2,
         minuteUsage: 1,
-        hourlyLimit: 50,
-        minuteLimit: 10
+        hourlyLimit: 10,
+        minuteLimit: 3
       },
       limitType: null
     };
@@ -66,10 +66,10 @@ describe('useRateLimit Hook', () => {
       isAllowed: false,
       limitType: 'global',
       globalLimits: {
-        hourlyUsage: 500,
+        hourlyUsage: 50,
         dailyUsage: 100,
-        hourlyLimit: 500,
-        dailyLimit: 5000
+        hourlyLimit: 50,
+        dailyLimit: 200
       }
     };
 
@@ -94,9 +94,9 @@ describe('useRateLimit Hook', () => {
       limitType: 'ip',
       ipLimits: {
         hourlyUsage: 10,
-        minuteUsage: 10,
-        hourlyLimit: 50,
-        minuteLimit: 10
+        minuteUsage: 3,
+        hourlyLimit: 10,
+        minuteLimit: 3
       }
     };
 
@@ -121,16 +121,16 @@ describe('useRateLimit Hook', () => {
     const mockGenerationResponse = {
       rateLimitInfo: {
         globalLimits: {
-          hourlyUsage: 25,
-          dailyUsage: 100,
-          hourlyLimit: 500,
-          dailyLimit: 5000
+          hourlyUsage: 5,
+          dailyUsage: 20,
+          hourlyLimit: 50,
+          dailyLimit: 200
         },
         ipLimits: {
-          hourlyUsage: 5,
-          minuteUsage: 2,
-          hourlyLimit: 50,
-          minuteLimit: 10
+          hourlyUsage: 2,
+          minuteUsage: 1,
+          hourlyLimit: 10,
+          minuteLimit: 3
         },
         limitType: null
       }
@@ -160,8 +160,8 @@ describe('useRateLimit Hook', () => {
   it('should refresh rate limit status', async () => {
     const mockResponse = {
       isAllowed: true,
-      globalLimits: { hourlyUsage: 0, dailyUsage: 0, hourlyLimit: 500, dailyLimit: 5000 },
-      ipLimits: { hourlyUsage: 0, minuteUsage: 0, hourlyLimit: 50, minuteLimit: 10 },
+      globalLimits: { hourlyUsage: 0, dailyUsage: 0, hourlyLimit: 50, dailyLimit: 200 },
+      ipLimits: { hourlyUsage: 0, minuteUsage: 0, hourlyLimit: 10, minuteLimit: 3 },
       limitType: null
     };
 
@@ -182,7 +182,7 @@ describe('useRateLimit Hook', () => {
     // Mock new response
     const newMockResponse = {
       ...mockResponse,
-      globalLimits: { ...mockResponse.globalLimits, hourlyUsage: 100 }
+        globalLimits: { ...mockResponse.globalLimits, hourlyUsage: 10 }
     };
 
     fetch.mockResolvedValueOnce({

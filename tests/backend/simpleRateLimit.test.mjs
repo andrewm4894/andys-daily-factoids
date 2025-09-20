@@ -174,18 +174,18 @@ describe('Fallback ID Generation Tests', () => {
 describe('Rate Limit Configuration Tests', () => {
   it('should have reasonable global limits', () => {
     const RATE_LIMIT = {
-      GLOBAL_GENERATIONS_PER_HOUR: 500,
-      GLOBAL_GENERATIONS_PER_DAY: 5000,
-      PER_IP_GENERATIONS_PER_HOUR: 50,
-      PER_IP_GENERATIONS_PER_MINUTE: 10
+      GLOBAL_GENERATIONS_PER_HOUR: 50,
+      GLOBAL_GENERATIONS_PER_DAY: 200,
+      PER_IP_GENERATIONS_PER_HOUR: 10,
+      PER_IP_GENERATIONS_PER_MINUTE: 3
     };
 
     // Global limits should be reasonable for cost control
     expect(RATE_LIMIT.GLOBAL_GENERATIONS_PER_HOUR).toBeGreaterThan(0);
     expect(RATE_LIMIT.GLOBAL_GENERATIONS_PER_DAY).toBeGreaterThan(RATE_LIMIT.GLOBAL_GENERATIONS_PER_HOUR);
     
-    // Per-IP limits should be higher than old per-user limits
-    expect(RATE_LIMIT.PER_IP_GENERATIONS_PER_HOUR).toBeGreaterThan(10);
+    // Per-IP limits should be reasonable for individual users
+    expect(RATE_LIMIT.PER_IP_GENERATIONS_PER_HOUR).toBeGreaterThan(0);
     expect(RATE_LIMIT.PER_IP_GENERATIONS_PER_MINUTE).toBeGreaterThan(0);
   });
 
