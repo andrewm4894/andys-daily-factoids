@@ -1,6 +1,8 @@
 // netlify/functions/generateFactoid.js
 import 'dotenv/config';
-import { OpenAI } from 'openai';
+import OpenAI from 'openai';
+import { OpenAI as PostHogOpenAI } from '@posthog/ai';
+import { PostHog } from 'posthog-node';
 import admin from 'firebase-admin';
 import { getRandomModel, getRandomParameters, getDefaultParameters, MODEL_CONFIGS } from './modelConfig.js';
 import { checkRateLimit, recordGeneration } from './checkRateLimit.js';
@@ -21,11 +23,39 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-// Set up OpenAI client for OpenRouter
-const openai = new OpenAI({
-    apiKey: process.env.OPENROUTER_API_KEY,
-    baseURL: 'https://openrouter.ai/api/v1',
-});
+const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
+const POSTHOG_PROJECT_API_KEY = process.env.POSTHOG_PROJECT_API_KEY;
+const POSTHOG_HOST = process.env.POSTHOG_HOST || 'https://us.i.posthog.com';
+const POSTHOG_LLM_APP_NAME = process.env.POSTHOG_LLM_APP_NAME || 'factoid-generator';
+
+function createClients() {
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) {
+        throw new Error('Missing OPENROUTER_API_KEY environment variable');
+    }
+
+    if (!POSTHOG_PROJECT_API_KEY) {
+        return {
+            openaiClient: new OpenAI({
+                apiKey,
+                baseURL: OPENROUTER_BASE_URL,
+            }),
+            posthogClient: null,
+        };
+    }
+
+    const posthogClient = new PostHog(POSTHOG_PROJECT_API_KEY, {
+        host: POSTHOG_HOST,
+    });
+
+    const openaiClient = new PostHogOpenAI({
+        apiKey,
+        baseURL: OPENROUTER_BASE_URL,
+        posthog: posthogClient,
+    });
+
+    return { openaiClient, posthogClient };
+}
 
 // Function to generate a new factoid
 export async function handler(event) {
@@ -57,6 +87,8 @@ export async function handler(event) {
             body: JSON.stringify({ error: 'Unauthorized' }),
         };
     }
+    let posthogClient = null;
+    let openaiClient = null;
 
     try {
         // Check rate limit first
@@ -102,6 +134,9 @@ export async function handler(event) {
 
         console.log(`Using model: ${selectedModel} (${modelConfig.name})`);
         console.log(`Parameters:`, parameters);
+        const clients = createClients();
+        openaiClient = clients.openaiClient;
+        posthogClient = clients.posthogClient;
 
         // Fetch some recent factoids to provide as examples
         const factoidsSnapshot = await db
@@ -150,11 +185,27 @@ Think about novel and intriguing facts that people might not know.
     `;
 
         let factoidText, factoidSubject, factoidEmoji;
+        let response;
+
+        const requestHeaders = event.headers || {};
+        const sharedPosthogOptions = posthogClient
+            ? {
+                  posthogDistinctId: rateLimitStatus.clientIP || POSTHOG_LLM_APP_NAME,
+                  posthogTraceId: requestHeaders['x-nf-request-id'] || requestHeaders['x-request-id'],
+                  posthogProperties: {
+                      requestSource: 'netlify-generateFactoid',
+                      modelKey: selectedModel,
+                      modelName: modelConfig.name,
+                      provider: modelConfig.provider,
+                      parameterStrategy: useRandomParams ? 'random' : 'custom',
+                  },
+              }
+            : {};
 
         // Generate factoid based on model capabilities
         if (modelConfig.supportsFunctionCalling) {
             // Use function calling for models that support it
-            const response = await openai.chat.completions.create({
+            const completionParams = {
                 model: selectedModel,
                 messages: [{ role: 'user', content: prompt.trim() }],
                 functions: [
@@ -174,7 +225,10 @@ Think about novel and intriguing facts that people might not know.
                 ],
                 function_call: { name: 'generate_factoid' },
                 ...parameters,
-            });
+                ...sharedPosthogOptions,
+            };
+
+            response = await openaiClient.chat.completions.create(completionParams);
 
             const functionCall = response.choices[0].message.function_call;
             if (functionCall && functionCall.arguments) {
@@ -196,11 +250,14 @@ Please respond in the following JSON format:
   "factoidEmoji": "🎯"
 }`;
 
-            const response = await openai.chat.completions.create({
+            const completionParams = {
                 model: selectedModel,
                 messages: [{ role: 'user', content: structuredPrompt.trim() }],
                 ...parameters,
-            });
+                ...sharedPosthogOptions,
+            };
+
+            response = await openaiClient.chat.completions.create(completionParams);
 
             const content = response.choices[0].message.content;
             try {
@@ -282,5 +339,13 @@ Please respond in the following JSON format:
             },
             body: JSON.stringify({ error: 'Internal Server Error' }),
         };
+    } finally {
+        if (posthogClient) {
+            try {
+                await posthogClient.shutdown();
+            } catch (shutdownError) {
+                console.warn('Failed to flush PostHog events', shutdownError);
+            }
+        }
     }
 }
