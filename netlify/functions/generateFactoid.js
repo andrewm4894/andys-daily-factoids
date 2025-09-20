@@ -1,7 +1,7 @@
 // netlify/functions/generateFactoid.js
 import 'dotenv/config';
 import OpenAI from 'openai';
-import { OpenAI as PostHogOpenAI } from '@posthog/ai';
+import { OpenAI as PostHogOpenAI } from '@posthog/ai/openai';
 import { PostHog } from 'posthog-node';
 import admin from 'firebase-admin';
 import {
