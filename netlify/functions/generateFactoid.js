@@ -1,7 +1,7 @@
 // netlify/functions/generateFactoid.js
 import 'dotenv/config';
 import OpenAI from 'openai';
-import { OpenAI as PostHogOpenAI } from '@posthog/ai';
+// import { PostHogOpenAI } from '@posthog/ai'; // Commented out due to import issues
 import { PostHog } from 'posthog-node';
 import admin from 'firebase-admin';
 import {
@@ -246,27 +246,37 @@ function createClients() {
         throw new Error('Missing OPENROUTER_API_KEY environment variable');
     }
 
-    if (!POSTHOG_PROJECT_API_KEY) {
-        return {
-            openaiClient: new OpenAI({
-                apiKey,
-                baseURL: OPENROUTER_BASE_URL,
-            }),
-            posthogClient: null,
-        };
-    }
-
-    const posthogClient = new PostHog(POSTHOG_PROJECT_API_KEY, {
-        host: POSTHOG_HOST,
-    });
-
-    const openaiClient = new PostHogOpenAI({
+    const openaiClient = new OpenAI({
         apiKey,
         baseURL: OPENROUTER_BASE_URL,
-        posthog: posthogClient,
     });
 
+    let posthogClient = null;
+    if (POSTHOG_PROJECT_API_KEY) {
+        posthogClient = new PostHog(POSTHOG_PROJECT_API_KEY, {
+            host: POSTHOG_HOST,
+        });
+    }
+
     return { openaiClient, posthogClient };
+}
+
+// Helper function to track LLM events with PostHog
+async function trackLLMEvent(posthogClient, eventType, properties) {
+    if (!posthogClient) return;
+    
+    try {
+        await posthogClient.capture({
+            distinctId: properties.posthogDistinctId || 'anonymous',
+            event: eventType,
+            properties: {
+                ...properties.posthogProperties,
+                traceId: properties.posthogTraceId,
+            },
+        });
+    } catch (error) {
+        console.warn('Failed to track LLM event:', error);
+    }
 }
 
 // Function to generate a new factoid
@@ -462,10 +472,22 @@ Think about novel and intriguing facts that people might not know.
                 ],
                 function_call: { name: 'generate_factoid' },
                 ...adjustedParameters,
-                ...sharedPosthogOptions,
             };
 
+            // Track LLM request
+            await trackLLMEvent(posthogClient, 'llm_request', sharedPosthogOptions);
+
             response = await openaiClient.chat.completions.create(completionParams);
+
+            // Track LLM response
+            await trackLLMEvent(posthogClient, 'llm_response', {
+                ...sharedPosthogOptions,
+                posthogProperties: {
+                    ...sharedPosthogOptions.posthogProperties,
+                    usage: response.usage,
+                    model: selectedModel,
+                },
+            });
 
             const functionCall = response.choices[0].message.function_call;
             if (functionCall && functionCall.arguments) {
@@ -500,10 +522,22 @@ Please respond in the following JSON format:
                 model: selectedModel,
                 messages: [{ role: 'user', content: structuredPrompt.trim() }],
                 ...adjustedParameters,
-                ...sharedPosthogOptions,
             };
 
+            // Track LLM request
+            await trackLLMEvent(posthogClient, 'llm_request', sharedPosthogOptions);
+
             response = await openaiClient.chat.completions.create(completionParams);
+
+            // Track LLM response
+            await trackLLMEvent(posthogClient, 'llm_response', {
+                ...sharedPosthogOptions,
+                posthogProperties: {
+                    ...sharedPosthogOptions.posthogProperties,
+                    usage: response.usage,
+                    model: selectedModel,
+                },
+            });
 
             const content = response.choices[0].message.content;
             const parsed = parseJsonContent(content);
