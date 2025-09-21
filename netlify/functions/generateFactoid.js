@@ -1,7 +1,7 @@
 // netlify/functions/generateFactoid.js
 import 'dotenv/config';
-import OpenAI from 'openai';
-import { OpenAI as PostHogOpenAI } from '@posthog/ai';
+// Use PostHog-instrumented OpenAI wrapper (ESM subpath avoids Anthropic CJS issue)
+import { OpenAI as PostHogOpenAI } from '@posthog/ai/openai';
 import { PostHog } from 'posthog-node';
 import admin from 'firebase-admin';
 import {
@@ -246,25 +246,13 @@ function createClients() {
         throw new Error('Missing OPENROUTER_API_KEY environment variable');
     }
 
-    if (!POSTHOG_PROJECT_API_KEY) {
-        return {
-            openaiClient: new OpenAI({
-                apiKey,
-                baseURL: OPENROUTER_BASE_URL,
-            }),
-            posthogClient: null,
-        };
-    }
+    const posthogClient = POSTHOG_PROJECT_API_KEY
+        ? new PostHog(POSTHOG_PROJECT_API_KEY, { host: POSTHOG_HOST })
+        : null;
 
-    const posthogClient = new PostHog(POSTHOG_PROJECT_API_KEY, {
-        host: POSTHOG_HOST,
-    });
-
-    const openaiClient = new PostHogOpenAI({
-        apiKey,
-        baseURL: OPENROUTER_BASE_URL,
-        posthog: posthogClient,
-    });
+    const openaiClient = posthogClient
+        ? new PostHogOpenAI({ apiKey, baseURL: OPENROUTER_BASE_URL, posthog: posthogClient })
+        : new PostHogOpenAI({ apiKey, baseURL: OPENROUTER_BASE_URL });
 
     return { openaiClient, posthogClient };
 }
@@ -462,7 +450,6 @@ Think about novel and intriguing facts that people might not know.
                 ],
                 function_call: { name: 'generate_factoid' },
                 ...adjustedParameters,
-                ...sharedPosthogOptions,
             };
 
             response = await openaiClient.chat.completions.create(completionParams);
@@ -500,7 +487,6 @@ Please respond in the following JSON format:
                 model: selectedModel,
                 messages: [{ role: 'user', content: structuredPrompt.trim() }],
                 ...adjustedParameters,
-                ...sharedPosthogOptions,
             };
 
             response = await openaiClient.chat.completions.create(completionParams);
