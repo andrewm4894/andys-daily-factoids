@@ -269,6 +269,7 @@ function createClients() {
     return { openaiClient, posthogClient };
 }
 
+
 // Function to generate a new factoid
 export async function handler(event) {
     // Handle the preflight OPTIONS request
