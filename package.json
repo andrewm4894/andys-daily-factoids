@@ -1,11 +1,11 @@
 {
   "type": "module",
   "dependencies": {
-    "@posthog/ai": "^4.0.0",
+    "@posthog/ai": "^6.4.1",
     "@stripe/stripe-js": "^5.5.0",
     "dotenv": "^16.4.7",
     "firebase-admin": "^11.5.0",
-    "openai": "^4.77.0",
+    "openai": "^5.22.0",
     "posthog-node": "^5.8.6",
     "stripe": "^17.5.0"
   },

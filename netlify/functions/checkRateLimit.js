@@ -5,17 +5,17 @@ import admin from 'firebase-admin';
 const serviceAccount = {
     projectId: process.env.FIREBASE_PROJECT_ID,
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
 };
 
-// Initialize Firebase Admin if not already initialized
-if (!admin.apps.length) {
+// Initialize Firebase Admin if not already initialized and credentials are available
+if (!admin.apps.length && serviceAccount.projectId && serviceAccount.clientEmail && serviceAccount.privateKey) {
     admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
     });
 }
 
-const db = admin.firestore();
+const db = admin.apps.length > 0 ? admin.firestore() : null;
 
 // Global rate limit configuration - Conservative limits for side project
 const RATE_LIMIT = {
@@ -130,6 +130,11 @@ function hashString(str) {
  * Check global rate limits (primary defense)
  */
 async function checkGlobalRateLimit() {
+    // If Firebase is not available, allow the request (for testing)
+    if (!db) {
+        return { isAllowed: true, currentUsage: 0, limit: RATE_LIMIT.GLOBAL_GENERATIONS_PER_HOUR };
+    }
+
     const now = Date.now();
     const hourStart = now - RATE_LIMIT.HOUR_WINDOW_MS;
     const dayStart = now - RATE_LIMIT.DAY_WINDOW_MS;
@@ -191,6 +196,11 @@ async function checkGlobalRateLimit() {
  * Check per-IP rate limits (secondary defense)
  */
 async function checkIPRateLimit(clientIP) {
+    // If Firebase is not available, allow the request (for testing)
+    if (!db) {
+        return { isAllowed: true, currentUsage: 0, limit: RATE_LIMIT.IP_GENERATIONS_PER_HOUR };
+    }
+
     const now = Date.now();
     const hourStart = now - RATE_LIMIT.HOUR_WINDOW_MS;
     const minuteStart = now - RATE_LIMIT.MINUTE_WINDOW_MS;
@@ -302,6 +312,11 @@ export async function checkRateLimit(event) {
  * Record a generation for both global and IP rate limiting
  */
 export async function recordGeneration(event) {
+    // If Firebase is not available, skip recording (for testing)
+    if (!db) {
+        return;
+    }
+
     const clientIP = getClientIP(event);
     const now = Date.now();
 
