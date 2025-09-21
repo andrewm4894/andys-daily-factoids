@@ -167,7 +167,19 @@ function App() {
 
         {generationError && (
           <div className="error-banner" role="alert">
-            <span>{generationError}</span>
+            <div className="error-content">
+              <div className="error-message">
+                {typeof generationError === 'string' ? generationError : generationError.message}
+              </div>
+              {typeof generationError === 'object' && generationError.fullDetails && (
+                <details className="error-details">
+                  <summary>Full Error Details</summary>
+                  <pre className="error-details-content">
+                    {JSON.stringify(generationError.fullDetails, null, 2)}
+                  </pre>
+                </details>
+              )}
+            </div>
             <button
               type="button"
               className="error-banner__dismiss"
