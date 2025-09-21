@@ -4,3 +4,5 @@
 
 [functions]
   directory = "netlify/functions"
+  node_bundler = "esbuild"
+  node_version = "20"

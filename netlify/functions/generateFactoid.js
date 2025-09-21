@@ -1,6 +1,7 @@
 // netlify/functions/generateFactoid.js
 import 'dotenv/config';
-import OpenAI from 'openai';
+// Use PostHog-instrumented OpenAI wrapper (ESM subpath avoids Anthropic CJS issue)
+import { OpenAI as PostHogOpenAI } from '@posthog/ai/openai';
 import { PostHog } from 'posthog-node';
 import admin from 'firebase-admin';
 import {
@@ -245,16 +246,13 @@ function createClients() {
         throw new Error('Missing OPENROUTER_API_KEY environment variable');
     }
 
-    // Always use the official OpenAI client. PostHog instrumentation is disabled to avoid runtime import issues.
-    const openaiClient = new OpenAI({
-        apiKey,
-        baseURL: OPENROUTER_BASE_URL,
-    });
-
-    // Optionally initialize PostHog client for future manual events (not used for instrumentation here)
     const posthogClient = POSTHOG_PROJECT_API_KEY
         ? new PostHog(POSTHOG_PROJECT_API_KEY, { host: POSTHOG_HOST })
         : null;
+
+    const openaiClient = posthogClient
+        ? new PostHogOpenAI({ apiKey, baseURL: OPENROUTER_BASE_URL, posthog: posthogClient })
+        : new PostHogOpenAI({ apiKey, baseURL: OPENROUTER_BASE_URL });
 
     return { openaiClient, posthogClient };
 }
