@@ -1,7 +1,6 @@
 // netlify/functions/generateFactoid.js
 import 'dotenv/config';
 import OpenAI from 'openai';
-import { OpenAI as PostHogOpenAI } from '@posthog/ai';
 import { PostHog } from 'posthog-node';
 import admin from 'firebase-admin';
 import {
@@ -246,25 +245,16 @@ function createClients() {
         throw new Error('Missing OPENROUTER_API_KEY environment variable');
     }
 
-    if (!POSTHOG_PROJECT_API_KEY) {
-        return {
-            openaiClient: new OpenAI({
-                apiKey,
-                baseURL: OPENROUTER_BASE_URL,
-            }),
-            posthogClient: null,
-        };
-    }
-
-    const posthogClient = new PostHog(POSTHOG_PROJECT_API_KEY, {
-        host: POSTHOG_HOST,
-    });
-
-    const openaiClient = new PostHogOpenAI({
+    // Always use the official OpenAI client. PostHog instrumentation is disabled to avoid runtime import issues.
+    const openaiClient = new OpenAI({
         apiKey,
         baseURL: OPENROUTER_BASE_URL,
-        posthog: posthogClient,
     });
+
+    // Optionally initialize PostHog client for future manual events (not used for instrumentation here)
+    const posthogClient = POSTHOG_PROJECT_API_KEY
+        ? new PostHog(POSTHOG_PROJECT_API_KEY, { host: POSTHOG_HOST })
+        : null;
 
     return { openaiClient, posthogClient };
 }
@@ -462,7 +452,6 @@ Think about novel and intriguing facts that people might not know.
                 ],
                 function_call: { name: 'generate_factoid' },
                 ...adjustedParameters,
-                ...sharedPosthogOptions,
             };
 
             response = await openaiClient.chat.completions.create(completionParams);
@@ -500,7 +489,6 @@ Please respond in the following JSON format:
                 model: selectedModel,
                 messages: [{ role: 'user', content: structuredPrompt.trim() }],
                 ...adjustedParameters,
-                ...sharedPosthogOptions,
             };
 
             response = await openaiClient.chat.completions.create(completionParams);
