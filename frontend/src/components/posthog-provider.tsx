@@ -1,10 +1,10 @@
 'use client'
 
 import { usePathname, useSearchParams } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, type ReactElement, type ReactNode } from 'react'
 import { posthog } from '@/lib/posthog'
 
-export function PostHogPageView(): JSX.Element {
+export function PostHogPageView(): ReactElement | null {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
@@ -20,10 +20,10 @@ export function PostHogPageView(): JSX.Element {
     }
   }, [pathname, searchParams])
 
-  return <></>
+  return null
 }
 
-export function PostHogProvider({ children }: { children: React.ReactNode }) {
+export function PostHogProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Initialize PostHog on client side
     if (typeof window !== 'undefined') {
