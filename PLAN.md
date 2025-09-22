@@ -58,9 +58,9 @@
 - [ ] Add OpenAPI schema (drf-spectacular) and developer docs.
 
 ### Phase 4 – Next.js Frontend Bootstrap
-- [ ] Scaffold Next.js (TypeScript, App Router) project under `frontend-next/` (or separate repo); configure linting, testing, deployment pipeline.
-- [ ] Implement API client layer (fetch wrappers) with auth headers, error handling, rate-limit messaging.
-- [ ] Build core pages/components: home feed, factoid cards, generate modal, vote interactions with optional text feedback capture, share/search actions.
+- [x] Scaffold Next.js (TypeScript, App Router) project under `frontend/` with linting configured.
+- [x] Implement API client layer (fetch wrappers) with auth headers, error handling, rate-limit messaging.
+- [x] Build core pages/components: home feed, factoid cards, generate modal, vote interactions with optional text feedback capture, share/search actions.
 - [ ] Integrate SSE client for live generation updates; show spinners/errors gracefully.
 - [ ] Add PostHog JS snippet and align event names with backend analytics.
 
