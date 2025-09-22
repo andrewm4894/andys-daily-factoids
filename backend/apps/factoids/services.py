@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -103,6 +104,11 @@ class OpenRouterClient:
             raise ValueError("OpenRouter response missing choices")
         message = choices[0].get("message", {})
         content = message.get("content", "")
+
+        if isinstance(content, str):
+            fenced_match = re.search(r"```(?:json)?\s*([\s\S]*?)```", content)
+            if fenced_match:
+                content = fenced_match.group(1).strip()
 
         try:
             parsed = json.loads(content)

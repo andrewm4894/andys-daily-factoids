@@ -54,3 +54,44 @@ def test_openrouter_generate_factoid_parses_json(settings):
     )
     assert result.text == "Fact"
     assert result.subject == "Science"
+
+
+@pytest.mark.django_db()
+def test_openrouter_generate_factoid_handles_code_fence(settings):
+    settings.SECRET_KEY = "secret"
+
+    fenced_content = (
+        "```json\n"
+        "{\n"
+        "  \"text\": \"Fact\",\n"
+        "  \"subject\": \"Science\",\n"
+        "  \"emoji\": \"🧠\"\n"
+        "}\n"
+        "```"
+    )
+
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "message": {
+                            "content": fenced_content,
+                        }
+                    }
+                ]
+            },
+        )
+    )
+
+    client = OpenRouterClient(api_key="test")
+    result = asyncio.run(
+        client.generate_factoid(
+            GenerationRequestPayload(prompt="Tell me", model="model-1"),
+            transport=transport,
+        )
+    )
+    assert result.text == "Fact"
+    assert result.subject == "Science"
+    assert result.emoji == "🧠"
