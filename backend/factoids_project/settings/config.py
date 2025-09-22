@@ -40,7 +40,6 @@ class AppSettings(BaseSettings):
         env_prefix="DJANGO_",
         case_sensitive=False,
         extra="allow",
-        json_loads=_safe_json_loads,
     )
 
     @field_validator("allowed_hosts", "cors_allowed_origins", mode="before")

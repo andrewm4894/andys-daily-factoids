@@ -17,7 +17,7 @@ services:
       - key: DJANGO_SETTINGS_MODULE
         value: factoids_project.settings.production
       - key: DJANGO_ALLOWED_HOSTS
-        value: factoids-backend.onrender.com
+        value: "factoids-backend.onrender.com"
       - key: DATABASE_URL
         sync: false
       - key: OPENROUTER_API_KEY
