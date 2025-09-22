@@ -5,14 +5,13 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
-from typing import Any, Optional
+from typing import Any
 
 from django.conf import settings
 from django.db import IntegrityError
 from django.db.models import F
 from django.http import StreamingHttpResponse
 from django.urls import include, path
-from django.utils import timezone
 from django.views import View
 from rest_framework import generics, mixins, routers, status, viewsets
 from rest_framework import serializers as drf_serializers
@@ -20,30 +19,21 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.services import CostGuard, RateLimitConfig, RateLimitExceeded, get_rate_limiter
+from apps.core.services import CostGuard, get_rate_limiter
 from apps.factoids import models, serializers
-from apps.factoids.services import GenerationRequestPayload, OpenRouterClient
+from apps.factoids.services.generator import (
+    CostBudgetExceededError,
+    GenerationFailedError,
+    RateLimitExceededError,
+    generate_factoid,
+)
+from apps.factoids.services.openrouter import OpenRouterClient
 
 app_name = "factoids"
 
 # Rate limiter (Redis when available, fallback to in-memory).
 _rate_limiter = get_rate_limiter()
 _cost_guard = CostGuard({"anonymous": 1.0, "api_key": 5.0})
-
-
-class RateLimitExceededError(Exception):
-    def __init__(self, retry_after: float) -> None:
-        self.retry_after = retry_after
-
-
-class CostBudgetExceededError(Exception):
-    def __init__(self, remaining: Optional[float]) -> None:
-        self.remaining = remaining
-
-
-class GenerationFailedError(Exception):
-    def __init__(self, detail: str) -> None:
-        self.detail = detail
 
 
 class FactoidPagination(PageNumberPagination):
@@ -68,101 +58,6 @@ def _client_hash(request) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
-def _apply_rate_limit(bucket: str, limit_conf: dict[str, Any]) -> None:
-    per_minute = limit_conf.get("per_minute", 1)
-    config = RateLimitConfig(window_seconds=60, limit=per_minute)
-    _rate_limiter.check(bucket, config)
-
-
-def _record_cost(profile: str, cost: float) -> None:
-    if cost:
-        _cost_guard.record(profile, cost)
-
-
-def _perform_generation(
-    *,
-    topic: str,
-    model_key: Optional[str],
-    temperature: Optional[float],
-    client_hash: str,
-    profile: str = "anonymous",
-) -> models.Factoid:
-    limits = settings.RATE_LIMITS.get("factoids", {}).get(profile, {})
-    try:
-        _apply_rate_limit(f"generate:{client_hash}", limits)
-    except RateLimitExceeded as exc:
-        raise RateLimitExceededError(exc.retry_after) from exc
-
-    decision = _cost_guard.evaluate(profile, expected_cost=0.1)
-    if not decision.allowed:
-        raise CostBudgetExceededError(decision.remaining_budget)
-
-    resolved_model = model_key or "openai/gpt-4o-mini"
-
-    generation_request = models.GenerationRequest.objects.create(
-        client_hash=client_hash,
-        request_source=models.RequestSource.MANUAL,
-        model_key=resolved_model,
-        parameters={"temperature": temperature},
-    )
-
-    api_key = settings.OPENROUTER_API_KEY
-
-    if not api_key:
-        factoid = models.Factoid.objects.create(
-            text=f"Did you know that {topic} can be fascinating even without an API key?",
-            subject=topic.title()[:255],
-            emoji="🤖",
-            created_by=generation_request,
-            generation_metadata={"model": "stub"},
-        )
-        generation_request.status = models.RequestStatus.SUCCEEDED
-        generation_request.completed_at = timezone.now()
-        generation_request.actual_cost_usd = 0
-        generation_request.save(update_fields=["status", "completed_at", "actual_cost_usd"])
-        return factoid
-
-    client = OpenRouterClient(api_key=api_key, base_url=settings.OPENROUTER_BASE_URL)
-    payload = GenerationRequestPayload(
-        prompt=(
-            "You are Andy's Daily Factoid generator. Provide a concise, mind-blowing fact about "
-            f"{topic}. Respond as JSON with keys text, subject, emoji."
-        ),
-        model=resolved_model,
-        temperature=temperature,
-    )
-
-    try:
-        result = asyncio.run(client.generate_factoid(payload))
-    except Exception as exc:  # pragma: no cover - real API failure path
-        generation_request.status = models.RequestStatus.FAILED
-        generation_request.error_message = str(exc)
-        generation_request.completed_at = timezone.now()
-        generation_request.save(update_fields=["status", "error_message", "completed_at"])
-        raise GenerationFailedError("Failed to generate factoid") from exc
-
-    factoid = models.Factoid.objects.create(
-        text=result.text,
-        subject=result.subject[:255],
-        emoji=result.emoji[:16],
-        created_by=generation_request,
-        generation_metadata={"model": resolved_model, "raw": result.raw},
-    )
-    generation_request.status = models.RequestStatus.SUCCEEDED
-    generation_request.completed_at = timezone.now()
-    generation_request.actual_cost_usd = 0.1
-    generation_request.save(
-        update_fields=[
-            "status",
-            "completed_at",
-            "actual_cost_usd",
-        ]
-    )
-
-    _record_cost(profile, 0.1)
-    return factoid
-
-
 def _sse(event: str, data: dict[str, Any]) -> bytes:
     return f"event: {event}\ndata: {json.dumps(data)}\n\n".encode("utf-8")
 
@@ -179,11 +74,12 @@ class FactoidGenerationView(APIView):
         temperature = serializer.validated_data.get("temperature")
 
         try:
-            factoid = _perform_generation(
+            factoid = generate_factoid(
                 topic=topic,
                 model_key=model_key,
                 temperature=temperature,
                 client_hash=client_hash,
+                cost_guard=_cost_guard,
             )
         except RateLimitExceededError as exc:
             return Response(
@@ -257,12 +153,14 @@ class FactoidGenerationStreamView(View):
         def event_stream():
             yield _sse("status", {"state": "started"})
             try:
-                factoid = _perform_generation(
+                factoid = generate_factoid(
                     topic=topic,
                     model_key=model_key,
                     temperature=temperature,
                     client_hash=client_hash,
                     profile=profile,
+                    request_source=models.RequestSource.MANUAL,
+                    cost_guard=_cost_guard,
                 )
             except RateLimitExceededError as exc:
                 yield _sse(

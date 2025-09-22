@@ -5,7 +5,7 @@ import asyncio
 import httpx
 import pytest
 
-from apps.factoids.services import GenerationRequestPayload, OpenRouterClient
+from apps.factoids.services.openrouter import GenerationRequestPayload, OpenRouterClient
 
 
 @pytest.mark.django_db()

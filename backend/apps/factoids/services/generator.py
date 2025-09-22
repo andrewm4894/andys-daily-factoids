@@ -1,0 +1,127 @@
+"""Factoid generation service shared across API, CLI, and scheduled tasks."""
+
+from __future__ import annotations
+
+import asyncio
+from typing import Optional
+
+from django.conf import settings
+from django.utils import timezone
+
+from apps.core.services import CostGuard, RateLimitConfig, RateLimitExceeded, get_rate_limiter
+from apps.factoids import models
+from apps.factoids.services.openrouter import GenerationRequestPayload, OpenRouterClient
+
+
+class RateLimitExceededError(Exception):
+    def __init__(self, retry_after: float) -> None:
+        self.retry_after = retry_after
+
+
+class CostBudgetExceededError(Exception):
+    def __init__(self, remaining: Optional[float]) -> None:
+        self.remaining = remaining
+
+
+class GenerationFailedError(Exception):
+    def __init__(self, detail: str) -> None:
+        self.detail = detail
+
+
+def generate_factoid(
+    *,
+    topic: str,
+    model_key: Optional[str],
+    temperature: Optional[float],
+    client_hash: str,
+    profile: str = "anonymous",
+    request_source: models.RequestSource = models.RequestSource.MANUAL,
+    cost_guard: Optional[CostGuard] = None,
+) -> models.Factoid:
+    rate_limiter = get_rate_limiter()
+    limits = settings.RATE_LIMITS.get("factoids", {}).get(profile, {})
+    try:
+        per_minute_limit = limits.get("per_minute", 1)
+        rate_limiter.check(
+            f"generate:{client_hash}",
+            RateLimitConfig(window_seconds=60, limit=per_minute_limit),
+        )
+    except RateLimitExceeded as exc:
+        raise RateLimitExceededError(exc.retry_after) from exc
+
+    guard = cost_guard or CostGuard({"anonymous": 1.0, "api_key": 5.0})
+    decision = guard.evaluate(profile, expected_cost=0.1)
+    if not decision.allowed:
+        raise CostBudgetExceededError(decision.remaining_budget)
+
+    resolved_model = model_key or "openai/gpt-4o-mini"
+
+    generation_request = models.GenerationRequest.objects.create(
+        client_hash=client_hash,
+        request_source=request_source,
+        model_key=resolved_model,
+        parameters={"temperature": temperature},
+    )
+
+    api_key = settings.OPENROUTER_API_KEY
+    if not api_key:
+        factoid = models.Factoid.objects.create(
+            text=f"Did you know that {topic} can be fascinating even without an API key?",
+            subject=topic.title()[:255],
+            emoji="🤖",
+            created_by=generation_request,
+            generation_metadata={"model": "stub"},
+        )
+        generation_request.status = models.RequestStatus.SUCCEEDED
+        generation_request.completed_at = timezone.now()
+        generation_request.actual_cost_usd = 0
+        generation_request.save(update_fields=["status", "completed_at", "actual_cost_usd"])
+        return factoid
+
+    client = OpenRouterClient(api_key=api_key, base_url=settings.OPENROUTER_BASE_URL)
+    payload = GenerationRequestPayload(
+        prompt=(
+            "You are Andy's Daily Factoid generator. Provide a concise, mind-blowing fact about "
+            f"{topic}. Respond as JSON with keys text, subject, emoji."
+        ),
+        model=resolved_model,
+        temperature=temperature,
+    )
+
+    try:
+        result = asyncio.run(client.generate_factoid(payload))
+    except Exception as exc:  # pragma: no cover - real API failure path
+        generation_request.status = models.RequestStatus.FAILED
+        generation_request.error_message = str(exc)
+        generation_request.completed_at = timezone.now()
+        generation_request.save(update_fields=["status", "error_message", "completed_at"])
+        raise GenerationFailedError("Failed to generate factoid") from exc
+
+    factoid = models.Factoid.objects.create(
+        text=result.text,
+        subject=result.subject[:255],
+        emoji=result.emoji[:16],
+        created_by=generation_request,
+        generation_metadata={"model": resolved_model, "raw": result.raw},
+    )
+    generation_request.status = models.RequestStatus.SUCCEEDED
+    generation_request.completed_at = timezone.now()
+    generation_request.actual_cost_usd = 0.1
+    generation_request.save(
+        update_fields=[
+            "status",
+            "completed_at",
+            "actual_cost_usd",
+        ]
+    )
+
+    guard.record(profile, 0.1)
+    return factoid
+
+
+__all__ = [
+    "generate_factoid",
+    "RateLimitExceededError",
+    "CostBudgetExceededError",
+    "GenerationFailedError",
+]

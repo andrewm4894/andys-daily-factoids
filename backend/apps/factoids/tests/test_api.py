@@ -9,6 +9,7 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 
 from apps.core.services import InMemoryRateLimiter
+from apps.core.services import rate_limits as rate_limit_module
 from apps.factoids import api as factoids_api
 from apps.factoids import models
 from apps.factoids.services import GenerationResult
@@ -16,12 +17,16 @@ from apps.factoids.services import GenerationResult
 
 @pytest.fixture(autouse=True)
 def reset_rate_limiter_and_cost_guard():
-    factoids_api._rate_limiter = InMemoryRateLimiter()
+    limiter = InMemoryRateLimiter()
+    factoids_api._rate_limiter = limiter
+    rate_limit_module._rate_limiter_singleton = limiter  # type: ignore[attr-defined]
     factoids_api._cost_guard.profile_usage = {
         profile: 0.0 for profile in factoids_api._cost_guard.profile_budgets
     }
     yield
-    factoids_api._rate_limiter = InMemoryRateLimiter()
+    limiter = InMemoryRateLimiter()
+    factoids_api._rate_limiter = limiter
+    rate_limit_module._rate_limiter_singleton = limiter  # type: ignore[attr-defined]
     factoids_api._cost_guard.profile_usage = {
         profile: 0.0 for profile in factoids_api._cost_guard.profile_budgets
     }
@@ -54,7 +59,7 @@ def test_factoid_generation_invokes_openrouter(settings):
     mock_result = GenerationResult(text="Fact", subject="Science", emoji="🧠", raw={})
 
     with patch(
-        "apps.factoids.api.OpenRouterClient.generate_factoid",
+        "apps.factoids.services.openrouter.OpenRouterClient.generate_factoid",
         new=AsyncMock(return_value=mock_result),
     ):
         response = client.post(reverse("factoids:generate"), {"topic": "science"}, format="json")
@@ -76,7 +81,10 @@ def test_models_endpoint_uses_openrouter(settings):
     settings.OPENROUTER_API_KEY = "key"
     client = APIClient()
 
-    with patch("apps.factoids.api.OpenRouterClient.list_models", new=AsyncMock(return_value=[])):
+    with patch(
+        "apps.factoids.services.openrouter.OpenRouterClient.list_models",
+        new=AsyncMock(return_value=[]),
+    ):
         response = client.get(reverse("factoids:models"))
         assert response.status_code == 200
         assert response.json() == {"models": []}
