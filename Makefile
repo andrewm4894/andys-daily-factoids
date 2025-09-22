@@ -38,8 +38,8 @@ test-backend: ## Run backend unit tests
 	cd backend && uv run pytest
 
 test-frontend: ## Run frontend tests
-	@echo "Testing frontend components..."
-	cd ./frontend && npm test -- --watchAll=false
+	@echo "Linting frontend (no dedicated test suite yet)..."
+	cd ./frontend && npm run lint
 
 test-integration: ## Run integration tests
 	@echo "Testing integration..."
