@@ -44,12 +44,21 @@ class AppSettings(BaseSettings):
 
     @field_validator("allowed_hosts", "cors_allowed_origins", mode="before")
     @classmethod
-    def _split_csv(cls, value: Any) -> list[str] | Any:
-        if value in (None, ""):
+    def _split_csv(cls, value: Any) -> list[str]:
+        if value is None or value == "":
             return []
         if isinstance(value, str):
-            return [item.strip() for item in value.split(",") if item.strip()]
-        return value
+            try:
+                return [item.strip() for item in value.split(",") if item.strip()]
+            except Exception:
+                return [value.strip()] if value.strip() else []
+        if isinstance(value, list):
+            return value
+        # Fallback: convert to string and try again
+        try:
+            return [str(value).strip()] if str(value).strip() else []
+        except Exception:
+            return []
 
 
 @lru_cache()
