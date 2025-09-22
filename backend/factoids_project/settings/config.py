@@ -3,12 +3,22 @@
 from __future__ import annotations
 
 import os
+import json
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _safe_json_loads(value: str) -> Any:
+    if value in (None, ""):
+        return value
+    try:
+        return json.loads(value)
+    except json.JSONDecodeError:
+        return value
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DEFAULT_ENV_FILE = BASE_DIR / ".env"
@@ -26,7 +36,12 @@ class AppSettings(BaseSettings):
     openrouter_api_key: str | None = None
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
 
-    model_config = SettingsConfigDict(env_prefix="DJANGO_", case_sensitive=False)
+    model_config = SettingsConfigDict(
+        env_prefix="DJANGO_",
+        case_sensitive=False,
+        extra="allow",
+        json_loads=_safe_json_loads,
+    )
 
     @field_validator("allowed_hosts", "cors_allowed_origins", mode="before")
     @classmethod
