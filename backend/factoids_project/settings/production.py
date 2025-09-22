@@ -5,9 +5,8 @@ from __future__ import annotations
 import os
 
 from .base import *  # noqa: F401,F403
-from .config import get_settings
 
-settings = get_settings()
+# Bypass Pydantic settings for production to avoid parsing issues
 
 DEBUG = False
 
@@ -23,15 +22,12 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_BROWSER_XSS_FILTER = True
 X_FRAME_OPTIONS = "DENY"
 
-# Handle ALLOWED_HOSTS with fallback
-try:
-    ALLOWED_HOSTS = settings.allowed_hosts
-except Exception:
-    # Fallback to direct environment variable parsing
-    hosts_env = os.getenv("DJANGO_ALLOWED_HOSTS", "")
-    ALLOWED_HOSTS = [host.strip() for host in hosts_env.split(",") if host.strip()] if hosts_env else []
+# Direct environment variable parsing for production
+hosts_env = os.getenv("DJANGO_ALLOWED_HOSTS", "")
+ALLOWED_HOSTS = [host.strip() for host in hosts_env.split(",") if host.strip()] if hosts_env else []
 
-CORS_ALLOWED_ORIGINS = settings.cors_allowed_origins
+cors_env = os.getenv("DJANGO_CORS_ALLOWED_ORIGINS", "")
+CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_env.split(",") if origin.strip()] if cors_env else []
 CORS_ALLOW_ALL_ORIGINS = False
 
 if not SECRET_KEY or SECRET_KEY == "development-secret-key":  # noqa: F405
