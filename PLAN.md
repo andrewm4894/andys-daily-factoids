@@ -71,8 +71,8 @@
 - [ ] Prepare Braintrust evaluation hooks (artifact storage, CLI stub) for future rollout.
 
 ### Phase 6 – Background Workloads & Scheduling
-- [ ] Configure Celery + Redis; move factoid generation to async task.
-- [ ] Add scheduled hourly generation via Celery beat or Render cron hitting management command.
+- [ ] Configure Celery + Redis; move factoid generation to async task (or reusable generator service).
+- [x] Introduce management command (`generate_factoid`) to support scheduled hourly generation via Render cron.
 - [ ] Ensure rate-limit and cost accounting include scheduled and paid tasks.
 
 ### Phase 7 – Chat Agent (LangGraph)
