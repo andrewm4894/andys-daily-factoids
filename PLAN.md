@@ -30,11 +30,11 @@
 
 ## Phase Breakdown
 ### Phase 0 – Discovery & Setup
-- [ ] Validate scope, non-goals, and confirm API-first + Next.js frontend approach.
-- [ ] Inventory secrets (OpenRouter, Stripe, PostHog, future Braintrust) for new environments.
-- [ ] Agree on default rate-limit thresholds and cost envelopes (anonymous vs API key).
-- [ ] Plan SSE streaming for real-time generation/chat updates (WebSockets optional later).
-- [ ] Sign off on PLAN.md and DESIGN.md.
+- [x] Validate scope, non-goals, and confirm API-first + Next.js frontend approach.
+- [x] Inventory secrets (OpenRouter, Stripe, PostHog, future Braintrust) for new environments.
+- [x] Agree on default rate-limit thresholds and cost envelopes (anonymous vs API key).
+- [x] Plan SSE streaming for real-time generation/chat updates (WebSockets optional later).
+- [x] Sign off on PLAN.md and DESIGN.md.
 
 ### Phase 1 – Django Backend Bootstrap
 - [x] Create Django project (`factoids_project`) and apps (`core`, `factoids`, `payments`, `analytics`, `chat`).

@@ -14,10 +14,11 @@ export function GenerateFactoidForm({ models }: GenerateFactoidFormProps) {
   const router = useRouter();
   const [topic, setTopic] = useState("");
   const [modelKey, setModelKey] = useState<string | undefined>(undefined);
-  const [error, setError] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [toast, setToast] = useState<
+    { message: string; tone: "info" | "success" | "error" } | null
+  >(null);
   const eventSourceRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
@@ -26,15 +27,23 @@ export function GenerateFactoidForm({ models }: GenerateFactoidFormProps) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!toast) {
+      return;
+    }
+    const timeout = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(timeout);
+  }, [toast]);
+
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError(null);
     eventSourceRef.current?.close();
-    
-    // Track factoid generation attempt
-    posthog.capture('factoid_generation_started', {
-      topic: topic || 'random',
-      model: modelKey || 'random',
+
+    setToast({ message: "Starting generation…", tone: "info" });
+
+    posthog.capture("factoid_generation_started", {
+      topic: topic || "random",
+      model: modelKey || "random",
       has_topic: !!topic,
       has_model: !!modelKey,
     });
@@ -47,15 +56,17 @@ export function GenerateFactoidForm({ models }: GenerateFactoidFormProps) {
 
     if (typeof window === "undefined" || typeof EventSource === "undefined") {
       setIsStreaming(true);
-      setStatusMessage("Generating factoid...");
+      setToast({ message: "Generating factoid…", tone: "info" });
       generateFactoid(topic, modelKey)
         .then(() => {
-          setStatusMessage("Factoid generated!");
+          setToast({ message: "Factoid generated!", tone: "success" });
           setTopic("");
           router.refresh();
         })
         .catch((err) => {
-          setError(err instanceof Error ? err.message : "Failed to generate factoid");
+          const detail =
+            err instanceof Error ? err.message : "Failed to generate factoid";
+          setToast({ message: detail, tone: "error" });
         })
         .finally(() => {
           setIsStreaming(false);
@@ -64,7 +75,7 @@ export function GenerateFactoidForm({ models }: GenerateFactoidFormProps) {
     }
 
     setIsStreaming(true);
-    setStatusMessage("Starting generation...");
+    setToast({ message: "Generating factoid…", tone: "info" });
 
     const eventSource = new EventSource(streamUrl);
     eventSourceRef.current = eventSource;
@@ -73,36 +84,37 @@ export function GenerateFactoidForm({ models }: GenerateFactoidFormProps) {
       try {
         const data = JSON.parse(message.data) as { state?: string };
         if (data.state) {
-          setStatusMessage(`Status: ${data.state}`);
+          setToast({ message: data.state, tone: "info" });
+        } else {
+          setToast({ message: "Generating factoid…", tone: "info" });
         }
       } catch {
-        setStatusMessage("Generating factoid...");
+        setToast({ message: "Generating factoid…", tone: "info" });
       }
     });
 
     eventSource.addEventListener("factoid", (message: MessageEvent<string>) => {
-      setStatusMessage("Factoid generated!");
-      
-      // Track successful generation
+      setToast({ message: "Factoid generated!", tone: "success" });
+
       try {
         const data = JSON.parse(message.data);
-        posthog.capture('factoid_generation_completed', {
-          topic: topic || 'random',
-          model: modelKey || 'random',
+        posthog.capture("factoid_generation_completed", {
+          topic: topic || "random",
+          model: modelKey || "random",
           factoid_subject: data.subject,
           factoid_emoji: data.emoji,
           has_topic: !!topic,
           has_model: !!modelKey,
         });
-      } catch (e) {
-        posthog.capture('factoid_generation_completed', {
-          topic: topic || 'random',
-          model: modelKey || 'random',
+      } catch {
+        posthog.capture("factoid_generation_completed", {
+          topic: topic || "random",
+          model: modelKey || "random",
           has_topic: !!topic,
           has_model: !!modelKey,
         });
       }
-      
+
       eventSource.close();
       eventSourceRef.current = null;
       setIsStreaming(false);
@@ -120,48 +132,73 @@ export function GenerateFactoidForm({ models }: GenerateFactoidFormProps) {
       } catch {
         // ignore parse errors
       }
-      
-      // Track generation error
-      posthog.capture('factoid_generation_failed', {
-        topic: topic || 'random',
-        model: modelKey || 'random',
+
+      posthog.capture("factoid_generation_failed", {
+        topic: topic || "random",
+        model: modelKey || "random",
         error: detail,
         has_topic: !!topic,
         has_model: !!modelKey,
       });
-      
-      setError(detail);
+
+      setToast({ message: detail, tone: "error" });
       setIsStreaming(false);
-      setStatusMessage(null);
       eventSource.close();
       eventSourceRef.current = null;
     });
   };
+
+  const toastColor =
+    toast?.tone === "success"
+      ? "bg-emerald-600"
+      : toast?.tone === "error"
+      ? "bg-rose-600"
+      : "bg-slate-900";
+  const optionsId = "generate-factoid-options";
 
   return (
     <form
       onSubmit={handleSubmit}
       className="mb-8 space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
     >
-      <div className="flex items-center justify-between">
+      {toast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`fixed top-4 right-4 z-50 rounded-md px-4 py-3 text-sm font-medium text-white shadow-lg ${toastColor}`}
+        >
+          {toast.message}
+        </div>
+      )}
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <button
+          type="submit"
+          disabled={isStreaming}
+          className="inline-flex w-full items-center justify-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+        >
+          {isStreaming ? "Generating..." : "Generate factoid"}
+        </button>
         <button
           type="button"
           onClick={() => {
             const newState = !showAdvanced;
             setShowAdvanced(newState);
-            posthog.capture('advanced_options_toggled', {
+            posthog.capture("advanced_options_toggled", {
               expanded: newState,
             });
           }}
           disabled={isStreaming}
-          className="text-sm text-slate-600 hover:text-slate-900 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+          aria-expanded={showAdvanced}
+          aria-controls={optionsId}
+          className="text-sm text-slate-600 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {showAdvanced ? "Hide options" : "Show options"} {showAdvanced ? "↑" : "↓"}
         </button>
       </div>
 
       {showAdvanced && (
-        <div className="space-y-4 border-t border-slate-100 pt-4">
+        <div id={optionsId} className="space-y-4 border-t border-slate-100 pt-4">
           <div>
             <label htmlFor="topic" className="block text-sm font-medium text-slate-700">
               Topic (optional)
@@ -198,17 +235,6 @@ export function GenerateFactoidForm({ models }: GenerateFactoidFormProps) {
           </div>
         </div>
       )}
-
-      {error && <p className="text-sm text-rose-600">{error}</p>}
-      {statusMessage && <p className="text-sm text-slate-600">{statusMessage}</p>}
-
-      <button
-        type="submit"
-        disabled={isStreaming}
-        className="inline-flex items-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {isStreaming ? "Generating..." : "Generate factoid"}
-      </button>
     </form>
   );
 }

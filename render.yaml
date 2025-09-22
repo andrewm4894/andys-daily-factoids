@@ -73,6 +73,8 @@ services:
         value: "3.11.9"
       - key: DJANGO_SETTINGS_MODULE
         value: factoids_project.settings.production
+      - key: DJANGO_ALLOWED_HOSTS
+        value: "factoids-backend.onrender.com"
       - key: POSTHOG_PROJECT_API_KEY
         value: "phc_FBwJgNVOyAez7il4IvxxhzPuB4YFFBGtanSfm3InYJ5"
       - key: POSTHOG_HOST
