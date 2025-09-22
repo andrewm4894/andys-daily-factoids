@@ -1,4 +1,4 @@
-.PHONY: help install install-frontend install-backend local local-backend migrate-backend seed-backend factoid test test-backend test-frontend test-rate-limit lint lint-backend lint-frontend smoke-backend-api
+.PHONY: help install install-frontend install-backend local local-backend local-frontend migrate-backend seed-backend run factoid test test-backend test-frontend test-rate-limit lint lint-backend lint-frontend smoke-backend-api
 
 help: ## Show available make targets
 	@awk -F ':.*## ' 'BEGIN {print "Available targets:"} /^[a-zA-Z0-9_-]+:.*##/ {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -16,6 +16,9 @@ local: ## Run Netlify dev with local frontend
 
 local-backend: ## Run Django backend locally using uv
 	cd backend && uv run python manage.py runserver
+
+local-frontend: ## Run Next.js frontend locally
+	cd frontend && npm run dev
 
 migrate-backend: ## Run Django migrations
 	cd backend && uv run python manage.py migrate
@@ -64,3 +67,6 @@ smoke-backend-api: ## Hit the local factoid generation endpoint for a quick sani
 lint-frontend: ## Lint frontend files
 	@echo "Linting frontend files..."
 	cd ./frontend && npm run lint
+
+run: ## Run backend and frontend dev servers concurrently
+	@bash -lc 'trap "kill 0" EXIT; (cd backend && uv run python manage.py runserver) & (cd frontend && npm run dev)'
