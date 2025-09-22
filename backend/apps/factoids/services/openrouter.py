@@ -5,10 +5,19 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Optional
 
 import httpx
 from pydantic import BaseModel, Field
+
+try:
+    from posthog.ai.openai import OpenAI
+    from posthog import Posthog
+    POSTHOG_AVAILABLE = True
+except ImportError:
+    POSTHOG_AVAILABLE = False
+    OpenAI = None
+    Posthog = None
 
 DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
@@ -36,13 +45,29 @@ class GenerationRequestPayload:
 
 
 class OpenRouterClient:
-    """Thin wrapper around the OpenRouter REST API."""
+    """Thin wrapper around the OpenRouter REST API with optional PostHog LLM analytics."""
 
-    def __init__(self, api_key: str, base_url: str = DEFAULT_OPENROUTER_BASE_URL) -> None:
+    def __init__(
+        self, 
+        api_key: str, 
+        base_url: str = DEFAULT_OPENROUTER_BASE_URL,
+        posthog_client: Optional[Posthog] = None
+    ) -> None:
         if not api_key:
             raise ValueError("OpenRouter API key is required")
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
+        self.posthog_client = posthog_client
+        
+        # Initialize PostHog-wrapped OpenAI client if available
+        if POSTHOG_AVAILABLE and posthog_client:
+            self.openai_client = OpenAI(
+                base_url=self.base_url,
+                api_key=self.api_key,
+                posthog_client=posthog_client
+            )
+        else:
+            self.openai_client = None
 
     async def list_models(self, *, transport: httpx.BaseTransport | None = None) -> list[ModelInfo]:
         async with httpx.AsyncClient(
@@ -63,6 +88,26 @@ class OpenRouterClient:
         *,
         transport: httpx.BaseTransport | None = None,
     ) -> GenerationResult:
+        # Use PostHog-wrapped OpenAI client if available for automatic LLM analytics
+        if self.openai_client:
+            messages = [{"role": "user", "content": payload.prompt}]
+            
+            completion_params: dict[str, Any] = {
+                "model": payload.model,
+                "messages": messages,
+            }
+            if payload.max_tokens is not None:
+                completion_params["max_tokens"] = payload.max_tokens
+            if payload.temperature is not None:
+                completion_params["temperature"] = payload.temperature
+            
+            # This will automatically track to PostHog
+            response = self.openai_client.chat.completions.create(**completion_params)
+            raw = response.model_dump()
+            text, subject, emoji = self._extract_factoid(raw)
+            return GenerationResult(text=text, subject=subject, emoji=emoji, raw=raw)
+        
+        # Fallback to direct HTTP client (no PostHog tracking)
         request_body: dict[str, Any] = {
             "model": payload.model,
             "messages": [

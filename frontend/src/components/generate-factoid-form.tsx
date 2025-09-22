@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { FACTOIDS_API_BASE, generateFactoid } from "@/lib/api";
+import { posthog } from "@/lib/posthog";
 
 interface GenerateFactoidFormProps {
   models: string[];
@@ -29,6 +30,14 @@ export function GenerateFactoidForm({ models }: GenerateFactoidFormProps) {
     event.preventDefault();
     setError(null);
     eventSourceRef.current?.close();
+    
+    // Track factoid generation attempt
+    posthog.capture('factoid_generation_started', {
+      topic: topic || 'random',
+      model: modelKey || 'random',
+      has_topic: !!topic,
+      has_model: !!modelKey,
+    });
 
     const params = new URLSearchParams();
     if (topic) params.append("topic", topic);
@@ -71,8 +80,29 @@ export function GenerateFactoidForm({ models }: GenerateFactoidFormProps) {
       }
     });
 
-    eventSource.addEventListener("factoid", () => {
+    eventSource.addEventListener("factoid", (message: MessageEvent<string>) => {
       setStatusMessage("Factoid generated!");
+      
+      // Track successful generation
+      try {
+        const data = JSON.parse(message.data);
+        posthog.capture('factoid_generation_completed', {
+          topic: topic || 'random',
+          model: modelKey || 'random',
+          factoid_subject: data.subject,
+          factoid_emoji: data.emoji,
+          has_topic: !!topic,
+          has_model: !!modelKey,
+        });
+      } catch (e) {
+        posthog.capture('factoid_generation_completed', {
+          topic: topic || 'random',
+          model: modelKey || 'random',
+          has_topic: !!topic,
+          has_model: !!modelKey,
+        });
+      }
+      
       eventSource.close();
       eventSourceRef.current = null;
       setIsStreaming(false);
@@ -90,6 +120,16 @@ export function GenerateFactoidForm({ models }: GenerateFactoidFormProps) {
       } catch {
         // ignore parse errors
       }
+      
+      // Track generation error
+      posthog.capture('factoid_generation_failed', {
+        topic: topic || 'random',
+        model: modelKey || 'random',
+        error: detail,
+        has_topic: !!topic,
+        has_model: !!modelKey,
+      });
+      
       setError(detail);
       setIsStreaming(false);
       setStatusMessage(null);
@@ -106,7 +146,13 @@ export function GenerateFactoidForm({ models }: GenerateFactoidFormProps) {
       <div className="flex items-center justify-between">
         <button
           type="button"
-          onClick={() => setShowAdvanced(!showAdvanced)}
+          onClick={() => {
+            const newState = !showAdvanced;
+            setShowAdvanced(newState);
+            posthog.capture('advanced_options_toggled', {
+              expanded: newState,
+            });
+          }}
           disabled={isStreaming}
           className="text-sm text-slate-600 hover:text-slate-900 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
         >

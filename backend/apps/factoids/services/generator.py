@@ -9,6 +9,13 @@ from typing import Optional
 from django.conf import settings
 from django.utils import timezone
 
+try:
+    from posthog import Posthog
+    POSTHOG_AVAILABLE = True
+except ImportError:
+    POSTHOG_AVAILABLE = False
+    Posthog = None
+
 from apps.core.services import CostGuard, RateLimitConfig, RateLimitExceeded, get_rate_limiter
 from apps.factoids import models
 from apps.factoids.prompts import build_factoid_generation_prompt
@@ -102,7 +109,19 @@ def generate_factoid(
         num_examples=5,
     )
     
-    client = OpenRouterClient(api_key=api_key, base_url=settings.OPENROUTER_BASE_URL)
+    # Initialize PostHog client for LLM analytics
+    posthog_client = None
+    if POSTHOG_AVAILABLE:
+        posthog_api_key = getattr(settings, 'POSTHOG_PROJECT_API_KEY', None)
+        posthog_host = getattr(settings, 'POSTHOG_HOST', 'https://us.i.posthog.com')
+        if posthog_api_key:
+            posthog_client = Posthog(posthog_api_key, host=posthog_host)
+    
+    client = OpenRouterClient(
+        api_key=api_key, 
+        base_url=settings.OPENROUTER_BASE_URL,
+        posthog_client=posthog_client
+    )
     payload = GenerationRequestPayload(
         prompt=prompt,
         model=resolved_model,
