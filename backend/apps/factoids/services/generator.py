@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import random
 from typing import Optional
 
 from django.conf import settings
@@ -54,7 +55,19 @@ def generate_factoid(
     if not decision.allowed:
         raise CostBudgetExceededError(decision.remaining_budget)
 
-    resolved_model = model_key or "openai/gpt-4o-mini"
+    if model_key:
+        resolved_model = model_key
+    else:
+        # Randomly select a model from OpenRouter's available models
+        client = OpenRouterClient(api_key=settings.OPENROUTER_API_KEY, base_url=settings.OPENROUTER_BASE_URL)
+        try:
+            available_models = asyncio.run(client.list_models())
+            if available_models:
+                resolved_model = random.choice(available_models).id
+            else:
+                resolved_model = "openai/gpt-4o-mini"  # fallback
+        except Exception:
+            resolved_model = "openai/gpt-4o-mini"  # fallback on API error
 
     generation_request = models.GenerationRequest.objects.create(
         client_hash=client_hash,
