@@ -23,7 +23,13 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_BROWSER_XSS_FILTER = True
 X_FRAME_OPTIONS = "DENY"
 
-ALLOWED_HOSTS = settings.allowed_hosts
+# Handle ALLOWED_HOSTS with fallback
+try:
+    ALLOWED_HOSTS = settings.allowed_hosts
+except Exception:
+    # Fallback to direct environment variable parsing
+    hosts_env = os.getenv("DJANGO_ALLOWED_HOSTS", "")
+    ALLOWED_HOSTS = [host.strip() for host in hosts_env.split(",") if host.strip()] if hosts_env else []
 
 CORS_ALLOWED_ORIGINS = settings.cors_allowed_origins
 CORS_ALLOW_ALL_ORIGINS = False
