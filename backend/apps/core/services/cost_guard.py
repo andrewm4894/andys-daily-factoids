@@ -39,3 +39,10 @@ class CostGuard:
         if profile not in self.profile_usage:
             self.profile_usage[profile] = 0.0
         self.profile_usage[profile] += actual_cost
+
+    def remaining_budget(self, profile: str) -> float | None:
+        budget = self._get_budget(profile)
+        if budget is None:
+            return None
+        used = self.profile_usage.get(profile, 0.0)
+        return max(budget - used, 0.0)

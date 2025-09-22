@@ -209,6 +209,31 @@ class FactoidFeedbackCreateView(generics.CreateAPIView):
     queryset = models.FactoidFeedback.objects.all()
 
 
+class FactoidRateLimitStatusView(APIView):
+    """Expose current rate limit and cost guard information."""
+
+    def get(self, request, *args, **kwargs):
+        profile = "anonymous"
+        limits = settings.RATE_LIMITS.get("factoids", {}).get(profile, {})
+        bucket_key = f"generate:{_client_hash(request)}"
+        per_minute = limits.get("per_minute", 1)
+        count = _rate_limiter.get_count(bucket_key)
+        remaining_cost = _cost_guard.remaining_budget(profile)
+
+        return Response(
+            {
+                "profile": profile,
+                "rate_limit": {
+                    "per_minute": per_minute,
+                    "per_hour": limits.get("per_hour"),
+                    "per_day": limits.get("per_day"),
+                    "current_window_requests": count,
+                },
+                "cost_budget_remaining": remaining_cost,
+            }
+        )
+
+
 class ModelListView(APIView):
     def get(self, request, *args, **kwargs):
         api_key = settings.OPENROUTER_API_KEY
@@ -231,6 +256,7 @@ urlpatterns = [
     path("generate/", FactoidGenerationView.as_view(), name="generate"),
     path("models/", ModelListView.as_view(), name="models"),
     path("feedback/", FactoidFeedbackCreateView.as_view(), name="feedback"),
+    path("limits/", FactoidRateLimitStatusView.as_view(), name="limits"),
     path("<uuid:pk>/vote/", FactoidVoteView.as_view(), name="vote"),
     path("", include(router.urls)),
 ]

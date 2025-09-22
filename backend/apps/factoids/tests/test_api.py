@@ -75,3 +75,27 @@ def test_models_endpoint_uses_openrouter(settings):
         response = client.get(reverse("factoids:models"))
         assert response.status_code == 200
         assert response.json() == {"models": []}
+
+
+@pytest.mark.django_db()
+def test_feedback_endpoint_accepts_submission():
+    factoid = models.Factoid.objects.create(text="Example", subject="Science", emoji="🧠")
+    client = APIClient()
+    payload = {
+        "factoid": str(factoid.id),
+        "vote": models.VoteType.UP,
+        "comments": "Great factoid!",
+    }
+    response = client.post(reverse("factoids:feedback"), payload, format="json")
+    assert response.status_code == 201
+    assert models.FactoidFeedback.objects.count() == 1
+
+
+@pytest.mark.django_db()
+def test_limits_endpoint_returns_status():
+    client = APIClient()
+    response = client.get(reverse("factoids:limits"))
+    data = response.json()
+    assert response.status_code == 200
+    assert "rate_limit" in data
+    assert "cost_budget_remaining" in data

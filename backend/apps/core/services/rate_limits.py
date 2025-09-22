@@ -38,3 +38,7 @@ class InMemoryRateLimiter:
             raise RateLimitExceeded(retry_after)
 
         entries.append(now)
+
+    def get_count(self, bucket: str) -> int:
+        entries = self._buckets.get(bucket)
+        return len(entries) if entries is not None else 0

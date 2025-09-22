@@ -1,5 +1,7 @@
 """Tests for core service helpers."""
 
+import pytest
+
 from apps.core.services import (
     CostGuard,
     CostGuardDecision,
@@ -28,6 +30,7 @@ def test_cost_guard_budget_enforcement():
 
     blocked = guard.evaluate("default", expected_cost=0.5)
     assert blocked.allowed is False
+    assert guard.remaining_budget("default") == pytest.approx(0.4)
 
 
 def test_in_memory_rate_limiter_allows_within_limit():
@@ -43,3 +46,5 @@ def test_in_memory_rate_limiter_allows_within_limit():
         assert exc.retry_after >= 0.0
     else:
         raise AssertionError("Expected rate limit to be exceeded")
+
+    assert limiter.get_count("bucket") == 2
