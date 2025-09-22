@@ -23,6 +23,8 @@ class AppSettings(BaseSettings):
     cors_allowed_origins: list[str] = Field(default_factory=list)
     database_url: str | None = None
     db_conn_max_age: int = 60
+    openrouter_api_key: str | None = None
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
 
     model_config = SettingsConfigDict(env_prefix="DJANGO_", case_sensitive=False)
 

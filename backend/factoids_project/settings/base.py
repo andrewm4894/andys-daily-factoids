@@ -136,3 +136,6 @@ RATE_LIMITS = {
         "api_key": {"per_minute": 5, "per_hour": 50, "per_day": 200},
     }
 }
+
+OPENROUTER_API_KEY = settings.openrouter_api_key
+OPENROUTER_BASE_URL = settings.openrouter_base_url
