@@ -37,11 +37,11 @@
 - [ ] Sign off on PLAN.md and DESIGN.md.
 
 ### Phase 1 – Django Backend Bootstrap
-- [ ] Create Django project (`factoids_project`) and apps (`core`, `factoids`, `payments`, `analytics`, `chat`).
-- [ ] Manage Python environment with `uv` (pyproject + lockfile) and add core dependencies (`django`, `djangorestframework`, `django-ratelimit`, `psycopg[binary]`, `httpx`, `stripe`, `django-cors-headers`, `whitenoise`, `pytest-django`, `structlog`, `langgraph`, `posthog`, `pydantic`, `dj-database-url`).
-- [ ] Configure settings split leveraging Pydantic-based config helpers for environment management.
+- [x] Create Django project (`factoids_project`) and apps (`core`, `factoids`, `payments`, `analytics`, `chat`).
+- [x] Manage Python environment with `uv` (pyproject + lockfile) and add core dependencies (`django`, `djangorestframework`, `django-ratelimit`, `psycopg[binary]`, `httpx`, `stripe`, `django-cors-headers`, `whitenoise`, `pytest-django`, `structlog`, `langgraph`, `posthog`, `pydantic`, `dj-database-url`).
+- [x] Configure settings split leveraging Pydantic-based config helpers for environment management.
 - [ ] Establish lint/test tooling (pre-commit, mypy optional, GitHub Actions workflow).
-- [ ] Document local setup (Make targets, sample `.env`, seed data).
+- [x] Document local setup (Make targets, sample `.env`, seed data).
 
 ### Phase 2 – Domain & Services
 - [ ] Define models: `Factoid`, `GenerationRequest`, `VoteAggregate`, `FactoidFeedback`, `RateLimitSnapshot`, `PaymentSession`, `ModelCache`, `ChatSession`, `ChatMessage`.

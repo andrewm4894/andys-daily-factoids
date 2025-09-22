@@ -1,10 +1,12 @@
-.PHONY: help install install-frontend local factoid test test-backend test-frontend test-rate-limit lint lint-backend lint-frontend
+.PHONY: help install install-frontend install-backend local factoid test test-backend test-frontend test-rate-limit lint lint-backend lint-frontend
 
 help: ## Show available make targets
 	@awk -F ':.*## ' 'BEGIN {print "Available targets:"} /^[a-zA-Z0-9_-]+:.*##/ {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-install: ## Install backend dependencies
-	npm install
+install: install-backend install-frontend ## Install backend and frontend dependencies
+
+install-backend: ## Install backend dependencies via uv
+	cd backend && uv sync --extra dev
 
 install-frontend: ## Install frontend dependencies
 	cd ./frontend && npm install
@@ -23,8 +25,8 @@ test: ## Run all automated tests
 	$(MAKE) test-rate-limit
 
 test-backend: ## Run backend unit tests
-	@echo "Testing backend functions..."
-	node tests/backend/simpleRateLimit.test.mjs
+	@echo "Running Django backend tests..."
+	cd backend && uv run pytest
 
 test-frontend: ## Run frontend tests
 	@echo "Testing frontend components..."
@@ -45,7 +47,7 @@ lint: ## Run all linting
 
 lint-backend: ## Lint backend files
 	@echo "Linting backend files..."
-	npm run lint
+	cd backend && uv run ruff check .
 
 lint-frontend: ## Lint frontend files
 	@echo "Linting frontend files..."
