@@ -45,9 +45,9 @@
 
 ### Phase 2 – Domain & Services
 - [x] Define models: `Factoid`, `GenerationRequest`, `VoteAggregate`, `FactoidFeedback`, `RateLimitSnapshot`, `PaymentSession`, `ModelCache`, `ChatSession`, `ChatMessage`.
-- [ ] Implement OpenRouter client with model catalogue caching, parameter defaults, price metadata.
-- [ ] Harden rate limiting (Redis + Postgres audit) and cost guard service with configurable quotas.
-- [ ] Introduce layered abuse protection: signed anonymous session tokens, API key management, captcha hook, anomaly monitoring plan.
+- [x] Implement OpenRouter client with model catalogue caching, parameter defaults, price metadata.
+- [x] Harden rate limiting (Redis + Postgres audit) and cost guard service with configurable quotas.
+- [x] Introduce layered abuse protection: signed anonymous session tokens, API key management, captcha hook, anomaly monitoring plan.
 - [ ] Build Django admin + staff dashboards for monitoring usage, costs, rate limits.
 - [ ] Seed fixtures for local testing.
 
