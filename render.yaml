@@ -13,7 +13,7 @@ services:
       uv run gunicorn factoids_project.wsgi --bind 0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
-        value: "3.11"
+        value: "3.11.9"
       - key: DJANGO_SETTINGS_MODULE
         value: factoids_project.settings.production
       - key: DATABASE_URL
@@ -57,7 +57,7 @@ services:
       uv run python manage.py generate_factoid --client hourly-cron --profile anonymous
     envVars:
       - key: PYTHON_VERSION
-        value: "3.11"
+        value: "3.11.9"
       - key: DJANGO_SETTINGS_MODULE
         value: factoids_project.settings.production
       - key: DATABASE_URL
