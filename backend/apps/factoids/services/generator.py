@@ -11,6 +11,7 @@ from django.utils import timezone
 
 from apps.core.services import CostGuard, RateLimitConfig, RateLimitExceeded, get_rate_limiter
 from apps.factoids import models
+from apps.factoids.prompts import build_factoid_generation_prompt
 from apps.factoids.services.openrouter import GenerationRequestPayload, OpenRouterClient
 
 
@@ -91,12 +92,19 @@ def generate_factoid(
         generation_request.save(update_fields=["status", "completed_at", "actual_cost_usd"])
         return factoid
 
+    # Get recent factoids for context
+    recent_factoids = list(models.Factoid.objects.order_by('-created_at')[:10])
+    
+    # Build comprehensive prompt
+    prompt = build_factoid_generation_prompt(
+        topic=topic if topic else None,
+        recent_factoids=recent_factoids,
+        num_examples=5,
+    )
+    
     client = OpenRouterClient(api_key=api_key, base_url=settings.OPENROUTER_BASE_URL)
     payload = GenerationRequestPayload(
-        prompt=(
-            "You are Andy's Daily Factoid generator. Provide a concise, mind-blowing fact about "
-            f"{topic}. Respond as JSON with keys text, subject, emoji."
-        ),
+        prompt=prompt,
         model=resolved_model,
         temperature=temperature,
     )
