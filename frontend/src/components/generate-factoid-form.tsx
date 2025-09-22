@@ -16,6 +16,7 @@ export function GenerateFactoidForm({ models }: GenerateFactoidFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
@@ -102,40 +103,55 @@ export function GenerateFactoidForm({ models }: GenerateFactoidFormProps) {
       onSubmit={handleSubmit}
       className="mb-8 space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
     >
-      <div>
-        <label htmlFor="topic" className="block text-sm font-medium text-slate-700">
-          Topic (optional)
-        </label>
-        <input
-          id="topic"
-          type="text"
-          value={topic}
-          onChange={(event) => setTopic(event.target.value)}
-          placeholder="Space exploration, ancient history, surprising biology..."
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => setShowAdvanced(!showAdvanced)}
           disabled={isStreaming}
-          className="mt-1 w-full rounded-md border border-slate-200 p-2 text-sm text-slate-700 focus:border-slate-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
-        />
+          className="text-sm text-slate-600 hover:text-slate-900 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {showAdvanced ? "Hide options" : "Show options"} {showAdvanced ? "↑" : "↓"}
+        </button>
       </div>
 
-      <div>
-        <label htmlFor="model" className="block text-sm font-medium text-slate-700">
-          Model (optional)
-        </label>
-        <select
-          id="model"
-          value={modelKey ?? ""}
-          onChange={(event) => setModelKey(event.target.value || undefined)}
-          disabled={isStreaming}
-          className="mt-1 w-full rounded-md border border-slate-200 p-2 text-sm text-slate-700 focus:border-slate-400 focus:outline-none"
-        >
-          <option value="">Automatic selection</option>
-          {models.map((model) => (
-            <option key={model} value={model}>
-              {model}
-            </option>
-          ))}
-        </select>
-      </div>
+      {showAdvanced && (
+        <div className="space-y-4 border-t border-slate-100 pt-4">
+          <div>
+            <label htmlFor="topic" className="block text-sm font-medium text-slate-700">
+              Topic (optional)
+            </label>
+            <input
+              id="topic"
+              type="text"
+              value={topic}
+              onChange={(event) => setTopic(event.target.value)}
+              placeholder="Space exploration, ancient history, surprising biology..."
+              disabled={isStreaming}
+              className="mt-1 w-full rounded-md border border-slate-200 p-2 text-sm text-slate-700 focus:border-slate-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="model" className="block text-sm font-medium text-slate-700">
+              Model (optional)
+            </label>
+            <select
+              id="model"
+              value={modelKey ?? ""}
+              onChange={(event) => setModelKey(event.target.value || undefined)}
+              disabled={isStreaming}
+              className="mt-1 w-full rounded-md border border-slate-200 p-2 text-sm text-slate-700 focus:border-slate-400 focus:outline-none"
+            >
+              <option value="">Automatic selection</option>
+              {models.map((model) => (
+                <option key={model} value={model}>
+                  {model}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
 
       {error && <p className="text-sm text-rose-600">{error}</p>}
       {statusMessage && <p className="text-sm text-slate-600">{statusMessage}</p>}

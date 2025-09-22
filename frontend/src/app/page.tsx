@@ -1,5 +1,4 @@
 import { GenerateFactoidForm } from "@/components/generate-factoid-form";
-import { RateLimitBanner } from "@/components/rate-limit-banner";
 import { FactoidCard } from "@/components/factoid-card";
 import { fetchFactoids, fetchModels } from "@/lib/api";
 
@@ -17,8 +16,6 @@ export default async function HomePage() {
           generations.
         </p>
       </header>
-
-      <RateLimitBanner />
 
       <GenerateFactoidForm models={models} />
 

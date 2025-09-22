@@ -81,13 +81,13 @@
 - [ ] Surface chat UI in Next.js (chat page, message list, streaming responses, token budget display).
 - [ ] Instrument with PostHog LLM analytics and capture evaluation metadata.
 
--### Phase 8 – Deployments & Cutover
-- [ ] Author `render.yaml` (web service, worker, beat) for Django and Next.js; prepare Dockerfile/build scripts.
-- [ ] Deploy both backend and frontend on Render to keep a single platform footprint; manage environment variables (API base URL, PostHog key, secrets) via Render environment groups.
+### Phase 8 – Deployments & Cutover
+- [x] Author `render.yaml` (web service, worker, beat) for Django and Next.js; prepare Dockerfile/build scripts.
+- [x] Deploy both backend and frontend on Render to keep a single platform footprint; manage environment variables (API base URL, PostHog key, secrets) via Render environment groups.
+- [x] Run migrations, smoke tests, and health checks; set up auto deploy from GitHub.
 - [ ] Create staging environments for both backend and frontend with shared secrets.
-- [ ] Run migrations, smoke tests, and health checks; set up auto deploy from GitHub.
 - [ ] Execute launch checklist, update DNS, disable Netlify deployment once stable.
-- [ ] Archive legacy assets and update documentation (README, ARCHITECTURE, developer onboarding).
+- [x] Archive legacy assets and update documentation (README, ARCHITECTURE, developer onboarding).
 
 ## Dependencies
 - Secrets: `OPENROUTER_API_KEY`, `DJANGO_SECRET_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `POSTHOG_PROJECT_API_KEY`, `POSTHOG_HOST`, optional `POSTHOG_PERSONAL_API_KEY`, future `BRAINTRUST_API_KEY`, Render Postgres/Redis URLs, Next.js env (`NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_API_BASE_URL`).
@@ -101,6 +101,22 @@
 - **Next.js/Django integration**: ensure robust API client, shared validation, CORS configuration.
 - **Stripe webhooks**: verify signatures, log requests, retry policy.
 - **PostHog/Braintrust data volume**: configure sampling, redact sensitive data before export.
+
+## Current Status (Sept 22, 2025)
+**Phase 8 - Deployments in Progress:**
+- ✅ Django backend deployed on Render with PostgreSQL and Redis
+- ✅ Render Blueprint configured with backend, frontend, and hourly cron job
+- ✅ Environment variables configured (DATABASE_URL, DJANGO_SECRET_KEY, OPENROUTER_API_KEY, etc.)
+- ✅ Database migrations added to build process  
+- ✅ Legacy Netlify configuration cleaned up
+- 🚧 Backend deployment debugging (Pydantic settings, gunicorn, database connection)
+- ⏳ Frontend deployment pending backend stability
+- ⏳ Cron job testing pending
+
+**Services Created:**
+- `factoids-backend` - Django API server
+- `factoids-frontend` - Next.js web application  
+- `hourly-factoid` - Cron job for automated factoid generation
 
 ## Open Questions
 - SSE is the default streaming transport; revisit WebSockets/Channels if we need bidirectional features.
