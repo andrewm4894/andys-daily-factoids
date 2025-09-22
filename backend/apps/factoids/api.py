@@ -20,14 +20,14 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.services import CostGuard, InMemoryRateLimiter, RateLimitConfig, RateLimitExceeded
+from apps.core.services import CostGuard, RateLimitConfig, RateLimitExceeded, get_rate_limiter
 from apps.factoids import models, serializers
 from apps.factoids.services import GenerationRequestPayload, OpenRouterClient
 
 app_name = "factoids"
 
-# Naive in-memory rate limiter for local development.
-_rate_limiter = InMemoryRateLimiter()
+# Rate limiter (Redis when available, fallback to in-memory).
+_rate_limiter = get_rate_limiter()
 _cost_guard = CostGuard({"anonymous": 1.0, "api_key": 5.0})
 
 

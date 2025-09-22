@@ -8,18 +8,23 @@ import pytest
 from django.urls import reverse
 from rest_framework.test import APIClient
 
+from apps.core.services import InMemoryRateLimiter
+from apps.factoids import api as factoids_api
 from apps.factoids import models
-from apps.factoids.api import _cost_guard, _rate_limiter
 from apps.factoids.services import GenerationResult
 
 
 @pytest.fixture(autouse=True)
 def reset_rate_limiter_and_cost_guard():
-    _rate_limiter._buckets.clear()  # type: ignore[attr-defined]
-    _cost_guard.profile_usage = {profile: 0.0 for profile in _cost_guard.profile_budgets}
+    factoids_api._rate_limiter = InMemoryRateLimiter()
+    factoids_api._cost_guard.profile_usage = {
+        profile: 0.0 for profile in factoids_api._cost_guard.profile_budgets
+    }
     yield
-    _rate_limiter._buckets.clear()  # type: ignore[attr-defined]
-    _cost_guard.profile_usage = {profile: 0.0 for profile in _cost_guard.profile_budgets}
+    factoids_api._rate_limiter = InMemoryRateLimiter()
+    factoids_api._cost_guard.profile_usage = {
+        profile: 0.0 for profile in factoids_api._cost_guard.profile_budgets
+    }
 
 
 @pytest.mark.django_db()
