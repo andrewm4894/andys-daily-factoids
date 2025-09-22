@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-from django.core.management.base import BaseCommand
-
 from apps.factoids import models
-
+from django.core.management.base import BaseCommand
 
 SEED_FACTOIDS = [
     {
-        "text": "Honey never spoils; archaeologists have found pots of honey in ancient Egyptian tombs still perfectly edible.",
+        "text": (
+            "Honey never spoils; archaeologists have found pots of honey in ancient "
+            "Egyptian tombs still perfectly edible."
+        ),
         "subject": "Food",
         "emoji": "🍯",
     },

@@ -2,7 +2,7 @@ import type { Factoid, PaginatedResponse, RateLimitStatus } from "@/lib/types";
 
 const DEFAULT_BASE = "http://localhost:8000/api/factoids";
 
-const FACTOIDS_API_BASE =
+export const FACTOIDS_API_BASE =
   process.env.NEXT_PUBLIC_FACTOIDS_API_BASE?.replace(/\/$/, "") || DEFAULT_BASE;
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {

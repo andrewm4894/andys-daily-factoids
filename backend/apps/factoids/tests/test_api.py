@@ -99,3 +99,16 @@ def test_limits_endpoint_returns_status():
     assert response.status_code == 200
     assert "rate_limit" in data
     assert "cost_budget_remaining" in data
+
+
+@pytest.mark.django_db()
+@pytest.mark.parametrize("topic", ["sse-test"])
+def test_generate_stream_returns_events(settings, topic):
+    settings.OPENROUTER_API_KEY = None
+    client = APIClient()
+    url = reverse("factoids:generate-stream") + f"?topic={topic}"
+    response = client.get(url)
+    assert response.status_code == 200
+    assert response["Content-Type"] == "text/event-stream"
+    payload = b"".join(response.streaming_content)
+    assert b"event: factoid" in payload

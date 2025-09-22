@@ -54,14 +54,14 @@
 ### Phase 3 – Django API Layer
 - [x] Expose DRF endpoints (`/api/factoids`, `/api/factoids/generate`, `/api/factoids/{id}/vote`, `/api/models`, `/api/factoids/limits`) with API key + anonymous throttling.
 - [x] Extend voting API to optionally accept structured text feedback (`POST /api/factoids/feedback`) and store for analytics/evals.
-- [ ] Implement native Django SSE endpoints for generation status updates (`/api/factoids/streams/{id}`) using async views; document upgrade path to Channels/WebSockets if needed.
+- [x] Implement native Django SSE endpoints for generation status updates (`/api/factoids/generate/stream/`) using streaming responses; document upgrade path to Channels/WebSockets if needed.
 - [ ] Add OpenAPI schema (drf-spectacular) and developer docs.
 
 ### Phase 4 – Next.js Frontend Bootstrap
 - [x] Scaffold Next.js (TypeScript, App Router) project under `frontend/` with linting configured.
 - [x] Implement API client layer (fetch wrappers) with auth headers, error handling, rate-limit messaging.
 - [x] Build core pages/components: home feed, factoid cards, generate modal, vote interactions with optional text feedback capture, share/search actions.
-- [ ] Integrate SSE client for live generation updates; show spinners/errors gracefully.
+ - [x] Integrate SSE client for live generation updates; show spinners/errors gracefully.
 - [ ] Add PostHog JS snippet and align event names with backend analytics.
 
 ### Phase 5 – Monetisation, Analytics, & Safeguards
