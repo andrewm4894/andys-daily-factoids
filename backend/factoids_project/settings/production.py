@@ -28,7 +28,7 @@ ALLOWED_HOSTS = settings.allowed_hosts
 CORS_ALLOWED_ORIGINS = settings.cors_allowed_origins
 CORS_ALLOW_ALL_ORIGINS = False
 
-if not SECRET_KEY or SECRET_KEY == "development-secret-key":
+if not SECRET_KEY or SECRET_KEY == "development-secret-key":  # noqa: F405
     raise RuntimeError("DJANGO_SECRET_KEY must be set in production environment")
 
 if not ALLOWED_HOSTS:

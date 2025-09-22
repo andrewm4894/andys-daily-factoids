@@ -27,3 +27,7 @@ yarn-error.log*
 
 .env*
 !.env.example
+
+# Backend Python artifacts
+backend/.venv/
+backend/*.egg-info/

@@ -7,7 +7,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseSettings, Field, SettingsConfigDict, field_validator
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DEFAULT_ENV_FILE = BASE_DIR / ".env"

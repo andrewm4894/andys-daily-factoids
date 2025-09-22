@@ -64,7 +64,10 @@ ASGI_APPLICATION = "factoids_project.asgi.application"
 
 if settings.database_url:
     DATABASES = {
-        "default": dj_database_url.parse(settings.database_url, conn_max_age=settings.db_conn_max_age)
+        "default": dj_database_url.parse(
+            settings.database_url,
+            conn_max_age=settings.db_conn_max_age,
+        )
     }
 else:
     DATABASES = {
