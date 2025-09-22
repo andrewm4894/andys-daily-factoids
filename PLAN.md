@@ -44,7 +44,7 @@
 - [x] Document local setup (Make targets, sample `.env`, seed data).
 
 ### Phase 2 – Domain & Services
-- [ ] Define models: `Factoid`, `GenerationRequest`, `VoteAggregate`, `FactoidFeedback`, `RateLimitSnapshot`, `PaymentSession`, `ModelCache`, `ChatSession`, `ChatMessage`.
+- [x] Define models: `Factoid`, `GenerationRequest`, `VoteAggregate`, `FactoidFeedback`, `RateLimitSnapshot`, `PaymentSession`, `ModelCache`, `ChatSession`, `ChatMessage`.
 - [ ] Implement OpenRouter client with model catalogue caching, parameter defaults, price metadata.
 - [ ] Harden rate limiting (Redis + Postgres audit) and cost guard service with configurable quotas.
 - [ ] Introduce layered abuse protection: signed anonymous session tokens, API key management, captcha hook, anomaly monitoring plan.
