@@ -62,12 +62,19 @@ class OpenRouterClient:
         *,
         transport: httpx.BaseTransport | None = None,
     ) -> GenerationResult:
-        request_body = {
+        request_body: dict[str, Any] = {
             "model": payload.model,
-            "input": payload.prompt,
-            "max_tokens": payload.max_tokens,
-            "temperature": payload.temperature,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": payload.prompt,
+                }
+            ],
         }
+        if payload.max_tokens is not None:
+            request_body["max_tokens"] = payload.max_tokens
+        if payload.temperature is not None:
+            request_body["temperature"] = payload.temperature
         async with httpx.AsyncClient(
             base_url=self.base_url,
             headers=self._headers,
