@@ -1,0 +1,71 @@
+services:
+  - type: web
+    name: factoids-backend
+    env: python
+    plan: starter
+    buildCommand: |
+      pip install uv
+      cd backend
+      uv sync --extra dev --frozen
+      uv run python manage.py collectstatic --noinput
+    startCommand: |
+      cd backend
+      uv run gunicorn factoids_project.wsgi --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: DJANGO_SETTINGS_MODULE
+        value: factoids_project.settings.production
+      - key: DATABASE_URL
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: DJANGO_SECRET_KEY
+        sync: false
+    healthCheckPath: /api/factoids/
+
+  - type: web
+    name: factoids-frontend
+    env: node
+    plan: starter
+    buildCommand: |
+      cd frontend
+      npm install
+      npm run build
+    startCommand: |
+      cd frontend
+      npm run start -- --port $PORT
+    envVars:
+      - key: NEXT_PUBLIC_FACTOIDS_API_BASE
+        value: https://factoids-backend.onrender.com/api/factoids
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+
+jobs:
+  - type: cron
+    name: hourly-factoid
+    env: python
+    plan: starter
+    schedule: "0 * * * *"
+    buildCommand: |
+      pip install uv
+      cd backend
+      uv sync --extra dev --frozen
+    startCommand: |
+      cd backend
+      uv run python manage.py generate_factoid --client hourly-cron --profile anonymous
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: DJANGO_SETTINGS_MODULE
+        value: factoids_project.settings.production
+      - key: DATABASE_URL
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: DJANGO_SECRET_KEY
+        sync: false
