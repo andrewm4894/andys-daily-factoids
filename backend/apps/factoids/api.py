@@ -13,6 +13,7 @@ from django.db.models import F
 from django.http import StreamingHttpResponse
 from django.urls import include, path
 from django.utils import timezone
+from django.views import View
 from rest_framework import generics, mixins, routers, status, viewsets
 from rest_framework import serializers as drf_serializers
 from rest_framework.pagination import PageNumberPagination
@@ -239,7 +240,7 @@ class FactoidFeedbackCreateView(generics.CreateAPIView):
     queryset = models.FactoidFeedback.objects.all()
 
 
-class FactoidGenerationStreamView(APIView):
+class FactoidGenerationStreamView(View):
     """Server-sent events stream for generation status."""
 
     def get(self, request, *args, **kwargs):
@@ -291,6 +292,8 @@ class FactoidGenerationStreamView(APIView):
 
         response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
         response["Cache-Control"] = "no-cache"
+        response["X-Accel-Buffering"] = "no"
+        response["Connection"] = "keep-alive"
         return response
 
 
