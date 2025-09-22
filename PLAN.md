@@ -46,14 +46,14 @@
 ### Phase 2 – Domain & Services
 - [x] Define models: `Factoid`, `GenerationRequest`, `VoteAggregate`, `FactoidFeedback`, `RateLimitSnapshot`, `PaymentSession`, `ModelCache`, `ChatSession`, `ChatMessage`.
 - [x] Implement OpenRouter client with model catalogue caching, parameter defaults, price metadata.
-- [x] Harden rate limiting (Redis + Postgres audit) and cost guard service with configurable quotas.
+- [~] Harden rate limiting (Redis + Postgres audit) and cost guard service with configurable quotas. *(In-memory implementation in place; Redis integration deferred.)*
 - [x] Introduce layered abuse protection: signed anonymous session tokens, API key management, captcha hook, anomaly monitoring plan.
 - [ ] Build Django admin + staff dashboards for monitoring usage, costs, rate limits.
-- [ ] Seed fixtures for local testing.
+- [x] Seed fixtures for local testing.
 
 ### Phase 3 – Django API Layer
-- [ ] Expose DRF endpoints (`/api/factoids`, `/api/factoids/generate`, `/api/factoids/{id}/vote`, `/api/models`, `/api/factoids/requests/{id}`) with API key + anonymous throttling.
-- [ ] Extend voting API to optionally accept structured text feedback (`POST /api/factoids/{id}/feedback`) and store for analytics/evals.
+- [x] Expose DRF endpoints (`/api/factoids`, `/api/factoids/generate`, `/api/factoids/{id}/vote`, `/api/models`, `/api/factoids/limits`) with API key + anonymous throttling.
+- [x] Extend voting API to optionally accept structured text feedback (`POST /api/factoids/feedback`) and store for analytics/evals.
 - [ ] Implement native Django SSE endpoints for generation status updates (`/api/factoids/streams/{id}`) using async views; document upgrade path to Channels/WebSockets if needed.
 - [ ] Add OpenAPI schema (drf-spectacular) and developer docs.
 
