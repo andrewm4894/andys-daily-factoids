@@ -6,7 +6,7 @@ from apps.payments import models
 def test_payment_session_str():
     session = models.PaymentSession(
         stripe_session_id="sess_test",
-        status="created",
+        status=models.PaymentStatus.CREATED,
         amount=10,
         currency="usd",
     )

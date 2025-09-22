@@ -56,6 +56,7 @@ addopts = "--ds=factoids_project.settings.local"
 [tool.ruff]
 line-length = 100
 src = ["apps", "factoids_project"]
+extend-exclude = ["apps/*/migrations/*"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
