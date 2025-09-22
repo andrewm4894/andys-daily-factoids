@@ -1,4 +1,4 @@
-.PHONY: help install install-frontend install-backend local factoid test test-backend test-frontend test-rate-limit lint lint-backend lint-frontend
+.PHONY: help install install-frontend install-backend local factoid test test-backend test-frontend test-rate-limit lint lint-backend lint-frontend smoke-backend-api
 
 help: ## Show available make targets
 	@awk -F ':.*## ' 'BEGIN {print "Available targets:"} /^[a-zA-Z0-9_-]+:.*##/ {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -48,6 +48,9 @@ lint: ## Run all linting
 lint-backend: ## Lint backend files
 	@echo "Linting backend files..."
 	cd backend && uv run ruff check .
+
+smoke-backend-api: ## Hit the local factoid generation endpoint for a quick sanity check
+	cd backend && uv run python scripts/smoke_generate_factoid.py
 
 lint-frontend: ## Lint frontend files
 	@echo "Linting frontend files..."
