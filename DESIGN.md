@@ -28,6 +28,13 @@
 - Native Django async views using `StreamingHttpResponse`/ASGIResponse for SSE streaming (upgrade path to Channels/WebSockets documented).
 - Celery + Redis for async processing (factoid generation, chat tasks, scheduled jobs).
 - Structured logging (`structlog`), PostHog instrumentation, optional Sentry.
+- Configuration handled by Pydantic settings classes to centralise environment parsing and validation.
+
+## Environment & Dependency Management
+- Python toolchain managed with `uv` (pyproject and lockfile) for reproducible installs.
+- Pydantic settings classes load from environment or `.env` for local development; `sample.env` documents variables.
+- Separate settings modules (`local`, `production`, later `staging`) import shared base config object.
+- Secrets stored in Render environment groups; local development uses `.env` consumed by uv virtual environment activation.
 
 ## Frontend Architecture
 - Next.js 14 (App Router) with TypeScript.

@@ -38,7 +38,8 @@
 
 ### Phase 1 – Django Backend Bootstrap
 - [ ] Create Django project (`factoids_project`) and apps (`core`, `factoids`, `payments`, `analytics`, `chat`).
-- [ ] Configure settings split with `django-environ`; add dependencies (`djangorestframework`, `django-ratelimit`, `psycopg[binary]`, `httpx`, `stripe`, `django-cors-headers`, `whitenoise`, `pytest-django`, `structlog`, `langgraph`, `posthog`).
+- [ ] Manage Python environment with `uv` (pyproject + lockfile) and add core dependencies (`django`, `djangorestframework`, `django-ratelimit`, `psycopg[binary]`, `httpx`, `stripe`, `django-cors-headers`, `whitenoise`, `pytest-django`, `structlog`, `langgraph`, `posthog`, `pydantic`, `dj-database-url`).
+- [ ] Configure settings split leveraging Pydantic-based config helpers for environment management.
 - [ ] Establish lint/test tooling (pre-commit, mypy optional, GitHub Actions workflow).
 - [ ] Document local setup (Make targets, sample `.env`, seed data).
 
