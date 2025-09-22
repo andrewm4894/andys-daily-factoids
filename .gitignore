@@ -31,3 +31,4 @@ yarn-error.log*
 # Backend Python artifacts
 backend/.venv/
 backend/*.egg-info/
+**/__pycache__/
