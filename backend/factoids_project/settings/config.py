@@ -98,9 +98,9 @@ def get_settings(env_file: str | os.PathLike[str] | None = None) -> AppSettings:
                     cors_env = os.getenv("DJANGO_CORS_ALLOWED_ORIGINS", "")
                     self.cors_allowed_origins = [o.strip() for o in cors_env.split(",") if o.strip()] if cors_env else []
                     
-                    self.database_url = os.getenv("DJANGO_DATABASE_URL")
+                    self.database_url = os.getenv("DJANGO_DATABASE_URL") or os.getenv("DATABASE_URL")
                     self.db_conn_max_age = int(os.getenv("DJANGO_DB_CONN_MAX_AGE", "60"))
-                    self.openrouter_api_key = os.getenv("DJANGO_OPENROUTER_API_KEY")
+                    self.openrouter_api_key = os.getenv("DJANGO_OPENROUTER_API_KEY") or os.getenv("OPENROUTER_API_KEY")
                     self.openrouter_base_url = os.getenv("DJANGO_OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
                     
             return FallbackSettings()  # type: ignore
