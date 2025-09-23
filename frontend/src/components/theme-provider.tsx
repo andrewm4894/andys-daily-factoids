@@ -1,6 +1,14 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const THEME_STORAGE_KEY = "factoids-ui-theme";
 
@@ -53,10 +61,33 @@ function applyThemeToDocument(theme: ThemeName, mode: ThemeMode) {
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<ThemeName>("light");
   const [isReady, setIsReady] = useState(false);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const themeQuery = searchParams?.get("theme") ?? null;
 
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
+    }
+
+    if (isThemeName(themeQuery)) {
+      setThemeState(themeQuery);
+      setIsReady(true);
+      return;
+    }
+
+    if (themeQuery) {
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("theme");
+        const cleanedSearch = url.searchParams.toString();
+        router.replace(
+          `${url.pathname}${cleanedSearch ? `?${cleanedSearch}` : ""}${url.hash}`,
+          { scroll: false },
+        );
+      } catch (error) {
+        console.error("Failed to clean invalid theme query parameter", error);
+      }
     }
 
     const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
@@ -69,7 +100,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? false;
     setThemeState(prefersDark ? "dark" : "light");
     setIsReady(true);
-  }, []);
+  }, [router, themeQuery]);
 
   useEffect(() => {
     if (!isReady || typeof window === "undefined") {
@@ -81,9 +112,33 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     window.localStorage.setItem(THEME_STORAGE_KEY, theme);
   }, [isReady, theme]);
 
-  const setTheme = useCallback((nextTheme: ThemeName) => {
-    setThemeState(nextTheme);
-  }, []);
+  const setTheme = useCallback(
+    (nextTheme: ThemeName) => {
+      setThemeState(nextTheme);
+
+      if (typeof window === "undefined") {
+        return;
+      }
+
+      try {
+        const url = new URL(window.location.href);
+        const existing = url.searchParams.get("theme");
+        if (existing === nextTheme) {
+          return;
+        }
+        url.searchParams.set("theme", nextTheme);
+        const nextSearch = url.searchParams.toString();
+        const nextHash = url.hash;
+        router.replace(
+          `${url.pathname}${nextSearch ? `?${nextSearch}` : ""}${nextHash}`,
+          { scroll: false },
+        );
+      } catch (error) {
+        console.error("Failed to update theme query parameter", error);
+      }
+    },
+    [router],
+  );
 
   const contextValue = useMemo<ThemeContextValue>(
     () => ({ theme, setTheme, options: THEME_OPTIONS, isReady }),
