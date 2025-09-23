@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 
@@ -32,12 +33,19 @@ export function FactoidCard({
   const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
   const [linkCopyStatus, setLinkCopyStatus] = useState<"idle" | "copied">("idle");
+  const [showMetadataPopover, setShowMetadataPopover] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  const [metadataPosition, setMetadataPosition] = useState<{ top: number; left: number } | null>(
+    null,
+  );
   const copyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const linkCopyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const feedbackTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const feedbackFocusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  const metadataButtonRef = useRef<HTMLButtonElement | null>(null);
+  const metadataPopoverRef = useRef<HTMLDivElement | null>(null);
 
   const trimmedText = factoid.text.trim();
   const words = trimmedText === "" ? [] : trimmedText.split(/\s+/);
@@ -63,6 +71,7 @@ export function FactoidCard({
     setIsExpanded((previous) => {
       if (previous) {
         setShowFeedback(false);
+        setShowMetadataPopover(false);
         if (copyResetRef.current) {
           clearTimeout(copyResetRef.current);
           copyResetRef.current = null;
@@ -89,6 +98,8 @@ export function FactoidCard({
   };
 
   useEffect(() => {
+    setIsMounted(true);
+
     return () => {
       if (copyResetRef.current) {
         clearTimeout(copyResetRef.current);
@@ -99,8 +110,105 @@ export function FactoidCard({
       if (feedbackFocusTimeoutRef.current) {
         clearTimeout(feedbackFocusTimeoutRef.current);
       }
+      setShowMetadataPopover(false);
     };
   }, []);
+
+  const computeMetadataPosition = () => {
+    const button = metadataButtonRef.current;
+    if (!button) {
+      return;
+    }
+
+    const rect = button.getBoundingClientRect();
+    const width = 256; // matches w-64
+    const top = rect.bottom + window.scrollY + 8; // approx mt-2
+    const desiredLeft = rect.right + window.scrollX - width;
+    const maxLeft = window.scrollX + window.innerWidth - width - 8;
+    const left = Math.max(Math.min(desiredLeft, maxLeft), window.scrollX + 8);
+
+    setMetadataPosition({ top, left });
+  };
+
+  useEffect(() => {
+    if (!showMetadataPopover) {
+      return;
+    }
+
+    computeMetadataPosition();
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (
+        target &&
+        !metadataButtonRef.current?.contains(target) &&
+        !metadataPopoverRef.current?.contains(target)
+      ) {
+        setShowMetadataPopover(false);
+      }
+    };
+
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setShowMetadataPopover(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("resize", computeMetadataPosition);
+    window.addEventListener("scroll", computeMetadataPosition, true);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("resize", computeMetadataPosition);
+      window.removeEventListener("scroll", computeMetadataPosition, true);
+    };
+  }, [showMetadataPopover]);
+
+  const metadataEntries: { label: string; value: string }[] = [];
+  const metadata = factoid.generation_metadata;
+  if (metadata && typeof metadata === "object") {
+    const rawObject = metadata as Record<string, unknown>;
+    const modelValue = rawObject.model;
+    if (typeof modelValue === "string" && modelValue.trim() !== "") {
+      metadataEntries.push({ label: "Model", value: modelValue });
+    }
+    const otherKeys = Object.entries(rawObject).filter(
+      ([key]) => key !== "model" && key !== "raw",
+    );
+    for (const [key, value] of otherKeys) {
+      if (value == null) {
+        continue;
+      }
+      metadataEntries.push({ label: key, value: String(value) });
+    }
+    const rawValue = rawObject.raw;
+    if (rawValue && typeof rawValue === "object") {
+      const rawKeys = Object.entries(rawValue as Record<string, unknown>);
+      for (const [key, value] of rawKeys) {
+        if (value == null) {
+          continue;
+        }
+        const formatted = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+        metadataEntries.push({ label: `raw.${key}`, value: formatted });
+      }
+    }
+  }
+  if (typeof factoid.cost_usd === "number") {
+    metadataEntries.push({
+      label: "Cost (USD)",
+      value: factoid.cost_usd.toFixed(4),
+    });
+  }
+  const createdDate = new Date(factoid.created_at);
+  if (!Number.isNaN(createdDate.getTime())) {
+    metadataEntries.push({
+      label: "Created",
+      value: createdDate.toLocaleString(),
+    });
+  }
 
   const handleVote = async (vote: "up" | "down") => {
     try {
@@ -366,6 +474,62 @@ export function FactoidCard({
                   <span aria-hidden>💬</span>
                   <span className="sr-only">Chat</span>
                 </button>
+                <div className="relative">
+                  <button
+                    type="button"
+                    ref={metadataButtonRef}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setShowMetadataPopover((previous) => {
+                        const next = !previous;
+                        if (next) {
+                          computeMetadataPosition();
+                        }
+                        return next;
+                      });
+                    }}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--surface-card-border)] text-[color:var(--text-secondary)] hover:bg-[color:var(--surface-muted)]"
+                    aria-label="View factoid details"
+                    aria-expanded={showMetadataPopover}
+                    title="Factoid details"
+                  >
+                    <span aria-hidden>ℹ️</span>
+                    <span className="sr-only">Details</span>
+                  </button>
+                  {isMounted && showMetadataPopover && metadataPosition &&
+                    createPortal(
+                      <div
+                        ref={metadataPopoverRef}
+                        className="z-50 w-64 max-w-xs rounded-md border border-[color:var(--surface-card-border)] bg-[color:var(--surface-card)] p-3 text-xs text-[color:var(--text-secondary)] shadow-lg"
+                        role="dialog"
+                        aria-label="Factoid details"
+                        style={{
+                          position: "absolute",
+                          top: metadataPosition.top,
+                          left: metadataPosition.left,
+                        }}
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        {metadataEntries.length === 0 ? (
+                          <p>No additional metadata available.</p>
+                        ) : (
+                          <dl className="max-h-60 space-y-2 overflow-y-auto">
+                            {metadataEntries.map(({ label, value }, index) => (
+                              <div key={`${label}-${index}`}>
+                                <dt className="font-medium text-[color:var(--text-primary)]">
+                                  {label}
+                                </dt>
+                                <dd className="whitespace-pre-wrap break-words">
+                                  {value}
+                                </dd>
+                              </div>
+                            ))}
+                          </dl>
+                        )}
+                      </div>,
+                      document.body,
+                    )}
+                </div>
               </div>
             </div>
 
@@ -398,38 +562,41 @@ export function FactoidCard({
         </>
       )}
       </div>
-      {showChatModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Chat coming soon"
-          onClick={(event) => {
-            event.stopPropagation();
-            setShowChatModal(false);
-          }}
-        >
+      {isMounted &&
+        showChatModal &&
+        createPortal(
           <div
-            className="w-full max-w-sm rounded-lg border border-[color:var(--surface-card-border)] bg-[color:var(--surface-card)] p-6 shadow-xl"
-            onClick={(event) => event.stopPropagation()}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Chat coming soon"
+            onClick={(event) => {
+              event.stopPropagation();
+              setShowChatModal(false);
+            }}
           >
-            <h2 className="text-lg font-semibold text-[color:var(--text-primary)]">Chat coming soon</h2>
-            <p className="mt-2 text-sm text-[color:var(--text-muted)]">
-              Chatting with our AI overlords is almost here. Thanks for your patience!
-            </p>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                setShowChatModal(false);
-              }}
-              className="mt-4 w-full rounded-md bg-[color:var(--button-primary-bg)] px-3 py-2 text-sm font-medium text-[color:var(--button-primary-text)] transition-colors hover:bg-[color:var(--button-primary-hover)]"
+            <div
+              className="w-full max-w-sm rounded-lg border border-[color:var(--surface-card-border)] bg-[color:var(--surface-card)] p-6 shadow-xl"
+              onClick={(event) => event.stopPropagation()}
             >
-              Got it
-            </button>
-          </div>
-        </div>
-      )}
+              <h2 className="text-lg font-semibold text-[color:var(--text-primary)]">Chat coming soon</h2>
+              <p className="mt-2 text-sm text-[color:var(--text-muted)]">
+                Chatting with our AI overlords is almost here. Thanks for your patience!
+              </p>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setShowChatModal(false);
+                }}
+                className="mt-4 w-full rounded-md bg-[color:var(--button-primary-bg)] px-3 py-2 text-sm font-medium text-[color:var(--button-primary-text)] transition-colors hover:bg-[color:var(--button-primary-hover)]"
+              >
+                Got it
+              </button>
+            </div>
+          </div>,
+          document.body,
+        )}
     </article>
   );
 }
