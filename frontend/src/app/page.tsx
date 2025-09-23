@@ -22,7 +22,7 @@ export default async function HomePage() {
             </Link>
           </h1>
           <p className="text-base text-[color:var(--text-secondary)]">
-            mind blowing and sometimes 'meh' factoids from our AI overlords!
+            mind blowing and sometimes &apos;meh&apos; factoids from our AI overlords!
           </p>
         </div>
         <div className="flex items-center gap-3">
