@@ -1,61 +1,60 @@
 # GitHub Workflows
 
-This directory contains GitHub Actions workflows for automated testing, deployment, and code quality checks.
+This directory contains GitHub Actions workflows for automated testing, deployment, and code quality checks for the Django + Next.js architecture.
 
 ## Workflows
 
-### 1. Test Suite (`test.yml`)
+### 1. Test Suite (`tests.yml`)
 Runs the complete test suite including:
-- Frontend tests with React Testing Library
-- Backend validation for Netlify Functions
-- Integration tests
-- Coverage reporting
+- **Frontend Tests**: Next.js application linting and build validation
+- **Backend Tests**: Django unit tests with pytest, migrations, and smoke tests
+- **Integration Tests**: API endpoint validation against Django backend
+- **Legacy Tests**: JavaScript test framework compatibility checks
 
 **Triggers:**
 - Push to `main` or `develop` branches
 - Pull requests to `main` or `develop` branches
 
 **Matrix Strategy:**
-- Tests on Node.js 18.x and 20.x
-- Ensures compatibility across Node versions
+- Frontend: Node.js 18.x and 20.x
+- Backend: Python 3.10, 3.11, and 3.12
+- Ensures compatibility across Node and Python versions
 
-### 2. Deploy (`deploy.yml`)
-Automated deployment to Netlify:
-- Runs tests before deployment
-- Builds the frontend application
-- Validates Netlify Functions
-- Deploys to production
-
-**Triggers:**
-- Push to `main` branch
-- Manual workflow dispatch
-
-**Requirements:**
-- `NETLIFY_AUTH_TOKEN` secret
-- `NETLIFY_SITE_ID` secret
-
-### 3. Code Quality (`code-quality.yml`)
+### 2. Linting (`lint.yml`)
 Comprehensive code quality checks:
-- ESLint validation
-- Code formatting checks
-- Security audits
-- Dependency checks
-- Netlify Functions validation
+- **Frontend Linting**: ESLint validation and formatting checks
+- **Backend Linting**: Ruff linting, formatting, and MyPy type checking
+- **Security Audits**: npm audit and Python safety checks
+- **Dependency Checks**: Outdated package detection for both frontend and backend
+- **Secret Detection**: Scans for hardcoded secrets in Python code
 
 **Triggers:**
 - Push to `main` or `develop` branches
 - Pull requests to `main` or `develop` branches
+
+### 3. Generate Factoid (`generate-factoid.yml`)
+Automated factoid generation:
+- Runs daily at 6 AM UTC
+- Generates new factoids via Django management command
+- Updates the database with fresh content
+
+**Triggers:**
+- Scheduled: Daily at 6:00 AM UTC
+- Manual workflow dispatch
 
 ## Setup
 
 ### Required Secrets
 Add these secrets to your GitHub repository settings:
 
-1. **NETLIFY_AUTH_TOKEN**: Your Netlify personal access token
-2. **NETLIFY_SITE_ID**: Your Netlify site ID
+1. **OPENAI_API_KEY**: For AI-powered factoid generation
+2. **POSTHOG_API_KEY**: For analytics tracking
+3. **STRIPE_SECRET_KEY**: For payment processing
+4. **DATABASE_URL**: PostgreSQL connection string for production
 
 ### Optional Secrets
-- **CODECOV_TOKEN**: For coverage reporting (if using Codecov)
+- **FACTOIDS_API_BASE**: Base URL for API testing (defaults to production)
+- **FACTOIDS_API_KEY**: API key for endpoint authentication
 
 ## Local Development
 
@@ -65,17 +64,40 @@ To run the same checks locally:
 # Run all tests
 make test
 
-# Run linting
+# Run all linting
 make lint
 
-# Run frontend tests
-cd frontend && npm test
+# Run backend tests only
+make test-backend
 
-# Validate Netlify Functions
-for file in netlify/functions/*.js; do
-  node -c "$file"
-done
+# Run frontend linting only
+make test-frontend
+
+# Run integration tests
+make test-integration
+
+# Run backend linting
+make lint-backend
+
+# Run frontend linting
+make lint-frontend
+
+# Run Django migrations
+make migrate-backend
+
+# Generate a factoid locally
+make test-generate-factoid
 ```
+
+## Architecture
+
+This project uses a **Django + Next.js** architecture:
+
+- **Backend**: Django REST API with PostgreSQL database
+- **Frontend**: Next.js application with TypeScript
+- **Package Management**: uv for Python, npm for Node.js
+- **Testing**: pytest for Django, ESLint for Next.js
+- **Linting**: ruff + mypy for Python, ESLint for JavaScript
 
 ## Workflow Status
 
@@ -88,13 +110,15 @@ Workflows will show status badges on:
 
 ### Common Issues
 
-1. **Test failures**: Check the Actions tab for detailed logs
-2. **Deployment failures**: Verify Netlify secrets are set correctly
-3. **Linting errors**: Run `npm run lint --fix` locally
-4. **Node version issues**: Ensure local Node version matches workflow
+1. **Backend test failures**: Check Django logs in Actions tab
+2. **Frontend build failures**: Verify Node.js version compatibility
+3. **Python dependency issues**: Ensure uv is properly configured
+4. **Database migration failures**: Check Django settings and database connection
+5. **Linting errors**: Run `make lint` locally to see detailed errors
 
 ### Getting Help
 
 - Check the Actions tab in GitHub for detailed logs
 - Review the workflow files in this directory
 - Ensure all required secrets are configured
+- Verify local environment matches CI environment (Python 3.11+, Node 18+)

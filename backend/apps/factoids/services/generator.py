@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass
 from typing import Any, Optional
 
@@ -16,6 +17,7 @@ from apps.factoids.prompts import build_factoid_generation_prompt
 from apps.factoids.services.openrouter import (
     DEFAULT_FACTOID_MODEL,
     GenerationResult,
+    fetch_openrouter_models,
     generate_factoid_completion,
 )
 
@@ -80,7 +82,11 @@ def generate_factoid(
     if not api_key:
         raise GenerationFailedError("OpenRouter API key is not configured")
 
-    resolved_model = model_key or DEFAULT_FACTOID_MODEL
+    resolved_model = _resolve_model_key(
+        model_key,
+        api_key=api_key,
+        base_url=settings.OPENROUTER_BASE_URL,
+    )
 
     generation_request = models.GenerationRequest.objects.create(
         client_hash=client_hash,
@@ -212,6 +218,40 @@ def _persist_factoid(
         generation_metadata={"model": model_key, "raw": result.raw},
     )
     return factoid
+
+
+def _resolve_model_key(
+    preferred_model: Optional[str],
+    *,
+    api_key: str,
+    base_url: str,
+) -> str:
+    if preferred_model:
+        return preferred_model
+
+    random_model = _random_openrouter_model(api_key=api_key, base_url=base_url)
+    if random_model:
+        return random_model
+
+    return DEFAULT_FACTOID_MODEL
+
+
+def _random_openrouter_model(*, api_key: str, base_url: str) -> Optional[str]:
+    try:
+        models_payload = fetch_openrouter_models(api_key=api_key, base_url=base_url)
+    except Exception:  # pragma: no cover - network/introspection failure
+        return None
+
+    candidates = [
+        item.get("id")
+        for item in models_payload
+        if isinstance(item, dict) and isinstance(item.get("id"), str)
+    ]
+
+    if not candidates:
+        return None
+
+    return random.choice(candidates)
 
 
 __all__ = [
