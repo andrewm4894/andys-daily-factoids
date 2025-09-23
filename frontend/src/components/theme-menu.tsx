@@ -52,6 +52,7 @@ export function ThemeMenu() {
         aria-haspopup="menu"
         aria-expanded={isOpen}
         disabled={!isReady}
+        title="Play with some fancy themes"
       >
         <span aria-hidden className="text-base leading-none">
           {current.icon}

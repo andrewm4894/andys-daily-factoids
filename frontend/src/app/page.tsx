@@ -31,6 +31,7 @@ export default async function HomePage() {
             target="_blank"
             rel="noreferrer"
             aria-label="Open GitHub repository"
+            title="See the code"
             className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--surface-card-border)] bg-[color:var(--surface-card)] text-[color:var(--text-secondary)] shadow-sm transition-colors hover:border-[color:var(--surface-card-border-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-outline)]"
           >
             <span aria-hidden className="text-base">
