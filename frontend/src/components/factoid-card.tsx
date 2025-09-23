@@ -321,7 +321,7 @@ export function FactoidCard({ factoid, initiallyExpanded = false }: FactoidCardP
                   aria-label="Copy link to this factoid"
                   title="Copy link"
                 >
-                  <span aria-hidden>{linkCopyStatus === "copied" ? "🔗" : "🌐"}</span>
+                  <span aria-hidden>{linkCopyStatus === "copied" ? "✅" : "🔗"}</span>
                   <span className="sr-only">
                     {linkCopyStatus === "copied" ? "Link copied" : "Copy link"}
                   </span>
