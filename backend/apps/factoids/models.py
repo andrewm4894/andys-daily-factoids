@@ -117,7 +117,7 @@ class GenerationRequest(models.Model):
 
 
 class VoteAggregate(models.Model):
-    """Records an individual client's vote to enforce one vote per factoid."""
+    """Records individual vote events from clients for analytics and auditing."""
 
     factoid = models.ForeignKey(Factoid, related_name="votes", on_delete=models.CASCADE)
     client_hash = models.CharField(max_length=128)
@@ -125,12 +125,6 @@ class VoteAggregate(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["factoid", "client_hash"],
-                name="unique_factoid_vote",
-            )
-        ]
         indexes = [models.Index(fields=["factoid", "created_at"])]
 
     def __str__(self) -> str:  # pragma: no cover - trivial

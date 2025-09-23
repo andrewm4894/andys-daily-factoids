@@ -7,7 +7,6 @@ import json
 from typing import Any
 
 from django.conf import settings
-from django.db import IntegrityError
 from django.db.models import F
 from django.http import StreamingHttpResponse
 from django.urls import include, path
@@ -18,7 +17,12 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.services import CostGuard, get_rate_limiter
+from apps.core.services import (
+    CostGuard,
+    RateLimitConfig,
+    RateLimitExceeded,
+    get_rate_limiter,
+)
 from apps.factoids import models, serializers
 from apps.factoids.services.generator import (
     CostBudgetExceededError,
@@ -107,6 +111,8 @@ class FactoidVoteSerializer(drf_serializers.Serializer):
 
 
 class FactoidVoteView(APIView):
+    rate_limit_config = RateLimitConfig(window_seconds=60, limit=50)
+
     def post(self, request, pk: str) -> Response:
         serializer = FactoidVoteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -118,14 +124,20 @@ class FactoidVoteView(APIView):
             return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
 
         client_hash = _client_hash(request)
+        bucket = f"factoid_vote:{client_hash}"
         try:
-            models.VoteAggregate.objects.create(
-                factoid=factoid,
-                client_hash=client_hash,
-                vote_type=vote,
+            _rate_limiter.check(bucket, self.rate_limit_config)
+        except RateLimitExceeded as exc:
+            return Response(
+                {"detail": "Vote rate limit exceeded", "retry_after": exc.retry_after},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
             )
-        except IntegrityError:
-            return Response({"detail": "Already voted"}, status=status.HTTP_400_BAD_REQUEST)
+
+        models.VoteAggregate.objects.create(
+            factoid=factoid,
+            client_hash=client_hash,
+            vote_type=vote,
+        )
 
         if vote == models.VoteType.UP:
             models.Factoid.objects.filter(pk=factoid.pk).update(votes_up=F("votes_up") + 1)

@@ -8,15 +8,20 @@ def test_factoid_string_representation():
     assert "Example" in str(factoid)
 
 
-def test_vote_aggregate_unique_constraint(db):
+def test_vote_aggregate_allows_multiple_entries(db):
     factoid = models.Factoid.objects.create(text="Example")
     models.VoteAggregate.objects.create(
         factoid=factoid,
         client_hash="hash",
         vote_type=models.VoteType.UP,
     )
+    models.VoteAggregate.objects.create(
+        factoid=factoid,
+        client_hash="hash",
+        vote_type=models.VoteType.DOWN,
+    )
 
-    assert models.VoteAggregate.objects.filter(factoid=factoid).count() == 1
+    assert models.VoteAggregate.objects.filter(factoid=factoid).count() == 2
 
 
 def test_generation_request_defaults():

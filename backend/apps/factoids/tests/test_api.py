@@ -9,7 +9,7 @@ import pytest
 from django.urls import reverse
 from rest_framework.test import APIClient
 
-from apps.core.services import InMemoryRateLimiter
+from apps.core.services import InMemoryRateLimiter, RateLimitConfig
 from apps.core.services import rate_limits as rate_limit_module
 from apps.factoids import api as factoids_api
 from apps.factoids import models
@@ -86,12 +86,37 @@ def test_factoid_generation_invokes_openrouter(settings):
 
 
 @pytest.mark.django_db()
-def test_vote_endpoint_blocks_duplicate_votes():
+def test_vote_endpoint_allows_multiple_votes():
     factoid = models.Factoid.objects.create(text="Example", subject="Science", emoji="🧠")
     client = APIClient()
     url = reverse("factoids:vote", args=[factoid.id])
-    assert client.post(url, {"vote": models.VoteType.UP}, format="json").status_code == 200
-    assert client.post(url, {"vote": models.VoteType.UP}, format="json").status_code == 400
+
+    first_response = client.post(url, {"vote": models.VoteType.UP}, format="json")
+    assert first_response.status_code == 200
+    assert first_response.json()["votes_up"] == 1
+
+    second_response = client.post(url, {"vote": models.VoteType.UP}, format="json")
+    assert second_response.status_code == 200
+    assert second_response.json()["votes_up"] == 2
+
+
+@pytest.mark.django_db()
+def test_vote_endpoint_enforces_rate_limit(monkeypatch):
+    factoid = models.Factoid.objects.create(text="Example", subject="Science", emoji="🧠")
+    client = APIClient()
+    url = reverse("factoids:vote", args=[factoid.id])
+
+    original_config = factoids_api.FactoidVoteView.rate_limit_config
+    factoids_api.FactoidVoteView.rate_limit_config = RateLimitConfig(window_seconds=60, limit=1)
+    try:
+        assert client.post(url, {"vote": models.VoteType.UP}, format="json").status_code == 200
+        response = client.post(url, {"vote": models.VoteType.UP}, format="json")
+        assert response.status_code == 429
+        data = response.json()
+        assert data["detail"] == "Vote rate limit exceeded"
+        assert "retry_after" in data
+    finally:
+        factoids_api.FactoidVoteView.rate_limit_config = original_config
 
 
 @pytest.mark.django_db()

@@ -43,7 +43,8 @@ This document captures the detailed Django ORM schema planned for Phase 2.
 - `client_hash`: `CharField(max_length=128)`
 - `vote_type`: `CharField(choices=("up", "down"), max_length=8)`
 - `created_at`: `DateTimeField(auto_now_add=True)`
-- Unique constraint on (`factoid`, `client_hash`)
+- Index on (`factoid`, `created_at`)
+- Stores every vote event for downstream analytics while application logic applies rate limits
 
 ### FactoidFeedback
 - `id`: `BigAutoField`
