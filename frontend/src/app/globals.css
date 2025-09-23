@@ -28,6 +28,7 @@
   --shadow-soft: 0 22px 45px -25px rgba(15, 23, 42, 0.3);
   --chip-muted-bg: rgba(15, 23, 42, 0.06);
   --chip-muted-text: #1e293b;
+  --font-body: Arial, Helvetica, sans-serif;
 }
 
 :root[data-theme="dark"] {
@@ -58,6 +59,7 @@
   --shadow-soft: 0 26px 52px -28px rgba(8, 47, 73, 0.7);
   --chip-muted-bg: rgba(148, 163, 184, 0.22);
   --chip-muted-text: #e2e8f0;
+  --font-body: var(--font-geist-sans);
 }
 
 :root[data-theme="aurora"] {
@@ -88,6 +90,7 @@
   --shadow-soft: 0 28px 60px -28px rgba(59, 7, 100, 0.75);
   --chip-muted-bg: rgba(59, 130, 246, 0.28);
   --chip-muted-text: #e0f2fe;
+  --font-body: var(--font-geist-sans);
 }
 
 :root[data-theme="matrix"] {
@@ -118,6 +121,7 @@
   --shadow-soft: 0 28px 60px -26px rgba(5, 84, 60, 0.65);
   --chip-muted-bg: rgba(16, 185, 129, 0.22);
   --chip-muted-text: #bbf7d0;
+  --font-body: "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", "Courier New", monospace;
 }
 
 :root[data-theme="matrix"] .factoid-card {
@@ -190,6 +194,7 @@
   --shadow-soft: 0 26px 52px -26px rgba(236, 72, 153, 0.45);
   --chip-muted-bg: rgba(236, 72, 153, 0.16);
   --chip-muted-text: #5b21b6;
+  --font-body: var(--font-geist-sans);
 }
 
 :root[data-theme="rainbow"] .rainbow-card-0 {
