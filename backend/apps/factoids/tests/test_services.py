@@ -9,8 +9,9 @@ import httpx
 import pytest
 
 from apps.factoids import models
-from apps.factoids.services.generator import _build_callbacks
+from apps.factoids.services.generator import _build_callbacks, _resolve_model_key
 from apps.factoids.services.openrouter import (
+    DEFAULT_FACTOID_MODEL,
     GenerationResult,
     fetch_openrouter_models,
     generate_factoid_completion,
@@ -58,6 +59,21 @@ def test_generate_factoid_completion_parses_content(content):
     assert result.emoji == "🧠"
 
 
+def test_generate_factoid_completion_requires_valid_json():
+    with patch("apps.factoids.services.openrouter.ChatOpenAI") as mock_chat_cls:
+        mock_chat = mock_chat_cls.return_value
+        mock_chat.invoke.return_value = _fake_message("not json")
+
+        with pytest.raises(ValueError):
+            generate_factoid_completion(
+                api_key="key",
+                base_url="https://example.com",
+                model="model",
+                temperature=None,
+                prompt="Tell me",
+            )
+
+
 def test_fetch_openrouter_models_uses_transport():
     transport = httpx.MockTransport(
         lambda request: httpx.Response(200, json={"data": [{"id": "model-1"}]})
@@ -93,3 +109,32 @@ def test_build_callbacks_uses_distinct_id_and_properties(mock_handler):
     _, kwargs = mock_handler.call_args
     assert kwargs["distinct_id"] == "ph-user"
     assert kwargs["properties"]["foo"] == "bar"
+
+
+@patch("apps.factoids.services.generator.fetch_openrouter_models")
+@patch("apps.factoids.services.generator.random.choice")
+def test_resolve_model_key_returns_random_choice(mock_choice, mock_fetch):
+    mock_fetch.return_value = [{"id": "model-a"}, {"id": "model-b"}]
+    mock_choice.return_value = "model-b"
+
+    result = _resolve_model_key(None, api_key="key", base_url="https://example.com")
+
+    assert result == "model-b"
+    mock_choice.assert_called_once_with(["model-a", "model-b"])
+
+
+@patch("apps.factoids.services.generator.fetch_openrouter_models", side_effect=Exception("boom"))
+@patch("apps.factoids.services.generator.random.choice")
+def test_resolve_model_key_falls_back_to_default(mock_choice, mock_fetch):
+    result = _resolve_model_key(None, api_key="key", base_url="https://example.com")
+
+    assert result == DEFAULT_FACTOID_MODEL
+    mock_choice.assert_not_called()
+
+
+@patch("apps.factoids.services.generator.fetch_openrouter_models")
+def test_resolve_model_key_returns_preferred_when_provided(mock_fetch):
+    result = _resolve_model_key("user-model", api_key="key", base_url="https://example.com")
+
+    assert result == "user-model"
+    mock_fetch.assert_not_called()

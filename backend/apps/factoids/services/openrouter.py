@@ -11,6 +11,7 @@ import httpx
 from langchain_core.messages import BaseMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
+from pydantic import BaseModel, ValidationError
 
 DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_FACTOID_MODEL = "openai/gpt-4o-mini"
@@ -27,6 +28,12 @@ class GenerationResult:
     subject: str
     emoji: str
     raw: dict[str, Any]
+
+
+class FactoidPayload(BaseModel):
+    text: str
+    subject: str
+    emoji: str
 
 
 def generate_factoid_completion(
@@ -89,14 +96,16 @@ def fetch_openrouter_models(
 def _extract_factoid_fields(message: BaseMessage) -> tuple[str, str, str]:
     content = _normalise_content(message.content)
     try:
-        parsed = json.loads(content)
-    except json.JSONDecodeError:
-        parsed = {"text": content, "subject": "", "emoji": ""}
+        data = json.loads(content)
+    except json.JSONDecodeError as exc:
+        raise ValueError("Model response did not contain valid JSON") from exc
 
-    text = str(parsed.get("text") or content)
-    subject = str(parsed.get("subject", ""))
-    emoji = str(parsed.get("emoji", ""))
-    return text, subject, emoji
+    try:
+        payload = FactoidPayload.model_validate(data)
+    except ValidationError as exc:
+        raise ValueError("Model response is missing required factoid fields") from exc
+
+    return payload.text.strip(), payload.subject.strip(), payload.emoji.strip()
 
 
 def _normalise_content(content: Any) -> str:
