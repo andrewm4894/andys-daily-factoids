@@ -24,6 +24,7 @@ function shuffleFactoids(factoids: Factoid[]): Factoid[] {
 export function HomeContent({ initialFactoids, models }: HomeContentProps) {
   const [factoids, setFactoids] = useState<Factoid[]>(initialFactoids);
   const [isShuffling, setIsShuffling] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
 
   useEffect(() => {
     setFactoids(initialFactoids);
@@ -61,9 +62,19 @@ export function HomeContent({ initialFactoids, models }: HomeContentProps) {
         models={models}
         onShuffle={handleShuffle}
         shuffleLoading={isShuffling}
+        onGenerationError={setGenerationError}
       />
 
       <section className="space-y-4">
+        {generationError && (
+          <div
+            role="alert"
+            className="rounded-md border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900 shadow-sm"
+          >
+            <p className="font-semibold">Factoid generation failed</p>
+            <p className="mt-1 text-rose-800">{generationError}</p>
+          </div>
+        )}
         {factoids.map((factoid, index) => (
           <FactoidCard
             key={factoid.id}

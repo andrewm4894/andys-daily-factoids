@@ -10,42 +10,56 @@ interface GenerateFactoidFormProps {
   models: string[];
   onShuffle?: () => void;
   shuffleLoading?: boolean;
+  onGenerationError?: (message: string | null) => void;
 }
+
+type GenerationStatus = "idle" | "starting" | "success" | "error";
 
 export function GenerateFactoidForm({
   models,
   onShuffle,
   shuffleLoading = false,
+  onGenerationError,
 }: GenerateFactoidFormProps) {
   const router = useRouter();
   const [topic, setTopic] = useState("");
   const [modelKey, setModelKey] = useState<string | undefined>(undefined);
   const [isStreaming, setIsStreaming] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [toast, setToast] = useState<
-    { message: string; tone: "info" | "success" | "error" } | null
-  >(null);
+  const [status, setStatus] = useState<GenerationStatus>("idle");
   const eventSourceRef = useRef<EventSource | null>(null);
+  const statusResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
       eventSourceRef.current?.close();
+      if (statusResetRef.current) {
+        clearTimeout(statusResetRef.current);
+      }
     };
   }, []);
 
-  useEffect(() => {
-    if (!toast) {
-      return;
+  const clearStatusReset = () => {
+    if (statusResetRef.current) {
+      clearTimeout(statusResetRef.current);
+      statusResetRef.current = null;
     }
-    const timeout = setTimeout(() => setToast(null), 3000);
-    return () => clearTimeout(timeout);
-  }, [toast]);
+  };
+
+  const scheduleStatusReset = () => {
+    clearStatusReset();
+    statusResetRef.current = setTimeout(() => {
+      setStatus("idle");
+    }, 2500);
+  };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     eventSourceRef.current?.close();
 
-    setToast({ message: "Starting generation…", tone: "info" });
+    clearStatusReset();
+    setStatus("starting");
+    onGenerationError?.(null);
 
     posthog.capture("factoid_generation_started", {
       topic: topic || "random",
@@ -117,20 +131,24 @@ export function GenerateFactoidForm({
 
     if (typeof window === "undefined" || typeof EventSource === "undefined") {
       setIsStreaming(true);
-      setToast({ message: "Generating factoid…", tone: "info" });
       generateFactoid(topic, modelKey, {
         posthogDistinctId,
         posthogProperties: hasPosthogProperties ? posthogProperties : undefined,
       })
         .then(() => {
-          setToast({ message: "Factoid generated!", tone: "success" });
+          setStatus("success");
+          scheduleStatusReset();
           setTopic("");
           router.refresh();
+          onGenerationError?.(null);
         })
         .catch((err) => {
+          console.error("Failed to generate factoid", err);
           const detail =
             err instanceof Error ? err.message : "Failed to generate factoid";
-          setToast({ message: detail, tone: "error" });
+          setStatus("error");
+          scheduleStatusReset();
+          onGenerationError?.(detail);
         })
         .finally(() => {
           setIsStreaming(false);
@@ -139,7 +157,6 @@ export function GenerateFactoidForm({
     }
 
     setIsStreaming(true);
-    setToast({ message: "Generating factoid…", tone: "info" });
 
     const eventSource = new EventSource(streamUrl);
     eventSourceRef.current = eventSource;
@@ -147,18 +164,18 @@ export function GenerateFactoidForm({
     eventSource.addEventListener("status", (message: MessageEvent<string>) => {
       try {
         const data = JSON.parse(message.data) as { state?: string };
-        if (data.state) {
-          setToast({ message: data.state, tone: "info" });
-        } else {
-          setToast({ message: "Generating factoid…", tone: "info" });
+        if (!data.state) {
+          setStatus("starting");
         }
       } catch {
-        setToast({ message: "Generating factoid…", tone: "info" });
+        setStatus("starting");
       }
     });
 
     eventSource.addEventListener("factoid", (message: MessageEvent<string>) => {
-      setToast({ message: "Factoid generated!", tone: "success" });
+      setStatus("success");
+      scheduleStatusReset();
+      onGenerationError?.(null);
 
       try {
         const data = JSON.parse(message.data);
@@ -205,48 +222,58 @@ export function GenerateFactoidForm({
         has_model: !!modelKey,
       });
 
-      setToast({ message: detail, tone: "error" });
+      setStatus("error");
+      scheduleStatusReset();
+      onGenerationError?.(detail);
       setIsStreaming(false);
       eventSource.close();
       eventSourceRef.current = null;
     });
   };
 
-  const toastToneClass =
-    toast?.tone === "success"
-      ? "bg-emerald-600 text-white"
-      : toast?.tone === "error"
-      ? "bg-rose-600 text-white"
-      : "bg-[color:var(--button-primary-bg)] text-[color:var(--button-primary-text)]";
   const optionsId = "generate-factoid-options";
+
+  const baseButtonClass =
+    "inline-flex w-full items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60";
+  let statusClassName: string;
+  if (status === "success") {
+    statusClassName = "bg-emerald-600 text-white hover:bg-emerald-500";
+  } else if (status === "error") {
+    statusClassName = "bg-rose-600 text-white hover:bg-rose-500";
+  } else if (isStreaming || status === "starting") {
+    statusClassName =
+      "bg-[color:var(--button-primary-hover)] text-[color:var(--button-primary-text)] hover:bg-[color:var(--button-primary-hover)]";
+  } else {
+    statusClassName =
+      "bg-[color:var(--button-primary-bg)] text-[color:var(--button-primary-text)] hover:bg-[color:var(--button-primary-hover)]";
+  }
+
+  const buttonLabel =
+    status === "success"
+      ? "Factoid ready!"
+      : status === "error"
+      ? "Generation failed"
+      : isStreaming || status === "starting"
+      ? "Generating..."
+      : "Generate factoid";
 
   return (
     <form
       onSubmit={handleSubmit}
       className="mb-8 space-y-4 rounded-lg border border-[color:var(--surface-panel-border)] bg-[color:var(--surface-panel)] p-6 shadow-sm backdrop-blur-sm"
     >
-      {toast && (
-        <div
-          role="status"
-          aria-live="polite"
-          className={`fixed top-4 right-4 z-50 rounded-md px-4 py-3 text-sm font-medium shadow-lg ${toastToneClass}`}
-        >
-          {toast.message}
-        </div>
-      )}
-
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3 sm:flex-1">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3 sm:flex-1">
+          <button
+            type="submit"
+            disabled={isStreaming}
+            className={`${baseButtonClass} ${statusClassName}`}
+            title="Generate a factoid - press show options to pick topic and model"
+          >
+            {buttonLabel}
+          </button>
+          {onShuffle && (
             <button
-              type="submit"
-              disabled={isStreaming}
-              className="inline-flex w-full items-center justify-center rounded-md bg-[color:var(--button-primary-bg)] px-4 py-2 text-sm font-medium text-[color:var(--button-primary-text)] transition hover:bg-[color:var(--button-primary-hover)] disabled:cursor-not-allowed disabled:opacity-60"
-              title="Generate a factoid - press show options to pick topic and model"
-            >
-              {isStreaming ? "Generating..." : "Generate factoid"}
-            </button>
-            {onShuffle && (
-              <button
               type="button"
               onClick={onShuffle}
               disabled={isStreaming || shuffleLoading}
