@@ -79,6 +79,7 @@ export default async function FactoidPage({ params }: FactoidPageProps) {
             key={item.id}
             factoid={item}
             initiallyExpanded={index === 0}
+            isAlternate={index % 2 === 1}
           />
         ))}
       </section>

@@ -5,6 +5,7 @@
   --background: #f8fafc;
   --foreground: #0f172a;
   --surface-card: #ffffff;
+  --surface-card-alt: #f1f5f9;
   --surface-card-border: rgba(15, 23, 42, 0.08);
   --surface-card-border-hover: rgba(15, 23, 42, 0.18);
   --surface-panel: rgba(255, 255, 255, 0.94);
@@ -34,6 +35,7 @@
   --background: #020617;
   --foreground: #e2e8f0;
   --surface-card: rgba(15, 23, 42, 0.85);
+  --surface-card-alt: rgba(30, 41, 59, 0.78);
   --surface-card-border: rgba(148, 163, 184, 0.3);
   --surface-card-border-hover: rgba(148, 163, 184, 0.45);
   --surface-panel: rgba(15, 23, 42, 0.75);
@@ -63,6 +65,7 @@
   --background: #05030b;
   --foreground: #ecfeff;
   --surface-card: rgba(15, 6, 40, 0.82);
+  --surface-card-alt: rgba(34, 20, 72, 0.76);
   --surface-card-border: rgba(165, 180, 252, 0.4);
   --surface-card-border-hover: rgba(129, 140, 248, 0.6);
   --surface-panel: rgba(17, 24, 39, 0.78);

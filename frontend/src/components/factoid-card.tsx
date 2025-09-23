@@ -9,9 +9,10 @@ import { submitFeedback, submitVote } from "@/lib/api";
 interface FactoidCardProps {
   factoid: Factoid;
   initiallyExpanded?: boolean;
+  isAlternate?: boolean;
 }
 
-export function FactoidCard({ factoid, initiallyExpanded = false }: FactoidCardProps) {
+export function FactoidCard({ factoid, initiallyExpanded = false, isAlternate = false }: FactoidCardProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -147,8 +148,12 @@ export function FactoidCard({ factoid, initiallyExpanded = false }: FactoidCardP
   const headlineTextClasses = `text-lg font-semibold text-[color:var(--text-primary)] whitespace-pre-wrap${
     isExpanded ? "" : " text-center"
   }`;
-  const articleClasses =
-    "group relative overflow-hidden rounded-xl border border-[color:var(--surface-card-border)] bg-[color:var(--surface-card)] p-6 text-[color:var(--text-primary)] shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-[color:var(--surface-card-border-hover)] hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-outline)]";
+  const baseArticleClasses =
+    "group relative overflow-hidden rounded-xl border border-[color:var(--surface-card-border)] p-6 text-[color:var(--text-primary)] shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-[color:var(--surface-card-border-hover)] hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-outline)]";
+  const articleBackgroundClass = isAlternate
+    ? "bg-[color:var(--surface-card-alt)]"
+    : "bg-[color:var(--surface-card)]";
+  const articleClasses = `${baseArticleClasses} ${articleBackgroundClass}`;
 
   const resolveShareUrl = () => {
     if (typeof window !== "undefined" && window.location?.origin) {

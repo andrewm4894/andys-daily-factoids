@@ -52,8 +52,12 @@ export default async function HomePage() {
 
       <section className="space-y-4">
         <div className="space-y-4">
-          {factoids.map((factoid) => (
-            <FactoidCard key={factoid.id} factoid={factoid} />
+          {factoids.map((factoid, index) => (
+            <FactoidCard
+              key={factoid.id}
+              factoid={factoid}
+              isAlternate={index % 2 === 1}
+            />
           ))}
           {factoids.length === 0 && (
             <p className="rounded-md border border-dashed border-[color:var(--surface-card-border)] p-6 text-center text-sm text-[color:var(--text-muted)]">
