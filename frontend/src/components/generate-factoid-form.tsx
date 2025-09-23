@@ -236,11 +236,11 @@ export function GenerateFactoidForm({
       )}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3 sm:flex-1">
           <button
             type="submit"
             disabled={isStreaming}
-            className="inline-flex w-full items-center justify-center rounded-md bg-[color:var(--button-primary-bg)] px-4 py-2 text-sm font-medium text-[color:var(--button-primary-text)] transition hover:bg-[color:var(--button-primary-hover)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+            className="inline-flex w-full items-center justify-center rounded-md bg-[color:var(--button-primary-bg)] px-4 py-2 text-sm font-medium text-[color:var(--button-primary-text)] transition hover:bg-[color:var(--button-primary-hover)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isStreaming ? "Generating..." : "Generate factoid"}
           </button>
@@ -249,7 +249,7 @@ export function GenerateFactoidForm({
               type="button"
               onClick={onShuffle}
               disabled={isStreaming || shuffleLoading}
-              className="inline-flex w-full items-center justify-center rounded-md border border-[color:var(--surface-card-border)] bg-[color:var(--surface-card)] px-4 py-2 text-sm font-medium text-[color:var(--text-secondary)] transition hover:border-[color:var(--surface-card-border-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-outline)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+              className="inline-flex w-full items-center justify-center rounded-md border border-[color:var(--surface-card-border)] bg-[color:var(--surface-card)] px-4 py-2 text-sm font-medium text-[color:var(--text-secondary)] transition hover:border-[color:var(--surface-card-border-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-outline)] disabled:cursor-not-allowed disabled:opacity-60"
               title="Shuffle visible factoids"
             >
               {shuffleLoading ? "Shuffling..." : "Shuffle factoids ↺"}
