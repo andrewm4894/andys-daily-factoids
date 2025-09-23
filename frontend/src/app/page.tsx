@@ -12,14 +12,19 @@ export default async function HomePage() {
   return (
     <main className="mx-auto max-w-4xl space-y-6 px-4 py-8">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-3xl font-semibold text-[color:var(--text-primary)]">
-          <Link
-            href="/"
-            className="rounded-md outline-none transition-colors hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-outline)]"
-          >
-            Andy&apos;s Daily Factoids
-          </Link>
-        </h1>
+        <div className="flex flex-col gap-2">
+          <h1 className="text-3xl font-semibold text-[color:var(--text-primary)]">
+            <Link
+              href="/"
+              className="rounded-md outline-none transition-colors hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-outline)]"
+            >
+              Andy&apos;s Daily Factoids
+            </Link>
+          </h1>
+          <p className="text-base text-[color:var(--text-secondary)]">
+            mind blowing and sometimes 'meh' factoids from our AI overlords!
+          </p>
+        </div>
         <div className="flex items-center gap-3">
           <Link
             href="https://github.com/andrewm4894/andys-daily-factoids"
