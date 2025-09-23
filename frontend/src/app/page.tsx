@@ -1,5 +1,6 @@
 import { GenerateFactoidForm } from "@/components/generate-factoid-form";
 import { FactoidCard } from "@/components/factoid-card";
+import { ThemeMenu } from "@/components/theme-menu";
 import { fetchFactoids, fetchModels } from "@/lib/api";
 
 export const revalidate = 0;
@@ -9,8 +10,11 @@ export default async function HomePage() {
 
   return (
     <main className="mx-auto max-w-4xl space-y-6 px-4 py-8">
-      <header>
-        <h1 className="text-3xl font-semibold text-slate-900">Andy&apos;s Daily Factoids</h1>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-3xl font-semibold text-[color:var(--text-primary)]">
+          Andy&apos;s Daily Factoids
+        </h1>
+        <ThemeMenu />
       </header>
 
       <GenerateFactoidForm models={models} />
@@ -21,7 +25,7 @@ export default async function HomePage() {
             <FactoidCard key={factoid.id} factoid={factoid} />
           ))}
           {factoids.length === 0 && (
-            <p className="rounded-md border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">
+            <p className="rounded-md border border-dashed border-[color:var(--surface-card-border)] p-6 text-center text-sm text-[color:var(--text-muted)]">
               No factoids yet. Generate one to get started!
             </p>
           )}

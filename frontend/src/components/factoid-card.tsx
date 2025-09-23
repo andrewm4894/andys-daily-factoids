@@ -95,6 +95,17 @@ export function FactoidCard({ factoid }: FactoidCardProps) {
   };
 
   const headlineText = isExpanded ? factoid.text : teaserText;
+  const headerClasses = `flex gap-4${
+    isExpanded
+      ? " items-start"
+      : " items-center justify-center text-center"
+  }`;
+  const headlineContainerClasses = isExpanded ? "flex-1" : "flex-none";
+  const headlineTextClasses = `text-lg font-semibold text-[color:var(--text-primary)] whitespace-pre-wrap${
+    isExpanded ? "" : " text-center"
+  }`;
+  const articleClasses =
+    "group relative overflow-hidden rounded-xl border border-[color:var(--surface-card-border)] bg-[color:var(--surface-card)] p-6 text-[color:var(--text-primary)] shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-[color:var(--surface-card-border-hover)] hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-outline)]";
 
   const handleCopyFactoid = () => {
     if (copyResetRef.current) {
@@ -122,27 +133,33 @@ export function FactoidCard({ factoid }: FactoidCardProps) {
 
   return (
     <article
-      className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+      className={articleClasses}
       role="button"
       tabIndex={0}
       onClick={handleCardToggle}
       onKeyDown={handleCardKeyDown}
       aria-expanded={isExpanded}
     >
-      <div className="flex items-start gap-4">
-        <span className="text-3xl" aria-hidden>
-          {displayEmoji}
-        </span>
-        <div className="flex-1">
-          <p className="text-lg font-semibold text-slate-900 whitespace-pre-wrap">
-            {headlineText || "Factoid"}
-          </p>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100"
+        style={{ background: "var(--card-overlay)" }}
+      />
+      <div className="relative z-[1]">
+        <div className={headerClasses}>
+          <span className="text-3xl" aria-hidden>
+            {displayEmoji}
+          </span>
+          <div className={headlineContainerClasses}>
+            <p className={headlineTextClasses}>
+              {headlineText || "Factoid"}
+            </p>
+          </div>
         </div>
-      </div>
 
-      {isExpanded && (
-        <>
-          <div className="mt-6 flex flex-wrap items-center gap-3 text-sm text-slate-600">
+        {isExpanded && (
+          <>
+            <div className="mt-6 flex flex-wrap items-center gap-3 text-sm text-[color:var(--text-muted)]">
             <button
               type="button"
               onClick={(event) => {
@@ -199,7 +216,7 @@ export function FactoidCard({ factoid }: FactoidCardProps) {
                 event.stopPropagation();
                 handleCopyFactoid();
               }}
-              className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1 text-slate-700 hover:bg-slate-50"
+              className="inline-flex items-center gap-2 rounded-full border border-[color:var(--surface-card-border)] px-3 py-1 text-[color:var(--text-secondary)] hover:bg-[color:var(--surface-muted)]"
               aria-label="Copy factoid text"
               title="Copy this factoid"
             >
@@ -225,7 +242,7 @@ export function FactoidCard({ factoid }: FactoidCardProps) {
                 event.stopPropagation();
                 setShowFeedback((prev) => !prev);
               }}
-              className="ml-auto text-sm font-medium text-slate-600 underline-offset-4 hover:text-slate-900 hover:underline"
+              className="ml-auto text-sm font-medium text-[color:var(--text-secondary)] underline-offset-4 hover:text-[color:var(--text-primary)] hover:underline"
             >
               {showFeedback ? "Cancel" : "Leave feedback"}
             </button>
@@ -233,7 +250,7 @@ export function FactoidCard({ factoid }: FactoidCardProps) {
 
           {showFeedback && (
             <div
-              className="mt-4 space-y-3 rounded-md border border-slate-200 bg-slate-50 p-4"
+              className="mt-4 space-y-3 rounded-md border border-[color:var(--surface-card-border)] bg-[color:var(--surface-muted)] p-4"
               onClick={(event) => event.stopPropagation()}
             >
               <div className="flex gap-2">
@@ -243,7 +260,7 @@ export function FactoidCard({ factoid }: FactoidCardProps) {
                   className={`rounded-md border px-3 py-1 text-sm ${
                     feedbackVote === "up"
                       ? "border-emerald-400 bg-emerald-100 text-emerald-700"
-                      : "border-slate-200 text-slate-600 hover:border-emerald-200"
+                      : "border-[color:var(--surface-card-border)] text-[color:var(--text-secondary)] hover:border-emerald-200"
                   }`}
                 >
                   Helpful
@@ -254,14 +271,14 @@ export function FactoidCard({ factoid }: FactoidCardProps) {
                   className={`rounded-md border px-3 py-1 text-sm ${
                     feedbackVote === "down"
                       ? "border-rose-400 bg-rose-100 text-rose-700"
-                      : "border-slate-200 text-slate-600 hover:border-rose-200"
+                      : "border-[color:var(--surface-card-border)] text-[color:var(--text-secondary)] hover:border-rose-200"
                   }`}
                 >
                   Not helpful
                 </button>
               </div>
               <textarea
-                className="w-full rounded-md border border-slate-200 bg-white p-2 text-sm text-slate-700 focus:border-slate-400 focus:outline-none"
+                className="w-full rounded-md border border-[color:var(--input-border)] bg-[color:var(--input-bg)] p-2 text-sm text-[color:var(--text-secondary)] focus:border-[color:var(--input-border-focus)] focus:outline-none"
                 rows={3}
                 placeholder="Optional feedback..."
                 value={feedbackText}
@@ -274,7 +291,7 @@ export function FactoidCard({ factoid }: FactoidCardProps) {
                   handleFeedbackSubmit();
                 }}
                 disabled={isSubmitting}
-                className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-md bg-[color:var(--button-primary-bg)] px-3 py-2 text-sm font-medium text-[color:var(--button-primary-text)] transition-colors hover:bg-[color:var(--button-primary-hover)] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Submit feedback
               </button>
@@ -282,6 +299,7 @@ export function FactoidCard({ factoid }: FactoidCardProps) {
           )}
         </>
       )}
+      </div>
       {showChatModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4"
@@ -294,11 +312,11 @@ export function FactoidCard({ factoid }: FactoidCardProps) {
           }}
         >
           <div
-            className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl"
+            className="w-full max-w-sm rounded-lg border border-[color:var(--surface-card-border)] bg-[color:var(--surface-card)] p-6 shadow-xl"
             onClick={(event) => event.stopPropagation()}
           >
-            <h2 className="text-lg font-semibold text-slate-900">Chat coming soon</h2>
-            <p className="mt-2 text-sm text-slate-600">
+            <h2 className="text-lg font-semibold text-[color:var(--text-primary)]">Chat coming soon</h2>
+            <p className="mt-2 text-sm text-[color:var(--text-muted)]">
               Chatting with our AI overlords is almost here. Thanks for your patience!
             </p>
             <button
@@ -307,7 +325,7 @@ export function FactoidCard({ factoid }: FactoidCardProps) {
                 event.stopPropagation();
                 setShowChatModal(false);
               }}
-              className="mt-4 w-full rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
+              className="mt-4 w-full rounded-md bg-[color:var(--button-primary-bg)] px-3 py-2 text-sm font-medium text-[color:var(--button-primary-text)] transition-colors hover:bg-[color:var(--button-primary-hover)]"
             >
               Got it
             </button>

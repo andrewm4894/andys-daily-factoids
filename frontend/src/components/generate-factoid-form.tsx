@@ -206,24 +206,24 @@ export function GenerateFactoidForm({ models }: GenerateFactoidFormProps) {
     });
   };
 
-  const toastColor =
+  const toastToneClass =
     toast?.tone === "success"
-      ? "bg-emerald-600"
+      ? "bg-emerald-600 text-white"
       : toast?.tone === "error"
-      ? "bg-rose-600"
-      : "bg-slate-900";
+      ? "bg-rose-600 text-white"
+      : "bg-[color:var(--button-primary-bg)] text-[color:var(--button-primary-text)]";
   const optionsId = "generate-factoid-options";
 
   return (
     <form
       onSubmit={handleSubmit}
-      className="mb-8 space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+      className="mb-8 space-y-4 rounded-lg border border-[color:var(--surface-panel-border)] bg-[color:var(--surface-panel)] p-6 shadow-sm backdrop-blur-sm"
     >
       {toast && (
         <div
           role="status"
           aria-live="polite"
-          className={`fixed top-4 right-4 z-50 rounded-md px-4 py-3 text-sm font-medium text-white shadow-lg ${toastColor}`}
+          className={`fixed top-4 right-4 z-50 rounded-md px-4 py-3 text-sm font-medium shadow-lg ${toastToneClass}`}
         >
           {toast.message}
         </div>
@@ -233,7 +233,7 @@ export function GenerateFactoidForm({ models }: GenerateFactoidFormProps) {
         <button
           type="submit"
           disabled={isStreaming}
-          className="inline-flex w-full items-center justify-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+          className="inline-flex w-full items-center justify-center rounded-md bg-[color:var(--button-primary-bg)] px-4 py-2 text-sm font-medium text-[color:var(--button-primary-text)] transition hover:bg-[color:var(--button-primary-hover)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
         >
           {isStreaming ? "Generating..." : "Generate factoid"}
         </button>
@@ -249,16 +249,16 @@ export function GenerateFactoidForm({ models }: GenerateFactoidFormProps) {
           disabled={isStreaming}
           aria-expanded={showAdvanced}
           aria-controls={optionsId}
-          className="text-sm text-slate-600 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+          className="text-sm text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {showAdvanced ? "Hide options" : "Show options"} {showAdvanced ? "↑" : "↓"}
         </button>
       </div>
 
       {showAdvanced && (
-        <div id={optionsId} className="space-y-4 border-t border-slate-100 pt-4">
+        <div id={optionsId} className="space-y-4 border-t border-[color:var(--surface-card-border)] pt-4">
           <div>
-            <label htmlFor="topic" className="block text-sm font-medium text-slate-700">
+            <label htmlFor="topic" className="block text-sm font-medium text-[color:var(--text-primary)]">
               Topic (optional)
             </label>
             <input
@@ -268,12 +268,12 @@ export function GenerateFactoidForm({ models }: GenerateFactoidFormProps) {
               onChange={(event) => setTopic(event.target.value)}
               placeholder="Space exploration, ancient history, surprising biology..."
               disabled={isStreaming}
-              className="mt-1 w-full rounded-md border border-slate-200 p-2 text-sm text-slate-700 focus:border-slate-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
+              className="mt-1 w-full rounded-md border border-[color:var(--input-border)] bg-[color:var(--input-bg)] p-2 text-sm text-[color:var(--text-secondary)] focus:border-[color:var(--input-border-focus)] focus:outline-none disabled:cursor-not-allowed disabled:bg-[color:var(--input-disabled-bg)]"
             />
           </div>
 
           <div>
-            <label htmlFor="model" className="block text-sm font-medium text-slate-700">
+            <label htmlFor="model" className="block text-sm font-medium text-[color:var(--text-primary)]">
               Model (optional)
             </label>
             <select
@@ -281,7 +281,7 @@ export function GenerateFactoidForm({ models }: GenerateFactoidFormProps) {
               value={modelKey ?? ""}
               onChange={(event) => setModelKey(event.target.value || undefined)}
               disabled={isStreaming}
-              className="mt-1 w-full rounded-md border border-slate-200 p-2 text-sm text-slate-700 focus:border-slate-400 focus:outline-none"
+              className="mt-1 w-full rounded-md border border-[color:var(--input-border)] bg-[color:var(--input-bg)] p-2 text-sm text-[color:var(--text-secondary)] focus:border-[color:var(--input-border-focus)] focus:outline-none"
             >
               <option value="">Automatic selection</option>
               {models.map((model) => (

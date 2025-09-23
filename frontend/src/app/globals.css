@@ -1,8 +1,90 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --surface-card: #ffffff;
+  --surface-card-border: rgba(15, 23, 42, 0.08);
+  --surface-card-border-hover: rgba(15, 23, 42, 0.18);
+  --surface-panel: rgba(255, 255, 255, 0.94);
+  --surface-panel-border: rgba(15, 23, 42, 0.12);
+  --surface-muted: #e2e8f0;
+  --text-primary: #0f172a;
+  --text-secondary: #1e293b;
+  --text-muted: #475569;
+  --accent: #2563eb;
+  --accent-foreground: #f8fafc;
+  --focus-outline: #6366f1;
+  --card-overlay: linear-gradient(135deg, rgba(14, 116, 144, 0.08), rgba(16, 185, 129, 0.14));
+  --input-bg: #ffffff;
+  --input-border: rgba(15, 23, 42, 0.16);
+  --input-border-focus: #6366f1;
+  --input-disabled-bg: #f1f5f9;
+  --button-primary-bg: #0f172a;
+  --button-primary-hover: #1f2937;
+  --button-primary-text: #f8fafc;
+  --shadow-soft: 0 22px 45px -25px rgba(15, 23, 42, 0.3);
+  --chip-muted-bg: rgba(15, 23, 42, 0.06);
+  --chip-muted-text: #1e293b;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #020617;
+  --foreground: #e2e8f0;
+  --surface-card: rgba(15, 23, 42, 0.85);
+  --surface-card-border: rgba(148, 163, 184, 0.3);
+  --surface-card-border-hover: rgba(148, 163, 184, 0.45);
+  --surface-panel: rgba(15, 23, 42, 0.75);
+  --surface-panel-border: rgba(148, 163, 184, 0.32);
+  --surface-muted: rgba(30, 41, 59, 0.65);
+  --text-primary: #e2e8f0;
+  --text-secondary: #cbd5f5;
+  --text-muted: #94a3b8;
+  --accent: #38bdf8;
+  --accent-foreground: #082f49;
+  --focus-outline: #38bdf8;
+  --card-overlay: linear-gradient(135deg, rgba(56, 189, 248, 0.18), rgba(129, 230, 217, 0.2));
+  --input-bg: rgba(15, 23, 42, 0.7);
+  --input-border: rgba(148, 163, 184, 0.3);
+  --input-border-focus: rgba(165, 180, 252, 0.75);
+  --input-disabled-bg: rgba(30, 41, 59, 0.54);
+  --button-primary-bg: #38bdf8;
+  --button-primary-hover: #0ea5e9;
+  --button-primary-text: #082f49;
+  --shadow-soft: 0 26px 52px -28px rgba(8, 47, 73, 0.7);
+  --chip-muted-bg: rgba(148, 163, 184, 0.22);
+  --chip-muted-text: #e2e8f0;
+}
+
+:root[data-theme="aurora"] {
+  color-scheme: dark;
+  --background: #05030b;
+  --foreground: #ecfeff;
+  --surface-card: rgba(15, 6, 40, 0.82);
+  --surface-card-border: rgba(165, 180, 252, 0.4);
+  --surface-card-border-hover: rgba(129, 140, 248, 0.6);
+  --surface-panel: rgba(17, 24, 39, 0.78);
+  --surface-panel-border: rgba(165, 180, 252, 0.4);
+  --surface-muted: rgba(30, 41, 59, 0.65);
+  --text-primary: #f5f3ff;
+  --text-secondary: #e0f2fe;
+  --text-muted: #c4b5fd;
+  --accent: #a855f7;
+  --accent-foreground: #05030b;
+  --focus-outline: #a855f7;
+  --card-overlay: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(34, 211, 238, 0.18));
+  --input-bg: rgba(24, 24, 48, 0.78);
+  --input-border: rgba(148, 163, 184, 0.4);
+  --input-border-focus: rgba(129, 140, 248, 0.75);
+  --input-disabled-bg: rgba(30, 41, 59, 0.55);
+  --button-primary-bg: #a855f7;
+  --button-primary-hover: #9333ea;
+  --button-primary-text: #05030b;
+  --shadow-soft: 0 28px 60px -28px rgba(59, 7, 100, 0.75);
+  --chip-muted-bg: rgba(59, 130, 246, 0.28);
+  --chip-muted-text: #e0f2fe;
 }
 
 @theme inline {
@@ -12,15 +94,18 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+a {
+  color: var(--accent);
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-foreground);
 }

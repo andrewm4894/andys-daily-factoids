@@ -41,8 +41,8 @@ export function RateLimitBanner() {
   }
 
   return (
-    <div className="mb-6 rounded-md border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-sm">
-      <p className="font-medium text-slate-800">Rate limit</p>
+    <div className="mb-6 rounded-md border border-[color:var(--surface-panel-border)] bg-[color:var(--surface-panel)] p-4 text-sm text-[color:var(--text-muted)] shadow-sm backdrop-blur-sm">
+      <p className="font-medium text-[color:var(--text-primary)]">Rate limit</p>
       <p className="mt-1">
         {status.rate_limit.current_window_requests}/{status.rate_limit.per_minute} requests used in the
         current minute window.
