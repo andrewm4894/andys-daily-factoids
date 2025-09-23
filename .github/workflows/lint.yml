@@ -1,0 +1,160 @@
+name: lint
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  lint-frontend:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+    
+    - name: Install frontend dependencies
+      run: |
+        cd frontend
+        npm ci
+    
+    - name: Run ESLint
+      run: |
+        cd frontend
+        npm run lint
+    
+    - name: Check code formatting
+      run: |
+        cd frontend
+        npm run lint -- --fix --dry-run
+
+  lint-backend:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+    
+    - name: Install backend dependencies
+      run: |
+        cd backend
+        uv sync --extra dev
+    
+    - name: Run ruff linting
+      run: |
+        cd backend
+        uv run ruff check .
+    
+    - name: Run ruff formatting check
+      run: |
+        cd backend
+        uv run ruff format --check .
+    
+    - name: Run mypy type checking
+      run: |
+        cd backend
+        uv run mypy . || true
+
+  security-audit:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+    
+    - name: Install dependencies
+      run: |
+        cd frontend && npm ci
+        cd ../backend && uv sync --extra dev
+    
+    - name: Run security audit (frontend)
+      run: |
+        cd frontend
+        npm audit --audit-level moderate
+    
+    - name: Run security audit (backend)
+      run: |
+        cd backend
+        uv run safety check || true
+    
+    - name: Check for hardcoded secrets
+      run: |
+        echo "Checking for potential hardcoded secrets..."
+        # Check for common secret patterns in Python files
+        if grep -r "password\|secret\|key\|token" backend/ --include="*.py" | grep -v "#" | grep -v "import" | grep -v "from" | grep -v "os.environ" | grep -v "settings."; then
+          echo "Warning: Potential hardcoded secrets found in backend code"
+        fi
+
+  dependency-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+    
+    - name: Install dependencies
+      run: |
+        cd frontend && npm ci
+        cd ../backend && uv sync --extra dev
+    
+    - name: Check for outdated dependencies (frontend)
+      run: |
+        cd frontend
+        npm outdated || true
+    
+    - name: Check for outdated dependencies (backend)
+      run: |
+        cd backend
+        uv run uv pip list --outdated || true

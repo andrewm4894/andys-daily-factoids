@@ -1,26 +1,31 @@
 // tests/integration/rateLimitIntegration.test.mjs
-// Integration tests that actually call the rate limiting endpoint
+// Integration tests that call the Django rate-limit status endpoint
 
 import dotenv from 'dotenv';
 import { describe, it, expect } from '../backend/testFramework.mjs';
 
 dotenv.config({ path: './frontend/.env' });
 
-const NETLIFY_FUNCTION_URL = process.env.NETLIFY_FUNCTION_URL || "https://andys-daily-factoids.com/.netlify/functions/checkRateLimit";
-const FUNCTIONS_API_KEY = process.env.FUNCTIONS_API_KEY;
+function sanitizeBase(base) {
+  return base.replace(/\/$/, '');
+}
+
+const FACTOIDS_API_BASE = sanitizeBase(
+  process.env.FACTOIDS_API_BASE || 'https://factoids-backend.onrender.com/api/factoids'
+);
+const FACTOIDS_API_KEY = process.env.FACTOIDS_API_KEY;
+const RATE_LIMIT_URL = `${FACTOIDS_API_BASE}/limits/`;
 
 async function callRateLimitEndpoint() {
-  if (!NETLIFY_FUNCTION_URL || !FUNCTIONS_API_KEY) {
-    throw new Error("Missing NETLIFY_FUNCTION_URL or FUNCTIONS_API_KEY in environment variables");
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+
+  if (FACTOIDS_API_KEY) {
+    headers['x-api-key'] = FACTOIDS_API_KEY;
   }
 
-  const response = await fetch(NETLIFY_FUNCTION_URL, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': FUNCTIONS_API_KEY,
-    },
-  });
+  const response = await fetch(RATE_LIMIT_URL, { method: 'GET', headers });
 
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -30,94 +35,31 @@ async function callRateLimitEndpoint() {
 }
 
 describe('Rate Limit Integration Tests', () => {
-  it('should successfully call the rate limit endpoint', async () => {
+  it('should return the expected shape', async () => {
     const result = await callRateLimitEndpoint();
-    
+
     expect(result).toBeDefined();
-    expect(typeof result.isAllowed).toBe('boolean');
-    expect(typeof result.clientIP).toBe('string');
+    expect(result.profile).toBeDefined();
+    expect(result.rate_limit).toBeDefined();
+    expect(typeof result.rate_limit.per_minute).toBe('number');
+    expect(result.rate_limit.current_window_requests).toBeDefined();
   });
 
-  it('should return proper rate limit structure', async () => {
+  it('should provide cost budget information', async () => {
     const result = await callRateLimitEndpoint();
-    
-    // Check if global limits are present
-    if (result.globalLimits) {
-      expect(typeof result.globalLimits.hourlyUsage).toBe('number');
-      expect(typeof result.globalLimits.dailyUsage).toBe('number');
-      expect(typeof result.globalLimits.hourlyLimit).toBe('number');
-      expect(typeof result.globalLimits.dailyLimit).toBe('number');
-    }
 
-    // Check if IP limits are present
-    if (result.ipLimits) {
-      expect(typeof result.ipLimits.hourlyUsage).toBe('number');
-      expect(typeof result.ipLimits.minuteUsage).toBe('number');
-      expect(typeof result.ipLimits.hourlyLimit).toBe('number');
-      expect(typeof result.ipLimits.minuteLimit).toBe('number');
-    }
+    expect(result.cost_budget_remaining).toBeDefined();
   });
 
-  it('should have reasonable rate limit values', async () => {
-    const result = await callRateLimitEndpoint();
-    
-    if (result.globalLimits) {
-      // Global limits should be reasonable for cost control (conservative for side project)
-      expect(result.globalLimits.hourlyLimit).toBeGreaterThan(0);
-      expect(result.globalLimits.dailyLimit).toBeGreaterThan(result.globalLimits.hourlyLimit);
-      
-      // Usage should not exceed limits
-      expect(result.globalLimits.hourlyUsage).toBeLessThanOrEqual(result.globalLimits.hourlyLimit);
-      expect(result.globalLimits.dailyUsage).toBeLessThanOrEqual(result.globalLimits.dailyLimit);
-    }
+  it('should respond consistently across multiple calls', async () => {
+    const first = await callRateLimitEndpoint();
+    const second = await callRateLimitEndpoint();
 
-    if (result.ipLimits) {
-      // IP limits should be reasonable
-      expect(result.ipLimits.hourlyLimit).toBeGreaterThan(0);
-      expect(result.ipLimits.minuteLimit).toBeGreaterThan(0);
-      
-      // Usage should not exceed limits
-      expect(result.ipLimits.hourlyUsage).toBeLessThanOrEqual(result.ipLimits.hourlyLimit);
-      expect(result.ipLimits.minuteUsage).toBeLessThanOrEqual(result.ipLimits.minuteLimit);
-    }
-  });
-
-  it('should return valid IP address or fallback', async () => {
-    const result = await callRateLimitEndpoint();
-    
-    expect(result.clientIP).toBeDefined();
-    expect(result.clientIP.length).toBeGreaterThan(0);
-    
-    // Should be either a valid IP or a fallback ID
-    const isIP = /^(\d{1,3}\.){3}\d{1,3}$/.test(result.clientIP);
-    const isFallback = /^fallback-[a-f0-9]{16}$/.test(result.clientIP);
-    
-    expect(isIP || isFallback).toBe(true);
-  });
-
-  it('should handle multiple requests consistently', async () => {
-    const results = [];
-    
-    // Make multiple requests
-    for (let i = 0; i < 3; i++) {
-      const result = await callRateLimitEndpoint();
-      results.push(result);
-      
-      // Small delay between requests
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-    
-    // All requests should succeed
-    results.forEach((result) => {
-      expect(result).toBeDefined();
-      expect(typeof result.isAllowed).toBe('boolean');
-    });
-    
-    // Usage should be consistent or increasing (not decreasing)
-    if (results[0].globalLimits && results[1].globalLimits) {
-      expect(results[1].globalLimits.hourlyUsage).toBeGreaterThanOrEqual(results[0].globalLimits.hourlyUsage);
-    }
+    expect(first.profile).toBe(second.profile);
+    expect(second.rate_limit.current_window_requests).toBeGreaterThanOrEqual(
+      first.rate_limit.current_window_requests
+    );
   });
 });
 
-console.log('🔗 Running Rate Limit Integration Tests...\n');
+console.log('🔗 Running Django Rate Limit Integration Tests...');
