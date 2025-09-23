@@ -19,6 +19,7 @@ from apps.factoids.services.openrouter import (
     GenerationResult,
     fetch_openrouter_models,
     generate_factoid_completion,
+    model_supports_tools,
 )
 
 
@@ -84,10 +85,17 @@ def generate_factoid(
     )
 
     recent_factoids = list(models.Factoid.objects.order_by("-created_at")[:10])
+    supports_tools = model_supports_tools(
+        resolved_model,
+        api_key=api_key,
+        base_url=settings.OPENROUTER_BASE_URL,
+    )
+
     prompt = build_factoid_generation_prompt(
         topic=topic if topic else None,
         recent_factoids=recent_factoids,
         num_examples=5,
+        use_factoid_tool=supports_tools,
     )
 
     posthog_client = get_posthog_client()
@@ -113,6 +121,7 @@ def generate_factoid(
             temperature=temperature,
             prompt=prompt,
             callbacks=callbacks,
+            supports_tools=supports_tools,
         )
     except Exception as exc:  # pragma: no cover - external API failure
         generation_request.status = models.RequestStatus.FAILED

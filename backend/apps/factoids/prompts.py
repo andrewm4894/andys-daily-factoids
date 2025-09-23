@@ -11,6 +11,7 @@ def build_factoid_generation_prompt(
     topic: Optional[str] = None,
     recent_factoids: Optional[list[Factoid]] = None,
     num_examples: int = 25,
+    use_factoid_tool: bool = False,
 ) -> str:
     """Build a comprehensive prompt for factoid generation including recent examples."""
     
@@ -36,7 +37,7 @@ def build_factoid_generation_prompt(
     
     prompt_parts.append(instruction)
     prompt_parts.append("")
-    
+
     # Guidelines
     guidelines = [
         "- Do not repeat any of the provided examples.",
@@ -47,12 +48,22 @@ def build_factoid_generation_prompt(
         "- Think about novel and intriguing facts that people might not know.",
         "- Make it genuinely surprising or mind-blowing.",
     ]
-    
+
     prompt_parts.extend(guidelines)
     prompt_parts.append("")
-    
-    # Response format
-    prompt_parts.append("Respond as JSON with exactly these keys:")
-    prompt_parts.append('{"text": "your factoid text", "subject": "category/topic", "emoji": "🔬"}')
-    
+
+    if use_factoid_tool:
+        prompt_parts.append(
+            "When you are satisfied, call the `make_factoid` tool once with arguments:"
+        )
+        prompt_parts.append(
+            '{"text": "your factoid text", "subject": "category/topic", "emoji": "<some suitable emoji>"}'
+        )
+        prompt_parts.append("Do not include additional assistant text once you call the tool.")
+    else:
+        prompt_parts.append("Respond as JSON with exactly these keys:")
+        prompt_parts.append(
+            '{"text": "your factoid text", "subject": "category/topic", "emoji": "<some suitable emoji>"}'
+        )
+
     return "\n".join(prompt_parts)
