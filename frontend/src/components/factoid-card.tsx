@@ -347,30 +347,6 @@ export function FactoidCard({ factoid, initiallyExpanded = false }: FactoidCardP
               className="mt-4 space-y-3 rounded-md border border-[color:var(--surface-card-border)] bg-[color:var(--surface-muted)] p-4"
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setFeedbackVote("up")}
-                  className={`rounded-md border px-3 py-1 text-sm ${
-                    feedbackVote === "up"
-                      ? "border-emerald-400 bg-emerald-100 text-emerald-700"
-                      : "border-[color:var(--surface-card-border)] text-[color:var(--text-secondary)] hover:border-emerald-200"
-                  }`}
-                >
-                  Helpful
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFeedbackVote("down")}
-                  className={`rounded-md border px-3 py-1 text-sm ${
-                    feedbackVote === "down"
-                      ? "border-rose-400 bg-rose-100 text-rose-700"
-                      : "border-[color:var(--surface-card-border)] text-[color:var(--text-secondary)] hover:border-rose-200"
-                  }`}
-                >
-                  Not helpful
-                </button>
-              </div>
               <textarea
                 className="w-full rounded-md border border-[color:var(--input-border)] bg-[color:var(--input-bg)] p-2 text-sm text-[color:var(--text-secondary)] focus:border-[color:var(--input-border-focus)] focus:outline-none"
                 rows={3}
