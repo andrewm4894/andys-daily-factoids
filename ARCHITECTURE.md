@@ -1,242 +1,163 @@
 # Andy's Daily Factoids – Architecture Guide
 
-This document explains how the application is assembled, where its major responsibilities live, and how the moving pieces talk to each other. It is intended both for ramping new contributors and for keeping the mental model of the project in sync with the codebase.
+This document explains how the application is assembled, who owns which responsibilities, and how the moving pieces talk to each other. It is intended both for ramping new contributors and for keeping the mental model of the project in sync with the codebase.
 
 ## System Context
 
-Andy’s Daily Factoids is a React single-page application hosted on Netlify. Dynamic behavior is powered by Netlify Functions that orchestrate AI generation (via OpenRouter), persistence (via Firebase Firestore), payments (via Stripe), analytics (via PostHog), and rate limiting. GitHub Actions run the same Netlify functions on a schedule to keep the database fresh.
+Andy’s Daily Factoids now runs as a two-tier Render deployment backed by a Django API. A Next.js frontend lives on one Render web service, the Django app lives on another, and a Render cron job keeps the catalogue fresh by calling into the same generation pipeline.
 
 ```mermaid
 graph LR
-    User[Browser User]
-    Frontend[React SPA<br/>frontend/]
-    Netlify[(Netlify Hosting)]
-    Functions[Netlify Functions<br/>netlify/functions/]
-    Firestore[(Firebase Firestore)]
-    OpenRouter[(OpenRouter API<br/>Multi-model LLM access)]
-    Stripe[(Stripe Checkout)]
-    PostHog[(PostHog LLM Analytics)]
-    GitHubActions[(GitHub Actions Scheduler)]
+    subgraph Render
+        Frontend[Next.js App\nfrontend/]
+        Backend[Django API\nbackend/]
+        Cron[Hourly Cron Job]
+    end
 
-    User <--> Netlify
-    Netlify --> Frontend
-    Frontend -->|HTTPS/JSON| Functions
-    Functions --> Firestore
-    Functions --> OpenRouter
-    Functions --> Stripe
-    Functions --> PostHog
-    GitHubActions -->|Scheduled POST| Functions
+    User[Browser User] -->|HTTPS| Frontend
+    Frontend -->|JSON over HTTPS| Backend
+    Frontend -->|Server-Sent Events| Backend
+    Backend -->|ORM| Postgres[(Postgres Database)]
+    Backend -.optional.-> Redis[(Redis Rate Limiter)]
+    Backend --> OpenRouter[(OpenRouter API)]
+    Backend --> PostHog[(PostHog Analytics)]
+    Cron -->|manage.py generate_factoid| Backend
 ```
 
 Key traits:
 
-- **Static UI + dynamic functions**: the React build is static, while all data mutations route through Netlify Functions that share a Firebase Admin client.
-- **Multi-model AI orchestration**: requests go through OpenRouter, with optional PostHog instrumentation for prompt/response analytics.
-- **Usage governance**: Firestore-backed rate limiting protects both open access and operating costs; Stripe bridges the gap when users exceed free quotas.
-- **Scheduled content**: GitHub Actions periodically triggers the generator function so the site always has recent factoids without manual intervention.
+- **Render-native split**: frontend and backend are deployed as separate Render services (`render.yaml` owns build/start commands), enabling independent scaling and rollout.
+- **Django-powered core**: the API, persistence, and generation workflows live in Django REST Framework and the `apps/` service modules.
+- **OpenRouter + PostHog instrumentation**: OpenRouter produces the factoids while PostHog traces every generation for analytics.
+- **Governed usage**: client hashing, rate limiting, and a `CostGuard` keep anonymous usage bounded even when Redis is unavailable (in-memory fallback).
+- **Always-fresh content**: a Render cron job reuses the management command to seed new factoids hourly with the same validation pipeline the UI uses.
 
-## Frontend Architecture (frontend/)
+## Frontend Architecture (`frontend/`)
 
-The frontend is a Create React App (CRA) project compiled to static assets and deployed via Netlify’s `frontend/build` directory.
+The frontend is a Next.js 15 app (App Router + React 19) written in TypeScript.
 
-### UI Composition
+- **Rendering model**: `src/app/page.tsx` is a server component that fetches factoids and model metadata with `fetchFactoids()` and `fetchModels()` (`src/lib/api.ts`). `export const revalidate = 0` disables ISR so every navigation refetches fresh data from the backend.
+- **Data access layer**: `src/lib/api.ts` centralises HTTP helpers around `FACTOIDS_API_BASE`. All requests opt out of caching (`cache: "no-store"`) and throw `Error` instances on non-2xx responses so UI components can surface meaningful messages.
+- **Interactive generation**: `GenerateFactoidForm` (`src/components/generate-factoid-form.tsx`) streams feedback to the user. When `EventSource` is available it connects to `/generate/stream/` for server-sent events; otherwise it falls back to the synchronous `/generate/` POST endpoint.
+- **State & UX**: the form manages toast notifications, optional topic/model selectors, and `posthog` capture calls for start/success/failure events. Votes and feedback use `submitVote` / `submitFeedback` helpers which POST back to the Django API.
+- **Telemetry**: `PostHogProvider` initialises PostHog on the client when keys are present, and `PostHogPageView` manually records `$pageview` events so analytics works with server components. Additional metadata is attached to generation events (browser, referrer, session props).
+- **Styling & theming**: global colour tokens live in `src/app/globals.css`, with light/dark/contrast options toggled by `ThemeMenu` and persisted client-side.
+- **Tooling**: `npm run dev` serves via Next's Turbopack, while `npm run build && npm run start` mirror Render’s production commands. ESLint (`npm run lint`) is configured through `eslint.config.mjs`.
 
-- `App.js` coordinates hooks, modal state, and primary CTAs (generate, shuffle, vote).
-- Component hierarchy:
-  - `Header`, `RateLimitStatus`, `FactoidCard`, `ModalContent`, `ModelSelector`, `Loader`, `ErrorMessage` encapsulate presentational concerns.
-  - Components are colocated under `src/components/` with focused styling in `App.css` plus modular styles under `src/styles/`.
-- Modals use `react-modal` with centralised styles (`styles/ModalStyles`).
+## Backend Architecture (`backend/`)
 
-### Data + State Hooks
+The backend is a Django 5 project (`factoids_project`) packaged with `uv`. Core apps live under `apps/` and are namespaced to make ownership clear.
 
-- `useFactoids` handles loading, normalising, shuffling, and voting through the `/getFactoids` and `/voteFactoid` functions.
-- `useGenerateFactoid` posts to `/generateFactoid`, handles API key headers, parses error payloads (including rate limit responses), and exposes modal-ready state.
-- `useRateLimit` polls `/checkRateLimit`, computes friendly messaging, and keeps the CTA stateful (e.g., “Upgrade to Generate More”).
-- `usePayPerFactoid` manages the Stripe checkout lifecycle, verifying sessions via `/verifyPayment` and forwarding success to the generator hook.
-- React state synchronises recent configuration (model overrides, random parameter flag) via `latestGenerationConfigRef` so payment-restored generations reuse the same request configuration.
+### Project layout
 
-### Client Integrations
+- `factoids_project/settings/` layers environment-aware configuration (base, local, production) via `pydantic-settings`. Critical values such as `OPENROUTER_API_KEY`, `DATABASE_URL`, `POSTHOG_*`, and `DJANGO_SECRET_KEY` are read from the environment Render injects.
+- `factoids_project/urls.py` mounts all public endpoints under `/api/factoids/`. Static and media assets are served via WhiteNoise in production (`collectstatic` runs during deployment).
 
-- Stripe Checkout is lazily initialised in `stripe.js` using `@stripe/stripe-js` and the publishable key.
-- Environment variables (`REACT_APP_*`) configure the API base URL, Netlify functions API key, and Stripe public key.
-- The default API base points at production; `Makefile` overrides it for local Netlify Dev proxying.
+### REST & streaming endpoints
 
-### Build + Tooling
+`apps/factoids/api.py` defines the API surface:
 
-- `netlify.toml` drives builds: `npm install --prefix frontend && npm run build --prefix frontend`.
-- Frontend linting uses CRA’s ESLint config and is wired in the top-level `make lint-frontend` rule.
-- Tests run through `npm test --watchAll=false` (React Testing Library + Jest) with hook and component coverage under `tests/frontend/`.
+- `GET /api/factoids/` paginated list (`FactoidViewSet`).
+- `POST /api/factoids/generate/` synchronous generation response.
+- `GET /api/factoids/generate/stream/` server-sent events pipeline that emits `status`, `factoid`, or `error` events for richer UX.
+- `POST /api/factoids/<uuid>/vote/` to up/down vote (rate limited per client hash).
+- `POST /api/factoids/feedback/` optional qualitative feedback.
+- `GET /api/factoids/limits/` exposes current rate-limit window usage plus anonymous cost budget remaining.
+- `GET /api/factoids/models/` proxies the OpenRouter model catalogue (cached in the database via `ModelCache`).
 
-## Netlify Functions (netlify/functions/)
+Each request is associated with a deterministic `client_hash` derived from IP + UA to enforce limits without storing PII.
 
-Each function is an isolated entry point that shares Firebase Admin initialisation. Environment variables are read at runtime via `dotenv` (for CommonJS handlers) or native ESM support.
+### Factoid generation service
 
-### Factoid Lifecycle
+`apps/factoids/services/generator.py` encapsulates the workflow that backs both API calls and cron tasks:
 
-- `generateFactoid.js` orchestrates AI-driven factoid creation.
-  - Validates API keys (`x-api-key` header versus `FUNCTIONS_API_KEY`).
-  - Runs `checkRateLimit` prior to generation; rejects with informative headers if exceeded.
-  - Pulls recent factoids from Firestore to build few-shot examples.
-  - Chooses an OpenRouter model (randomised unless explicitly provided) and either leverages function calling (where supported) or parses JSON payloads via resilient helpers (`parseJsonContent`, `validateFactoidPayload`).
-  - Persists the factoid document with metadata: `text`, `subject`, `emoji`, votes, Firestore timestamp, model details, and parameters.
-  - Records usage (`recordGeneration`) so subsequent calls see updated quota information.
-  - Optionally wraps the OpenRouter client with PostHog tracing via `@posthog/ai` and flushes analytics on completion.
+1. Acquire a rate-limit token via `apps.core.services.rate_limits`.
+2. Consult `CostGuard` (per-profile budget, defaults to $1/day for anonymous traffic).
+3. Build a prompt from the most recent factoids (`build_factoid_generation_prompt`) to encourage variety.
+4. Invoke OpenRouter through LangChain (`generate_factoid_completion`) with optional PostHog LangChain callbacks for tracing.
+5. Persist the resulting `Factoid`, link it to a `GenerationRequest`, and record spend against the cost guard.
+6. Stream structured SSE events or return JSON to the caller.
 
-- `getFactoids.js` returns the latest 500 Factoids ordered by `createdAt` for the home feed.
-- `voteFactoid.js` increments `votesUp` or `votesDown` using Firestore atomic `increment`, exposing full factoid state for optimistic UI updates.
+Exceptions surface as `429` (rate limit), `402` (budget exhausted), or `502` (downstream failure). PostHog receives success/failure events tagged with topic, profile, and request source.
 
-### Rate Limiting Core
+### Persistence & supporting services
 
-- `checkRateLimit.js` is both a reusable library (imported by `generateFactoid`) and an HTTP endpoint when invoked directly.
-  - Determines caller identity via Cloudflare, Netlify, or forwarded headers and falls back to hashed user-agent signatures.
-  - Stores global usage in `globalUsage/stats` with rolling hour/day windows and per-IP usage in `ipRateLimits/{client}` documents.
-  - Enforces conservative defaults (50 global generations/hour, 200/day; per-IP 10/hour, 3/minute).
-  - `recordGeneration` (same module) appends timestamps to both rate-limit collections to maintain counters.
-  - HTTP responses include structured diagnostics so the frontend can message quota status and time to reset.
+- **Database**: PostgreSQL via `DATABASE_URL` (Render managed). Django models cover factoids, generation requests, votes, feedback, and model cache state (`apps/factoids/models.py`).
+- **Redis (optional)**: If `REDIS_URL` is present, rate limiting uses Redis sorted sets; otherwise an in-process fallback keeps the service usable locally or in environments without Redis.
+- **Static/media**: Static assets collect into `backend/staticfiles/`. Media uploads (e.g., future attachments) land in `backend/media/`.
+- **Other apps**: `apps.core` will ultimately house API keys and shared services; `apps.payments`, `apps.analytics`, and `apps.chat` are stubs prepared for future phases (Stripe checkout, evaluation pipelines, conversational UX).
 
-### Model Catalogue
+### Voting & feedback pipeline
 
-- `modelConfig.js` caches the OpenRouter model list for 15 minutes, falling back to curated presets if API access fails.
-- Provides helpers for default parameter selection, random parameter generation, and merging overrides.
-- `getModels.js` exposes the cached list securely (API key gated) for the frontend configuration modal.
+Votes append `VoteAggregate` rows so analytics can reason about raw events even though per-factoid counters (`votes_up` / `votes_down`) are incremented atomically. Feedback documents capture optional comments, tags, and link back to the originating `GenerationRequest`.
 
-### Payments
+## Scheduled generation & background workflows
 
-- `createCheckoutSession.js` (CommonJS) creates Stripe Checkout sessions with success/cancel URLs pointing back to the SPA; this is consumed by `usePayPerFactoid`.
-- `verifyPayment.js` retrieves the session after redirect to confirm payment before triggering generation.
+Render provisions an hourly cron job (`render.yaml`) that executes:
 
-### Support Utilities
-
-- Shared Firebase Admin initialisation defers to environment-provided service account credentials (`FIREBASE_*`).
-- Node 18 runtime (Netlify default) enables native `fetch` for OpenRouter requests within ESM modules.
-
-## Data Model (Firestore)
-
-Firestore hosts both content and operational metadata:
-
-- **`factoids` collection**
-  - `text` (string): the fact itself.
-  - `subject` (string): topical grouping for display.
-  - `emoji` (string): emoji indicator.
-  - `createdAt` (timestamp): Firestore server timestamp inserted at write.
-  - `votesUp` / `votesDown` (number): aggregated counts from the voting endpoint.
-  - `generationMetadata` (map): `{ model, modelName, provider, parameters, timestamp, costPer1kTokens }` for transparency.
-
-- **`globalUsage` collection** (`stats` document)
-  - `hourlyGenerations`, `dailyGenerations`: arrays of epoch timestamps trimmed to active windows.
-  - `lastUpdate`: used for housekeeping and observability.
-
-- **`ipRateLimits` collection** (`{clientIdentifier}` documents)
-  - `generations`: timestamp arrays for minute/hour tracking.
-  - `lastGeneration`: marker for display.
-
-- Additional Stripe-related state is not stored locally; Stripe Checkout sessions remain server-side within Stripe.
-
-## External Services & Integrations
-
-- **OpenRouter**: single entry point for multiple LLM vendors; requests include dynamic model IDs (e.g., `anthropic/claude-3-5-sonnet`). Pricing metadata is surfaced to the UI for cost awareness.
-- **PostHog LLM Analytics**: when `POSTHOG_PROJECT_API_KEY` is configured, completions trigger `$ai_generation` events with contextual properties (`requestSource`, model identity, parameter strategy).
-- **Stripe**: handles pay-per-factoid monetisation. Only the secret key is present server-side (`STRIPE_SECRET_KEY`) while the frontend uses the publishable key.
-- **Firebase Admin**: central store for factoids and operational counters, instantiated once per cold start.
-- **Netlify Hosting & Functions**: builds the React app, deploys serverless functions, and proxies them at `/.netlify/functions/*`.
-- **GitHub Actions**: `.github/workflows/generate-factoid.yml` calls the production `generateFactoid` endpoint hourly using stored secrets for authentication.
-
-## Core Flows
-
-### Factoid Generation (Manual or Scheduled)
-
-```mermaid
-sequenceDiagram
-    participant User as User / GitHub Action
-    participant UI as React Frontend
-    participant FN as generateFactoid Function
-    participant RL as Firestore (Rate Limit Docs)
-    participant OR as OpenRouter LLM
-    participant DB as Firestore (factoids)
-    participant PH as PostHog
-
-    User->>UI: Click "Generate" (optional: select model)
-    UI->>FN: POST /.netlify/functions/generateFactoid
-    FN->>RL: checkRateLimit(event)
-    alt Limit exceeded
-        RL-->>FN: isAllowed=false + reset metadata
-        FN-->>UI: 429 + rateLimitInfo
-    else Within quota
-        RL-->>FN: isAllowed=true
-        FN->>DB: Fetch recent factoids for examples
-        FN->>OR: chat.completions.create(model, prompt, params)
-        OR-->>FN: Structured factoid payload
-        FN->>DB: Store new factoid document + metadata
-        FN->>RL: recordGeneration(event)
-        FN->>PH: (optional) $ai_generation event
-        FN-->>UI: 200 + factoid + updated rateLimitInfo
-    end
-    UI->>UI: Show modal + refresh list on close
+```
+uv run python manage.py generate_factoid --client hourly-cron --profile anonymous
 ```
 
-GitHub Actions exercise the same path without the React UI middle step; the scheduler simply POSTs to the function with its secret key.
+The management command (`apps/factoids/management/commands/generate_factoid.py`) reuses the same service layer to ensure scheduled content obeys rate limits, cost budgets, and logging conventions. Additional helper commands (e.g., `seed_factoids`) exist for local bootstrapping.
 
-### Pay-Per-Factoid Upgrade
+## Deployment & Operations
+
+- **Render services**: `render.yaml` defines three services:
+  - `factoids-backend` (Python): installs `uv`, syncs dependencies, runs migrations and `collectstatic`, then starts Gunicorn with the production settings module.
+  - `factoids-frontend` (Node): installs dependencies, builds the Next app, and serves via `next start`.
+  - `hourly-factoid` (cron): installs backend deps and calls the management command every hour.
+- **Health check**: Render hits `/api/factoids/` on the backend service; failure to respond 200 surfaces as unhealthy.
+- **Logging & observability**: Django logs to stdout (captured by Render) while PostHog provides richer tracing of generation runs. If Redis is configured, rate-limit failures are also logged.
+- **Static hosting**: Gunicorn + WhiteNoise serve static assets collected during the build.
+- **Config management**: Secrets (database, OpenRouter, Redis, Django secret) are set as Render environment variables. Non-secret defaults (CORS, PostHog host) are committed in `render.yaml`.
+
+## Local development & testing
+
+- **Backend**:
+  - Install dependencies with `uv sync --extra dev`.
+  - Run migrations via `uv run python manage.py migrate`.
+  - Start the server with `uv run python manage.py runserver` (uses `settings.local`, SQLite by default).
+  - Run tests with `uv run pytest` and lint with `uv run ruff check .`.
+- **Frontend**:
+  - `npm install && npm run dev` starts Next.js locally.
+  - `NEXT_PUBLIC_FACTOIDS_API_BASE` can point at `http://localhost:8000/api/factoids` (the default in `src/lib/api.ts`).
+  - ESLint (`npm run lint`) enforces code style; Tailwind/PostCSS handle styling.
+- **Integration**: shared `tests/` contains backend unit tests, frontend component tests, and (future) integration suites that hit deployed endpoints.
+
+## Factoid generation flow
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant UI as React Frontend
-    participant StripeFn as createCheckoutSession
-    participant Stripe as Stripe Checkout
-    participant VerifyFn as verifyPayment
-    participant GenFn as generateFactoid
+    participant UI as Next.js Frontend
+    participant API as Django API
+    participant DB as Postgres
+    participant OR as OpenRouter
+    participant PH as PostHog
 
-    UI->>StripeFn: POST priceId + return URLs
-    StripeFn-->>UI: sessionId
-    UI->>Stripe: redirectToCheckout(sessionId)
-    Stripe-->>User: Hosted payment page
-    Stripe-->>UI: Redirect success URL (?session_id=...)
-    UI->>VerifyFn: POST sessionId
-    VerifyFn-->>UI: paymentStatus=paid
-    UI->>GenFn: Trigger generation with stored config
-    GenFn-->>UI: New factoid (same flow as above)
+    User->>UI: Click "Generate"
+    UI->>API: POST /api/factoids/generate or SSE subscribe
+    API->>API: Check rate limits & cost guard
+    API->>DB: Load recent factoids for prompt context
+    API->>OR: Prompt selected OpenRouter model
+    OR-->>API: Structured factoid payload
+    API->>DB: Persist Factoid + GenerationRequest
+    API->>PH: Capture generation telemetry
+    API-->>UI: 201 JSON or `factoid` SSE event
+    UI-->>User: Toast + refreshed factoid list
 ```
 
-### Rate Limit Introspection
+## Configuration reference
 
-- `useRateLimit` fetches `/checkRateLimit` on load and on demand.
-- The endpoint computes current usage without mutating state, so it is safe for polling.
-- Responses expose `limitType`, `remainingGenerations`, and a `resetTime` (epoch) that the UI converts into human-readable ETAs.
+| Area | Key variables |
+|------|---------------|
+| Django settings | `DJANGO_SETTINGS_MODULE`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_SECRET_KEY`, `DJANGO_CORS_ALLOWED_ORIGINS` |
+| Database & cache | `DATABASE_URL`, `REDIS_URL` (optional) |
+| OpenRouter | `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL` (optional override) |
+| PostHog analytics | `POSTHOG_PROJECT_API_KEY`, `POSTHOG_HOST` |
+| Frontend → Backend | `NEXT_PUBLIC_FACTOIDS_API_BASE` (Render defaults to backend service URL) |
+| Frontend analytics | `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`, `NEXT_TELEMETRY_DISABLED=1` |
+| Render runtime | `PYTHON_VERSION` (backend & cron), Node version dictated by `package.json` / Render defaults |
 
-## Testing, Tooling, and Local Development
-
-- **Make targets** simplify common workflows (`make local`, `make test`, `make factoid`). `make local` runs Netlify Dev, which proxies functions and injects `.env` variables for the CRA app.
-- **Backend Tests** (`tests/backend/*.mjs`) exercise rate-limit helpers through a lightweight custom test harness.
-- **Frontend Tests** validate hooks and UI states (e.g., `RateLimitStatus` rendering behavior).
-- **Integration Tests** (`tests/integration/rateLimitIntegration.test.mjs`) hit deployed endpoints to verify quotas end-to-end.
-- **Manual Scripts** in `scripts/` reproduce function calls from the CLI for smoke testing.
-
-## Configuration Reference
-
-| Area | Key Variables |
-|------|----------------|
-| OpenRouter / AI | `OPENROUTER_API_KEY` |
-| Firebase Admin | `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` |
-| Netlify Function Security | `FUNCTIONS_API_KEY` (used by frontend, GitHub Actions, scripts) |
-| Stripe | `STRIPE_SECRET_KEY` (functions), `REACT_APP_STRIPE_PUBLISHABLE_KEY` (frontend) |
-| Frontend API | `REACT_APP_API_BASE_URL`, `REACT_APP_FUNCTIONS_API_KEY` |
-| Analytics (optional) | `POSTHOG_PROJECT_API_KEY`, `POSTHOG_HOST`, `POSTHOG_LLM_APP_NAME` |
-
-Secrets for scheduled generation live in GitHub Actions (`secrets.FUNCTIONS_API_KEY`), while local development relies on `frontend/.env` loaded by scripts and Netlify Dev.
-
-## Deployment & Operations
-
-- **Hosting**: Netlify handles both static assets and serverless functions. `netlify/functions/` is the functions directory configured in `netlify.toml`.
-- **Build Pipeline**: Deploys automatically rebuild the React app; functions are bundled as-is (Node 18).
-- **Scheduling**: `.github/workflows/generate-factoid.yml` triggers hourly using `curl`. Because it calls the live function endpoint, no separate cron-infrastructure is needed.
-- **Observability**: Serverless logs live in Netlify’s function logs. PostHog can provide deeper tracing when enabled. Rate limit documents record timestamps that can be inspected for auditability.
-
-## Extensibility Notes
-
-- Model presets and pricing live in `modelConfig.js`; adding support for new providers requires updating this map and, optionally, adjusting prompt handling if the model lacks JSON tooling.
-- Rate limits centralised in `checkRateLimit.js` make it easy to tune quotas without touching business logic.
-- The frontend fetch hooks encapsulate network concerns; new functionality (e.g., email subscription) can follow the same pattern with dedicated hooks and functions.
-- Stripe integration currently assumes a single price ID (`price_1Qg9W2DuK9b9aydC1SXsQob8`); multi-tier support would extend the checkout payload and UI configuration modal.
-
-With this structure in mind, contributors can navigate the repo, understand the interplay between client, serverless functions, and third-party services, and modify the system with confidence.
+With this structure in mind, contributors can navigate the repository, understand how Render-hosted services collaborate, and evolve the system with confidence.

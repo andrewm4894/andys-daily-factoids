@@ -11,8 +11,8 @@ install-backend: ## Install backend dependencies via uv
 install-frontend: ## Install frontend dependencies
 	cd ./frontend && npm install
 
-local: ## Run Netlify dev with local frontend
-	@bash -lc 'set -a; source frontend/.env; export REACT_APP_API_BASE_URL=http://localhost:8888; set +a; netlify dev --dir frontend --command "npm start --prefix frontend"'
+local: ## Run backend and frontend dev servers (alias for `make run`)
+	@$(MAKE) run
 
 local-backend: ## Run Django backend locally using uv
 	cd backend && uv run python manage.py runserver

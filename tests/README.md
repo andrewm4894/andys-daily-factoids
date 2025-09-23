@@ -1,115 +1,59 @@
 # Test Suite for Andy's Daily Factoids
 
-This directory contains comprehensive tests for the rate limiting functionality.
+This directory captures the legacy test harness that accompanied the initial serverless prototype. As the project migrates to Django on Render, we are gradually refreshing these scripts. Use the notes below to understand what still runs today and how to configure the integration checks against the new API.
 
-## Test Structure
+## Layout
 
-### Backend Tests (`tests/backend/`)
-- **`simpleRateLimit.test.mjs`** - Unit tests for rate limiting logic
-  - IP detection and validation
-  - Fallback ID generation
-  - Hash functions
-  - Rate limit configuration
+### Backend (`tests/backend/`)
+- `simpleRateLimit.test.mjs` – Header parsing + rate-limit helper primitives (JavaScript). Still useful for quick sanity checks.
+- `testFramework.mjs` – Minimal assertion helpers that mimic Jest's API.
 
-### Frontend Tests (`tests/frontend/`)
-- **`useRateLimit.test.js`** - React hook tests
-  - Rate limit status fetching
-  - Error handling
-  - State updates
-- **`RateLimitStatus.test.js`** - Component tests
-  - UI rendering
-  - Status indicators
-  - User interactions
+### Frontend (`tests/frontend/`)
+- `RateLimitStatus.test.js` – Component smoke test (React Testing Library). Update to the Next.js app is in progress; today it mainly lints.
 
-### Integration Tests (`tests/integration/`)
-- **`rateLimitIntegration.test.mjs`** - End-to-end tests
-  - API endpoint testing
-  - Real rate limit checks
-  - Multiple request handling
+### Integration (`tests/integration/`)
+- `rateLimitIntegration.test.mjs` – Calls the deployed Django endpoint `/api/factoids/limits/` to verify the anonymous rate-limit status document.
 
 ## Running Tests
 
-### All Tests
 ```bash
-make test
+make test            # Run every suite we currently support
+make test-backend    # JavaScript helpers + linting sanity checks
+make test-frontend   # ESLint for the Next.js project
+make test-integration # Hits the live Render backend (configure env first)
+make test-rate-limit # Manual scripts for legacy scenarios
 ```
 
-### Individual Test Suites
-```bash
-# Backend unit tests
-make test-backend
+Refer to the top-level `Makefile` if you prefer running commands directly (each target prints a short description).
 
-# Frontend component tests (requires React Testing Library)
-make test-frontend
+## Integration Configuration
 
-# Integration tests (requires deployed endpoint)
-make test-integration
+The integration script expects the following environment variables (load them via `frontend/.env`, `.env.local`, or your shell):
 
-# Manual rate limit testing
-make test-rate-limit
+| Variable | Description |
+| --- | --- |
+| `FACTOIDS_API_BASE` | Base URL for the Django API (defaults to production) |
+| `FACTOIDS_API_KEY` | Optional API key if you gate the endpoint |
+
+Example `.env.local` snippet:
+
+```
+FACTOIDS_API_BASE=https://factoids-backend.onrender.com/api/factoids
+FACTOIDS_API_KEY=your-key-if-required
 ```
 
-## Test Framework
+Locally, point `FACTOIDS_API_BASE` at `http://localhost:8000/api/factoids`.
 
-- **Backend**: Custom lightweight test framework (`testFramework.mjs`)
-- **Frontend**: Jest + React Testing Library (standard React setup)
-- **Integration**: Node.js fetch API with custom assertions
+## Coverage Notes
 
-## Test Coverage
+- **Backend helpers**: validate basic IP parsing and fallback hashing logic. Full Django tests now live under `backend/apps/*/tests` (run via `uv run pytest`).
+- **Frontend**: minimal coverage until we expand the Next.js testing story.
+- **Integration**: ensures the deployed rate-limit endpoint returns structure consistent with `FactoidRateLimitStatusView` (profile, per-minute limit, current window count, cost budget).
 
-### ✅ Backend Tests
-- IP address extraction from headers
-- IP validation (IPv4/IPv6)
-- Fallback ID generation for unknown IPs
-- Rate limit configuration validation
-- Hash function consistency
+## Adding New Checks
 
-### ✅ Frontend Tests
-- Rate limit hook functionality
-- Component rendering states
-- Error handling
-- User interactions
+- Prefer adding Django tests under `backend/apps/**/tests/` for new server-side behaviour.
+- Component/page tests belong under `frontend/src/**/__tests__` or your preferred Next.js testing directory.
+- Use `tests/integration/` for black-box exercises that call deployed APIs.
 
-### ⚠️ Integration Tests
-- **Note**: Requires deployed Netlify functions
-- Tests actual API endpoints
-- Validates real rate limiting behavior
-- Checks multiple request consistency
-
-## Test Results
-
-### Backend Tests: ✅ All Passing (17/17)
-- IP Detection: 5/5 tests
-- IP Validation: 4/4 tests  
-- Fallback ID Generation: 3/3 tests
-- Rate Limit Configuration: 2/2 tests
-- Hash Functions: 3/3 tests
-
-### Integration Tests: ⚠️ Requires Deployment
-- Will pass once rate limiting functions are deployed to Netlify
-- Tests actual API behavior and Firebase integration
-
-## Adding New Tests
-
-### Backend Tests
-1. Add test functions to `tests/backend/simpleRateLimit.test.mjs`
-2. Use the custom test framework (`describe`, `it`, `expect`)
-3. Run with `make test-backend`
-
-### Frontend Tests
-1. Add test files to `tests/frontend/`
-2. Use Jest and React Testing Library
-3. Run with `make test-frontend`
-
-### Integration Tests
-1. Add test functions to `tests/integration/rateLimitIntegration.test.mjs`
-2. Test actual API endpoints
-3. Run with `make test-integration`
-
-## Environment Setup
-
-Tests use environment variables from `frontend/.env`:
-- `NETLIFY_FUNCTION_URL` - Base URL for Netlify functions
-- `FUNCTIONS_API_KEY` - API key for function authentication
-
-Make sure these are set up before running integration tests.
+These legacy scripts remain for parity with the original project; feel free to retire them once the Django-native suites cover the same ground.

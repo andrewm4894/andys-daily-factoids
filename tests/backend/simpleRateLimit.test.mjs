@@ -11,7 +11,7 @@ function getClientIP(headers) {
   if (headers['cf-connecting-ip']) {
     return headers['cf-connecting-ip'];
   }
-  // 2. Try Netlify's direct client IP
+  // 2. Try CDN-provided client IP
   else if (headers['x-nf-client-connection-ip']) {
     return headers['x-nf-client-connection-ip'];
   }
