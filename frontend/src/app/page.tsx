@@ -1,7 +1,6 @@
 import Link from "next/link";
 
-import { GenerateFactoidForm } from "@/components/generate-factoid-form";
-import { FactoidCard } from "@/components/factoid-card";
+import { HomeContent } from "@/components/home-content";
 import { ThemeMenu } from "@/components/theme-menu";
 import { fetchFactoids, fetchModels } from "@/lib/api";
 
@@ -48,25 +47,7 @@ export default async function HomePage() {
         </div>
       </header>
 
-      <GenerateFactoidForm models={models} />
-
-      <section className="space-y-4">
-        <div className="space-y-4">
-          {factoids.map((factoid, index) => (
-            <FactoidCard
-              key={factoid.id}
-              factoid={factoid}
-              isAlternate={index % 2 === 1}
-              colorIndex={index % 6}
-            />
-          ))}
-          {factoids.length === 0 && (
-            <p className="rounded-md border border-dashed border-[color:var(--surface-card-border)] p-6 text-center text-sm text-[color:var(--text-muted)]">
-              No factoids yet. Generate one to get started!
-            </p>
-          )}
-        </div>
-      </section>
+      <HomeContent initialFactoids={factoids} models={models} />
     </main>
   );
 }

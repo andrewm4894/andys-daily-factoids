@@ -8,9 +8,10 @@ import { posthog } from "@/lib/posthog";
 
 interface GenerateFactoidFormProps {
   models: string[];
+  onShuffle?: () => void;
 }
 
-export function GenerateFactoidForm({ models }: GenerateFactoidFormProps) {
+export function GenerateFactoidForm({ models, onShuffle }: GenerateFactoidFormProps) {
   const router = useRouter();
   const [topic, setTopic] = useState("");
   const [modelKey, setModelKey] = useState<string | undefined>(undefined);
@@ -230,13 +231,26 @@ export function GenerateFactoidForm({ models }: GenerateFactoidFormProps) {
       )}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <button
-          type="submit"
-          disabled={isStreaming}
-          className="inline-flex w-full items-center justify-center rounded-md bg-[color:var(--button-primary-bg)] px-4 py-2 text-sm font-medium text-[color:var(--button-primary-text)] transition hover:bg-[color:var(--button-primary-hover)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-        >
-          {isStreaming ? "Generating..." : "Generate factoid"}
-        </button>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
+          <button
+            type="submit"
+            disabled={isStreaming}
+            className="inline-flex w-full items-center justify-center rounded-md bg-[color:var(--button-primary-bg)] px-4 py-2 text-sm font-medium text-[color:var(--button-primary-text)] transition hover:bg-[color:var(--button-primary-hover)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+          >
+            {isStreaming ? "Generating..." : "Generate factoid"}
+          </button>
+          {onShuffle && (
+            <button
+              type="button"
+              onClick={onShuffle}
+              disabled={isStreaming}
+              className="inline-flex w-full items-center justify-center rounded-md border border-[color:var(--surface-card-border)] bg-[color:var(--surface-card)] px-4 py-2 text-sm font-medium text-[color:var(--text-secondary)] transition hover:border-[color:var(--surface-card-border-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-outline)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+              title="Shuffle visible factoids"
+            >
+              Shuffle factoids ↺
+            </button>
+          )}
+        </div>
         <button
           type="button"
           onClick={() => {
