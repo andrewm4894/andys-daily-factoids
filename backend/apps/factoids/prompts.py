@@ -10,7 +10,7 @@ from apps.factoids.models import Factoid
 def build_factoid_generation_prompt(
     topic: Optional[str] = None,
     recent_factoids: Optional[list[Factoid]] = None,
-    num_examples: int = 5,
+    num_examples: int = 25,
 ) -> str:
     """Build a comprehensive prompt for factoid generation including recent examples."""
     
@@ -18,13 +18,13 @@ def build_factoid_generation_prompt(
     
     # Add examples section if we have recent factoids
     if recent_factoids:
-        prompt_parts.append("Here are some examples of interesting factoids (note the votes up and down counts which comes from user feedback):")
+        prompt_parts.append("Here are some recent examples of interesting factoids (note the votes up and down counts which comes from user feedback):")
         prompt_parts.append("")
         prompt_parts.append("## Examples:")
         
         for factoid in recent_factoids[:num_examples]:
-            votes_info = f"(👍 {factoid.votes_up}, 👎 {factoid.votes_down})"
-            prompt_parts.append(f"- **{factoid.subject}**: {factoid.text} {factoid.emoji} {votes_info}")
+            votes_info = f"(votes up: {factoid.votes_up}, votes down: {factoid.votes_down})"
+            prompt_parts.append(f"- **{factoid.subject}**: {factoid.text} {votes_info}")
         
         prompt_parts.append("")
     
