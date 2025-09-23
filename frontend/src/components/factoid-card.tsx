@@ -25,8 +25,22 @@ export function FactoidCard({ factoid }: FactoidCardProps) {
 
   const trimmedText = factoid.text.trim();
   const words = trimmedText === "" ? [] : trimmedText.split(/\s+/);
+  
+  // Deterministically pick between 4, 5, or 6 words for visual variety
+  // Use factoid ID to ensure consistent server/client rendering
+  const getWordCount = () => {
+    const counts = [4, 5, 6];
+    // Use a simple hash of the factoid ID to get consistent results
+    let hash = 0;
+    for (let i = 0; i < factoid.id.length; i++) {
+      hash = ((hash << 5) - hash + factoid.id.charCodeAt(i)) & 0xffffffff;
+    }
+    return counts[Math.abs(hash) % counts.length];
+  };
+  
+  const maxWords = getWordCount();
   const teaserText =
-    words.length > 5 ? `${words.slice(0, 5).join(" ")}…` : trimmedText;
+    words.length > maxWords ? `${words.slice(0, maxWords).join(" ")}…` : trimmedText;
   const displayEmoji = factoid.emoji || "✨";
 
   const handleCardToggle = () => {
