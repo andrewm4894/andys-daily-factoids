@@ -247,6 +247,60 @@ body {
   transition: background-color 200ms ease, color 200ms ease;
 }
 
+:root[data-theme="matrix"] body::before,
+:root[data-theme="matrix"] body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  opacity: 0.16;
+  background-size: 100% 300%;
+  animation: matrix-stream 9s linear infinite;
+  z-index: 0;
+}
+
+:root[data-theme="matrix"] body::after {
+  animation-duration: 12s;
+  animation-delay: -3s;
+  opacity: 0.1;
+}
+
+:root[data-theme="matrix"] body::before {
+  background-image: repeating-linear-gradient(
+      to bottom,
+      rgba(34, 197, 94, 0.08) 0px,
+      rgba(34, 197, 94, 0.22) 2px,
+      rgba(8, 145, 178, 0.18) 4px,
+      transparent 6px,
+      transparent 18px
+    ),
+    repeating-linear-gradient(
+      to right,
+      transparent 0px,
+      transparent 15px,
+      rgba(8, 145, 178, 0.08) 15px,
+      rgba(34, 197, 94, 0.12) 16px
+    );
+}
+
+:root[data-theme="matrix"] body::after {
+  background-image: repeating-linear-gradient(
+      to bottom,
+      rgba(16, 185, 129, 0.06) 0px,
+      rgba(34, 197, 94, 0.2) 1px,
+      transparent 4px,
+      transparent 14px
+    ),
+    repeating-linear-gradient(
+      to right,
+      transparent 0px,
+      transparent 25px,
+      rgba(15, 118, 110, 0.14) 25px,
+      rgba(56, 189, 248, 0.16) 26px
+    );
+}
+
 a {
   color: var(--accent);
 }
@@ -254,4 +308,13 @@ a {
 ::selection {
   background: var(--accent);
   color: var(--accent-foreground);
+}
+
+@keyframes matrix-stream {
+  0% {
+    background-position: 0 -100%;
+  }
+  100% {
+    background-position: 0 100%;
+  }
 }
