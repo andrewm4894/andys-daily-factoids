@@ -90,6 +90,41 @@
   --chip-muted-text: #e0f2fe;
 }
 
+:root[data-theme="rainbow"] {
+  color-scheme: light;
+  --background: #fff7fb;
+  --foreground: #1f2937;
+  --surface-card: rgba(255, 255, 255, 0.9);
+  --surface-card-alt: rgba(255, 239, 213, 0.9);
+  --surface-card-border: rgba(236, 72, 153, 0.35);
+  --surface-card-border-hover: rgba(251, 191, 36, 0.55);
+  --surface-panel: rgba(255, 255, 255, 0.85);
+  --surface-panel-border: rgba(129, 140, 248, 0.32);
+  --surface-muted: rgba(244, 226, 255, 0.9);
+  --text-primary: #312e81;
+  --text-secondary: #5b21b6;
+  --text-muted: #7c3aed;
+  --accent: #ec4899;
+  --accent-foreground: #fff7fb;
+  --focus-outline: #f97316;
+  --card-overlay: linear-gradient(
+    135deg,
+    rgba(236, 72, 153, 0.18),
+    rgba(251, 191, 36, 0.18),
+    rgba(59, 130, 246, 0.18)
+  );
+  --input-bg: rgba(255, 255, 255, 0.95);
+  --input-border: rgba(236, 72, 153, 0.35);
+  --input-border-focus: rgba(59, 130, 246, 0.75);
+  --input-disabled-bg: rgba(248, 250, 252, 0.8);
+  --button-primary-bg: #ec4899;
+  --button-primary-hover: #db2777;
+  --button-primary-text: #fff7fb;
+  --shadow-soft: 0 26px 52px -26px rgba(236, 72, 153, 0.45);
+  --chip-muted-bg: rgba(236, 72, 153, 0.16);
+  --chip-muted-text: #5b21b6;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
