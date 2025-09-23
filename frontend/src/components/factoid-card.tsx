@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import type { Factoid } from "@/lib/types";
 import { submitFeedback, submitVote } from "@/lib/api";
+import { useTheme } from "@/components/theme-provider";
 
 interface FactoidCardProps {
   factoid: Factoid;
@@ -20,6 +21,7 @@ export function FactoidCard({
   colorIndex,
 }: FactoidCardProps) {
   const router = useRouter();
+  const { theme } = useTheme();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
@@ -167,15 +169,23 @@ export function FactoidCard({
     rainbowClass ? ` ${rainbowClass}` : ""
   }`;
 
+  const formatShareUrl = (baseUrl: string) => {
+    if (!theme) {
+      return baseUrl;
+    }
+    const separator = baseUrl.includes("?") ? "&" : "?";
+    return `${baseUrl}${separator}theme=${encodeURIComponent(theme)}`;
+  };
+
   const resolveShareUrl = () => {
     if (typeof window !== "undefined" && window.location?.origin) {
-      return `${window.location.origin}/factoids/${factoid.id}`;
+      return formatShareUrl(`${window.location.origin}/factoids/${factoid.id}`);
     }
     const envBase = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
     if (envBase) {
-      return `${envBase}/factoids/${factoid.id}`;
+      return formatShareUrl(`${envBase}/factoids/${factoid.id}`);
     }
-    return `/factoids/${factoid.id}`;
+    return formatShareUrl(`/factoids/${factoid.id}`);
   };
 
   const handleCopyFactoid = () => {
