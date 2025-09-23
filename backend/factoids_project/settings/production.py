@@ -27,7 +27,9 @@ hosts_env = os.getenv("DJANGO_ALLOWED_HOSTS", "")
 ALLOWED_HOSTS = [host.strip() for host in hosts_env.split(",") if host.strip()] if hosts_env else []
 
 cors_env = os.getenv("DJANGO_CORS_ALLOWED_ORIGINS", "")
-CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_env.split(",") if origin.strip()] if cors_env else []
+CORS_ALLOWED_ORIGINS = []
+if cors_env:
+    CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_env.split(",") if origin.strip()]
 CORS_ALLOW_ALL_ORIGINS = False
 
 if not SECRET_KEY or SECRET_KEY == "development-secret-key":  # noqa: F405

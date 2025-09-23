@@ -6,15 +6,22 @@ from .generator import (
     RateLimitExceededError,
     generate_factoid,
 )
-from .openrouter import GenerationRequestPayload, GenerationResult, ModelInfo, OpenRouterClient
+from .openrouter import (
+    DEFAULT_FACTOID_MODEL,
+    DEFAULT_OPENROUTER_BASE_URL,
+    GenerationResult,
+    fetch_openrouter_models,
+    generate_factoid_completion,
+)
 
 __all__ = [
     "CostBudgetExceededError",
     "GenerationFailedError",
     "RateLimitExceededError",
     "generate_factoid",
-    "GenerationRequestPayload",
+    "DEFAULT_FACTOID_MODEL",
+    "DEFAULT_OPENROUTER_BASE_URL",
     "GenerationResult",
-    "ModelInfo",
-    "OpenRouterClient",
+    "fetch_openrouter_models",
+    "generate_factoid_completion",
 ]

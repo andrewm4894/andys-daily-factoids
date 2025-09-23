@@ -1,166 +1,131 @@
-"""Service layer for interacting with OpenRouter and orchestrating factoid generation."""
+"""Minimal helpers for calling OpenRouter via LangChain."""
 
 from __future__ import annotations
 
 import json
 import re
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any, Sequence
 
 import httpx
-from pydantic import BaseModel, Field
-
-try:
-    from posthog.ai.openai import OpenAI
-    from posthog import Posthog
-    POSTHOG_AVAILABLE = True
-except ImportError:
-    POSTHOG_AVAILABLE = False
-    OpenAI = None
-    Posthog = None
+from langchain_core.messages import BaseMessage
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_openai import ChatOpenAI
 
 DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+DEFAULT_FACTOID_MODEL = "openai/gpt-4o-mini"
 
 
-class ModelInfo(BaseModel):
-    id: str
-    name: str | None = None
-    pricing: dict[str, Any] | None = None
-    context_length: int | None = Field(default=None, alias="context_length")
+_PROMPT_TEMPLATE = ChatPromptTemplate.from_messages([("user", "{prompt}")])
 
 
-class GenerationResult(BaseModel):
+@dataclass
+class GenerationResult:
+    """Structured factoid payload returned by OpenRouter."""
+
     text: str
     subject: str
     emoji: str
     raw: dict[str, Any]
 
 
-@dataclass
-class GenerationRequestPayload:
-    prompt: str
-    model: str
-    max_tokens: int | None = None
-    temperature: float | None = None
+def generate_factoid_completion(
+    *,
+    api_key: str,
+    base_url: str,
+    model: str,
+    temperature: float | None,
+    prompt: str,
+    callbacks: Sequence[Any] | None = None,
+) -> GenerationResult:
+    """Invoke OpenRouter through LangChain and normalise the response."""
+
+    if not api_key:
+        raise ValueError("OpenRouter API key is required")
+
+    callbacks = list(callbacks or [])
+
+    chat_kwargs: dict[str, Any] = {
+        "api_key": api_key,
+        "base_url": base_url.rstrip("/"),
+        "model": model,
+    }
+    if temperature is not None:
+        chat_kwargs["temperature"] = temperature
+
+    chat = ChatOpenAI(**chat_kwargs)
+    messages = _PROMPT_TEMPLATE.format_messages(prompt=prompt)
+    message = chat.invoke(messages, config={"callbacks": callbacks})
+    raw = message.model_dump()
+    text, subject, emoji = _extract_factoid_fields(message)
+    return GenerationResult(text=text, subject=subject, emoji=emoji, raw=raw)
 
 
-class OpenRouterClient:
-    """Thin wrapper around the OpenRouter REST API with optional PostHog LLM analytics."""
+def fetch_openrouter_models(
+    *,
+    api_key: str,
+    base_url: str,
+    transport: httpx.BaseTransport | None = None,
+) -> list[dict[str, Any]]:
+    """Return the raw model payload from OpenRouter."""
 
-    def __init__(
-        self, 
-        api_key: str, 
-        base_url: str = DEFAULT_OPENROUTER_BASE_URL,
-        posthog_client: Optional[Posthog] = None
-    ) -> None:
-        if not api_key:
-            raise ValueError("OpenRouter API key is required")
-        self.api_key = api_key
-        self.base_url = base_url.rstrip("/")
-        self.posthog_client = posthog_client
-        
-        # Initialize PostHog-wrapped OpenAI client if available
-        if POSTHOG_AVAILABLE and posthog_client:
-            self.openai_client = OpenAI(
-                base_url=self.base_url,
-                api_key=self.api_key,
-                posthog_client=posthog_client
-            )
-        else:
-            self.openai_client = None
+    if not api_key:
+        raise ValueError("OpenRouter API key is required")
 
-    async def list_models(self, *, transport: httpx.BaseTransport | None = None) -> list[ModelInfo]:
-        async with httpx.AsyncClient(
-            base_url=self.base_url,
-            headers=self._headers,
-            transport=transport,
-            timeout=15,
-        ) as client:
-            response = await client.get("/models")
-            response.raise_for_status()
-            payload = response.json()
-            data = payload.get("data", [])
-            return [ModelInfo.model_validate(item) for item in data]
+    headers = {"Authorization": f"Bearer {api_key}"}
+    with httpx.Client(
+        base_url=base_url.rstrip("/"),
+        headers=headers,
+        timeout=15,
+        transport=transport,
+    ) as client:
+        response = client.get("/models")
+        response.raise_for_status()
+        payload = response.json()
+    data = payload.get("data", [])
+    return [item for item in data if isinstance(item, dict)]
 
-    async def generate_factoid(
-        self,
-        payload: GenerationRequestPayload,
-        *,
-        transport: httpx.BaseTransport | None = None,
-    ) -> GenerationResult:
-        # Use PostHog-wrapped OpenAI client if available for automatic LLM analytics
-        if self.openai_client:
-            messages = [{"role": "user", "content": payload.prompt}]
-            
-            completion_params: dict[str, Any] = {
-                "model": payload.model,
-                "messages": messages,
-            }
-            if payload.max_tokens is not None:
-                completion_params["max_tokens"] = payload.max_tokens
-            if payload.temperature is not None:
-                completion_params["temperature"] = payload.temperature
-            
-            # This will automatically track to PostHog
-            response = self.openai_client.chat.completions.create(**completion_params)
-            raw = response.model_dump()
-            text, subject, emoji = self._extract_factoid(raw)
-            return GenerationResult(text=text, subject=subject, emoji=emoji, raw=raw)
-        
-        # Fallback to direct HTTP client (no PostHog tracking)
-        request_body: dict[str, Any] = {
-            "model": payload.model,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": payload.prompt,
-                }
-            ],
-        }
-        if payload.max_tokens is not None:
-            request_body["max_tokens"] = payload.max_tokens
-        if payload.temperature is not None:
-            request_body["temperature"] = payload.temperature
-        async with httpx.AsyncClient(
-            base_url=self.base_url,
-            headers=self._headers,
-            transport=transport,
-            timeout=60,
-        ) as client:
-            response = await client.post("/chat/completions", json=request_body)
-            response.raise_for_status()
-            raw = response.json()
-            text, subject, emoji = self._extract_factoid(raw)
-            return GenerationResult(text=text, subject=subject, emoji=emoji, raw=raw)
 
-    @property
-    def _headers(self) -> dict[str, str]:
-        return {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-        }
+def _extract_factoid_fields(message: BaseMessage) -> tuple[str, str, str]:
+    content = _normalise_content(message.content)
+    try:
+        parsed = json.loads(content)
+    except json.JSONDecodeError:
+        parsed = {"text": content, "subject": "", "emoji": ""}
 
-    @staticmethod
-    def _extract_factoid(raw_response: dict[str, Any]) -> tuple[str, str, str]:
-        """Attempt to parse the model response into the expected factoid shape."""
+    text = str(parsed.get("text") or content)
+    subject = str(parsed.get("subject", ""))
+    emoji = str(parsed.get("emoji", ""))
+    return text, subject, emoji
 
-        choices = raw_response.get("choices", [])
-        if not choices:
-            raise ValueError("OpenRouter response missing choices")
-        message = choices[0].get("message", {})
-        content = message.get("content", "")
 
-        if isinstance(content, str):
-            fenced_match = re.search(r"```(?:json)?\s*([\s\S]*?)```", content)
-            if fenced_match:
-                content = fenced_match.group(1).strip()
+def _normalise_content(content: Any) -> str:
+    if isinstance(content, list):
+        parts: list[str] = []
+        for item in content:
+            if isinstance(item, dict) and item.get("type") == "text":
+                parts.append(str(item.get("text", "")))
+            elif isinstance(item, dict):
+                # Fallback: stringify any dicts we do not explicitly recognise.
+                parts.append(str(item))
+            elif item is not None:
+                parts.append(str(item))
+        content = "".join(parts)
 
-        try:
-            parsed = json.loads(content)
-        except json.JSONDecodeError:
-            parsed = {"text": content, "subject": "", "emoji": ""}
+    if not isinstance(content, str):
+        return str(content)
 
-        text = parsed.get("text") or content
-        subject = parsed.get("subject", "")
-        emoji = parsed.get("emoji", "")
-        return text, subject, emoji
+    fenced_match = re.search(r"```(?:json)?\s*([\s\S]*?)```", content)
+    if fenced_match:
+        return fenced_match.group(1).strip()
+
+    return content.strip()
+
+
+__all__ = [
+    "DEFAULT_FACTOID_MODEL",
+    "DEFAULT_OPENROUTER_BASE_URL",
+    "GenerationResult",
+    "fetch_openrouter_models",
+    "generate_factoid_completion",
+]

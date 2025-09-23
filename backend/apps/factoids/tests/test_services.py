@@ -1,97 +1,70 @@
-"""Tests for factoid service helpers."""
+"""Tests for the simplified OpenRouter helpers."""
 
-import asyncio
+from __future__ import annotations
+
+from collections import namedtuple
+from unittest.mock import patch
 
 import httpx
 import pytest
 
-from apps.factoids.services.openrouter import GenerationRequestPayload, OpenRouterClient
+from apps.factoids.services.openrouter import (
+    GenerationResult,
+    fetch_openrouter_models,
+    generate_factoid_completion,
+)
+
+FakeMessage = namedtuple("FakeMessage", ["content", "model_dump"])
 
 
-@pytest.mark.django_db()
-def test_openrouter_list_models_parses_response(settings):
-    settings.SECRET_KEY = "secret"
-    transport = httpx.MockTransport(
-        lambda request: httpx.Response(
-            200,
-            json={
-                "data": [
-                    {"id": "model-1", "name": "Model One", "pricing": {"input": 0.001}},
-                ]
-            },
+def _fake_message(content):
+    return FakeMessage(content=content, model_dump=lambda: {"content": content})
+
+
+FENCED_JSON_CONTENT = """```json
+{
+  "text": "Fact",
+  "subject": "Science",
+  "emoji": "🧠"
+}
+```"""
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        '{"text": "Fact", "subject": "Science", "emoji": "🧠"}',
+        FENCED_JSON_CONTENT,
+    ],
+)
+def test_generate_factoid_completion_parses_content(content):
+    with patch("apps.factoids.services.openrouter.ChatOpenAI") as mock_chat_cls:
+        mock_chat = mock_chat_cls.return_value
+        mock_chat.invoke.return_value = _fake_message(content)
+
+        result = generate_factoid_completion(
+            api_key="key",
+            base_url="https://example.com",
+            model="model",
+            temperature=None,
+            prompt="Tell me",
         )
-    )
 
-    client = OpenRouterClient(api_key="test")
-    models = asyncio.run(client.list_models(transport=transport))
-    assert models[0].id == "model-1"
-
-
-@pytest.mark.django_db()
-def test_openrouter_generate_factoid_parses_json(settings):
-    settings.SECRET_KEY = "secret"
-    transport = httpx.MockTransport(
-        lambda request: httpx.Response(
-            200,
-            json={
-                "choices": [
-                    {
-                        "message": {
-                            "content": '{"text": "Fact", "subject": "Science", "emoji": "🧠"}',
-                        }
-                    }
-                ]
-            },
-        )
-    )
-
-    client = OpenRouterClient(api_key="test")
-    result = asyncio.run(
-        client.generate_factoid(
-            GenerationRequestPayload(prompt="Tell me", model="model-1"),
-            transport=transport,
-        )
-    )
-    assert result.text == "Fact"
-    assert result.subject == "Science"
-
-
-@pytest.mark.django_db()
-def test_openrouter_generate_factoid_handles_code_fence(settings):
-    settings.SECRET_KEY = "secret"
-
-    fenced_content = (
-        "```json\n"
-        "{\n"
-        "  \"text\": \"Fact\",\n"
-        "  \"subject\": \"Science\",\n"
-        "  \"emoji\": \"🧠\"\n"
-        "}\n"
-        "```"
-    )
-
-    transport = httpx.MockTransport(
-        lambda request: httpx.Response(
-            200,
-            json={
-                "choices": [
-                    {
-                        "message": {
-                            "content": fenced_content,
-                        }
-                    }
-                ]
-            },
-        )
-    )
-
-    client = OpenRouterClient(api_key="test")
-    result = asyncio.run(
-        client.generate_factoid(
-            GenerationRequestPayload(prompt="Tell me", model="model-1"),
-            transport=transport,
-        )
-    )
+    assert isinstance(result, GenerationResult)
     assert result.text == "Fact"
     assert result.subject == "Science"
     assert result.emoji == "🧠"
+
+
+def test_fetch_openrouter_models_uses_transport():
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(200, json={"data": [{"id": "model-1"}]})
+    )
+
+    models = fetch_openrouter_models(
+        api_key="key",
+        base_url="https://example.com",
+        transport=transport,
+    )
+
+    assert models == [{"id": "model-1"}]

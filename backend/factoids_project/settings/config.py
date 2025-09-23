@@ -8,7 +8,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from pydantic import Field, field_validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -35,6 +35,14 @@ class AppSettings(BaseSettings):
     db_conn_max_age: int = 60
     openrouter_api_key: str | None = None
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    posthog_project_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("POSTHOG_PROJECT_API_KEY", "DJANGO_POSTHOG_PROJECT_API_KEY"),
+    )
+    posthog_host: str | None = Field(
+        default="https://us.i.posthog.com",
+        validation_alias=AliasChoices("POSTHOG_HOST", "DJANGO_POSTHOG_HOST"),
+    )
 
     model_config = SettingsConfigDict(
         env_prefix="DJANGO_",
@@ -92,16 +100,31 @@ def get_settings(env_file: str | os.PathLike[str] | None = None) -> AppSettings:
                     
                     # Parse allowed hosts manually
                     hosts_env = os.getenv("DJANGO_ALLOWED_HOSTS", "")
-                    self.allowed_hosts = [h.strip() for h in hosts_env.split(",") if h.strip()] if hosts_env else []
+                    if hosts_env:
+                        self.allowed_hosts = [h.strip() for h in hosts_env.split(",") if h.strip()]
+                    else:
+                        self.allowed_hosts = []
                     
                     # Parse CORS origins manually
                     cors_env = os.getenv("DJANGO_CORS_ALLOWED_ORIGINS", "")
-                    self.cors_allowed_origins = [o.strip() for o in cors_env.split(",") if o.strip()] if cors_env else []
-                    
-                    self.database_url = os.getenv("DJANGO_DATABASE_URL") or os.getenv("DATABASE_URL")
+                    if cors_env:
+                        self.cors_allowed_origins = [
+                            origin.strip() for origin in cors_env.split(",") if origin.strip()
+                        ]
+                    else:
+                        self.cors_allowed_origins = []
+
+                    self.database_url = os.getenv("DJANGO_DATABASE_URL") or os.getenv(
+                        "DATABASE_URL"
+                    )
                     self.db_conn_max_age = int(os.getenv("DJANGO_DB_CONN_MAX_AGE", "60"))
-                    self.openrouter_api_key = os.getenv("DJANGO_OPENROUTER_API_KEY") or os.getenv("OPENROUTER_API_KEY")
-                    self.openrouter_base_url = os.getenv("DJANGO_OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+                    self.openrouter_api_key = os.getenv("DJANGO_OPENROUTER_API_KEY") or os.getenv(
+                        "OPENROUTER_API_KEY"
+                    )
+                    self.openrouter_base_url = os.getenv(
+                        "DJANGO_OPENROUTER_BASE_URL",
+                        "https://openrouter.ai/api/v1",
+                    )
                     
             return FallbackSettings()  # type: ignore
         else:

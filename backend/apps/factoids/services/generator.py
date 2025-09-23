@@ -1,25 +1,23 @@
-"""Factoid generation service shared across API, CLI, and scheduled tasks."""
+"""Simplified factoid generation service using LangChain + PostHog callbacks."""
 
 from __future__ import annotations
 
-import asyncio
-import random
+from dataclasses import dataclass
 from typing import Optional
 
 from django.conf import settings
 from django.utils import timezone
-
-try:
-    from posthog import Posthog
-    POSTHOG_AVAILABLE = True
-except ImportError:
-    POSTHOG_AVAILABLE = False
-    Posthog = None
+from posthog import Posthog
+from posthog.ai.langchain import CallbackHandler
 
 from apps.core.services import CostGuard, RateLimitConfig, RateLimitExceeded, get_rate_limiter
 from apps.factoids import models
 from apps.factoids.prompts import build_factoid_generation_prompt
-from apps.factoids.services.openrouter import GenerationRequestPayload, OpenRouterClient
+from apps.factoids.services.openrouter import (
+    DEFAULT_FACTOID_MODEL,
+    GenerationResult,
+    generate_factoid_completion,
+)
 
 
 class RateLimitExceededError(Exception):
@@ -35,6 +33,19 @@ class CostBudgetExceededError(Exception):
 class GenerationFailedError(Exception):
     def __init__(self, detail: str) -> None:
         self.detail = detail
+
+
+@dataclass
+class _PosthogContext:
+    client: Posthog | None
+
+    def flush(self) -> None:
+        if not self.client:
+            return
+        try:
+            self.client.flush()
+        finally:
+            self.client.shutdown()
 
 
 def generate_factoid(
@@ -63,99 +74,130 @@ def generate_factoid(
     if not decision.allowed:
         raise CostBudgetExceededError(decision.remaining_budget)
 
-    if model_key:
-        resolved_model = model_key
-    else:
-        # Randomly select a model from OpenRouter's available models
-        client = OpenRouterClient(api_key=settings.OPENROUTER_API_KEY, base_url=settings.OPENROUTER_BASE_URL)
-        try:
-            available_models = asyncio.run(client.list_models())
-            if available_models:
-                resolved_model = random.choice(available_models).id
-            else:
-                resolved_model = "openai/gpt-4o-mini"  # fallback
-        except Exception:
-            resolved_model = "openai/gpt-4o-mini"  # fallback on API error
+    api_key = settings.OPENROUTER_API_KEY
+    if not api_key:
+        raise GenerationFailedError("OpenRouter API key is not configured")
+
+    resolved_model = model_key or DEFAULT_FACTOID_MODEL
 
     generation_request = models.GenerationRequest.objects.create(
         client_hash=client_hash,
         request_source=request_source,
         model_key=resolved_model,
         parameters={"temperature": temperature},
+        status=models.RequestStatus.RUNNING,
+        started_at=timezone.now(),
     )
 
-    api_key = settings.OPENROUTER_API_KEY
-    if not api_key:
-        factoid = models.Factoid.objects.create(
-            text=f"Did you know that {topic} can be fascinating even without an API key?",
-            subject=topic.title()[:255],
-            emoji="🤖",
-            created_by=generation_request,
-            generation_metadata={"model": "stub"},
-        )
-        generation_request.status = models.RequestStatus.SUCCEEDED
-        generation_request.completed_at = timezone.now()
-        generation_request.actual_cost_usd = 0
-        generation_request.save(update_fields=["status", "completed_at", "actual_cost_usd"])
-        return factoid
-
-    # Get recent factoids for context
-    recent_factoids = list(models.Factoid.objects.order_by('-created_at')[:10])
-    
-    # Build comprehensive prompt
+    recent_factoids = list(models.Factoid.objects.order_by("-created_at")[:10])
     prompt = build_factoid_generation_prompt(
         topic=topic if topic else None,
         recent_factoids=recent_factoids,
         num_examples=5,
     )
-    
-    # Initialize PostHog client for LLM analytics
-    posthog_client = None
-    if POSTHOG_AVAILABLE:
-        posthog_api_key = getattr(settings, 'POSTHOG_PROJECT_API_KEY', None)
-        posthog_host = getattr(settings, 'POSTHOG_HOST', 'https://us.i.posthog.com')
-        if posthog_api_key:
-            posthog_client = Posthog(posthog_api_key, host=posthog_host)
-    
-    client = OpenRouterClient(
-        api_key=api_key, 
-        base_url=settings.OPENROUTER_BASE_URL,
-        posthog_client=posthog_client
-    )
-    payload = GenerationRequestPayload(
-        prompt=prompt,
-        model=resolved_model,
-        temperature=temperature,
+
+    posthog_context = _build_posthog_client()
+    callbacks = _build_callbacks(
+        posthog_context.client,
+        distinct_id=client_hash,
+        trace_id=str(generation_request.id),
+        topic=topic,
+        profile=profile,
+        request_source=request_source,
     )
 
     try:
-        result = asyncio.run(client.generate_factoid(payload))
-    except Exception as exc:  # pragma: no cover - real API failure path
+        result = generate_factoid_completion(
+            api_key=api_key,
+            base_url=settings.OPENROUTER_BASE_URL,
+            model=resolved_model,
+            temperature=temperature,
+            prompt=prompt,
+            callbacks=callbacks,
+        )
+    except Exception as exc:  # pragma: no cover - external API failure
         generation_request.status = models.RequestStatus.FAILED
         generation_request.error_message = str(exc)
         generation_request.completed_at = timezone.now()
         generation_request.save(update_fields=["status", "error_message", "completed_at"])
+        if posthog_context.client:
+            posthog_context.client.capture_exception(
+                exc,
+                distinct_id=client_hash,
+                properties={
+                    "topic": topic,
+                    "profile": profile,
+                    "request_source": request_source,
+                    "generation_request_id": str(generation_request.id),
+                },
+            )
+        posthog_context.flush()
         raise GenerationFailedError("Failed to generate factoid") from exc
 
+    factoid = _persist_factoid(result, resolved_model, generation_request)
+
+    generation_request.status = models.RequestStatus.SUCCEEDED
+    generation_request.completed_at = timezone.now()
+    generation_request.actual_cost_usd = 0.1
+    generation_request.save(
+        update_fields=["status", "completed_at", "actual_cost_usd"]
+    )
+
+    guard.record(profile, 0.1)
+    posthog_context.flush()
+    return factoid
+
+
+def _build_posthog_client() -> _PosthogContext:
+    api_key = getattr(settings, "POSTHOG_PROJECT_API_KEY", None)
+    if not api_key:
+        return _PosthogContext(client=None)
+    host = getattr(settings, "POSTHOG_HOST", "https://us.i.posthog.com")
+    client = Posthog(api_key, host=host)
+    return _PosthogContext(client=client)
+
+
+def _build_callbacks(
+    posthog_client: Posthog | None,
+    *,
+    distinct_id: str,
+    trace_id: str,
+    topic: str,
+    profile: str,
+    request_source: models.RequestSource,
+) -> list[CallbackHandler]:
+    if not posthog_client:
+        return []
+
+    properties = {
+        "topic": topic,
+        "profile": profile,
+        "request_source": str(request_source),
+        "generation_request_id": trace_id,
+    }
+
+    callback = CallbackHandler(
+        client=posthog_client,
+        distinct_id=distinct_id,
+        trace_id=trace_id,
+        properties=properties,
+        groups={"profile": profile} if profile else None,
+    )
+    return [callback]
+
+
+def _persist_factoid(
+    result: GenerationResult,
+    model_key: str,
+    generation_request: models.GenerationRequest,
+) -> models.Factoid:
     factoid = models.Factoid.objects.create(
         text=result.text,
         subject=result.subject[:255],
         emoji=result.emoji[:16],
         created_by=generation_request,
-        generation_metadata={"model": resolved_model, "raw": result.raw},
+        generation_metadata={"model": model_key, "raw": result.raw},
     )
-    generation_request.status = models.RequestStatus.SUCCEEDED
-    generation_request.completed_at = timezone.now()
-    generation_request.actual_cost_usd = 0.1
-    generation_request.save(
-        update_fields=[
-            "status",
-            "completed_at",
-            "actual_cost_usd",
-        ]
-    )
-
-    guard.record(profile, 0.1)
     return factoid
 
 

@@ -82,6 +82,13 @@
 6. Persist factoid & metadata, log PostHog event (`$ai_generation`), update cost counters.
 7. Next.js updates UI via SSE; fallback to polling endpoint if SSE not supported.
 
+### Simplification Plan (Sept 2025)
+- Rebuild the factoid generator as a slim LangChain pipeline (`ChatPromptTemplate` → `ChatOpenAI`).
+- Target OpenRouter by passing its `base_url` and any required headers directly to the LangChain model.
+- Emit PostHog LLM analytics solely via `posthog.ai.langchain.CallbackHandler` callbacks.
+- Remove bespoke HTTP clients, stub branches, and defensive parsing — the new flow can assume happy-path operation.
+- Treat this as greenfield work; no need to preserve previous service abstractions or backwards compatibility.
+
 ## LangGraph Chat Agent
 - Graph nodes orchestrated in `apps/chat/langgraph.py`.
   - Retrieve context (`Factoid` search, optional embeddings), build prompt.

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import json
 from typing import Any
@@ -27,7 +26,7 @@ from apps.factoids.services.generator import (
     RateLimitExceededError,
     generate_factoid,
 )
-from apps.factoids.services.openrouter import OpenRouterClient
+from apps.factoids.services.openrouter import fetch_openrouter_models
 
 app_name = "factoids"
 
@@ -225,13 +224,15 @@ class ModelListView(APIView):
         if not api_key:
             return Response({"models": []})
 
-        client = OpenRouterClient(api_key=api_key, base_url=settings.OPENROUTER_BASE_URL)
         try:
-            models_payload = asyncio.run(client.list_models())
+            models_payload = fetch_openrouter_models(
+                api_key=api_key,
+                base_url=settings.OPENROUTER_BASE_URL,
+            )
         except Exception as exc:  # pragma: no cover - real API failure path
             return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
-        return Response({"models": [item.model_dump() for item in models_payload]})
+        return Response({"models": models_payload})
 
 
 router = routers.DefaultRouter()

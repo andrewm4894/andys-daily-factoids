@@ -48,6 +48,7 @@
 - [x] Implement OpenRouter client with model catalogue caching, parameter defaults, price metadata.
 - [x] Harden rate limiting (Redis + Postgres audit) and cost guard service with configurable quotas. *(Redis-backed limiter in place; audit dashboard still pending.)*
 - [x] Introduce layered abuse protection: signed anonymous session tokens, API key management, captcha hook, anomaly monitoring plan.
+- [ ] Refactor factoid generation to a minimal LangChain + PostHog callback pipeline (no legacy client fallbacks).
 - [ ] Build Django admin + staff dashboards for monitoring usage, costs, rate limits.
 - [x] Seed fixtures for local testing.
 

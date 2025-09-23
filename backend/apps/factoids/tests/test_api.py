@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 from django.urls import reverse
@@ -43,12 +43,12 @@ def test_factoid_list_returns_existing_factoid():
 
 
 @pytest.mark.django_db()
-def test_factoid_generation_stub_without_api_key(settings):
+def test_factoid_generation_without_api_key_returns_error(settings):
     settings.OPENROUTER_API_KEY = None
     client = APIClient()
     response = client.post(reverse("factoids:generate"), {"topic": "gravity"}, format="json")
-    assert response.status_code == 201
-    assert "gravity" in response.json()["text"].lower()
+    assert response.status_code == 502
+    assert response.json()["detail"] == "OpenRouter API key is not configured"
 
 
 @pytest.mark.django_db()
@@ -59,8 +59,8 @@ def test_factoid_generation_invokes_openrouter(settings):
     mock_result = GenerationResult(text="Fact", subject="Science", emoji="🧠", raw={})
 
     with patch(
-        "apps.factoids.services.openrouter.OpenRouterClient.generate_factoid",
-        new=AsyncMock(return_value=mock_result),
+        "apps.factoids.services.generator.generate_factoid_completion",
+        return_value=mock_result,
     ):
         response = client.post(reverse("factoids:generate"), {"topic": "science"}, format="json")
         assert response.status_code == 201
@@ -81,10 +81,7 @@ def test_models_endpoint_uses_openrouter(settings):
     settings.OPENROUTER_API_KEY = "key"
     client = APIClient()
 
-    with patch(
-        "apps.factoids.services.openrouter.OpenRouterClient.list_models",
-        new=AsyncMock(return_value=[]),
-    ):
+    with patch("apps.factoids.api.fetch_openrouter_models", return_value=[]):
         response = client.get(reverse("factoids:models"))
         assert response.status_code == 200
         assert response.json() == {"models": []}
@@ -116,12 +113,19 @@ def test_limits_endpoint_returns_status():
 
 @pytest.mark.django_db()
 @pytest.mark.parametrize("topic", ["sse-test"])
-def test_generate_stream_returns_events(settings, topic):
-    settings.OPENROUTER_API_KEY = None
+def test_generate_stream_emits_factoid_event(settings, topic):
+    settings.OPENROUTER_API_KEY = "key"
     client = APIClient()
     url = reverse("factoids:generate-stream") + f"?topic={topic}"
-    response = client.get(url)
-    assert response.status_code == 200
-    assert response["Content-Type"] == "text/event-stream"
-    payload = b"".join(response.streaming_content)
-    assert b"event: factoid" in payload
+    mock_result = GenerationResult(text="Fact", subject="Science", emoji="🧠", raw={})
+
+    with patch(
+        "apps.factoids.services.generator.generate_factoid_completion",
+        return_value=mock_result,
+    ):
+        response = client.get(url)
+        assert response.status_code == 200
+        assert response["Content-Type"] == "text/event-stream"
+        payload = b"".join(response.streaming_content)
+        assert b"event: factoid" in payload
+        assert b"Fact" in payload
