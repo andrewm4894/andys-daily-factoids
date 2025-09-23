@@ -125,6 +125,15 @@ def get_settings(env_file: str | os.PathLike[str] | None = None) -> AppSettings:
                         "DJANGO_OPENROUTER_BASE_URL",
                         "https://openrouter.ai/api/v1",
                     )
+
+                    self.posthog_project_api_key = os.getenv(
+                        "DJANGO_POSTHOG_PROJECT_API_KEY"
+                    ) or os.getenv("POSTHOG_PROJECT_API_KEY")
+                    self.posthog_host = (
+                        os.getenv("DJANGO_POSTHOG_HOST")
+                        or os.getenv("POSTHOG_HOST")
+                        or "https://us.i.posthog.com"
+                    )
                     
             return FallbackSettings()  # type: ignore
         else:
