@@ -2,9 +2,22 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { loadStripe } from "@stripe/stripe-js";
+import type { Stripe } from "@stripe/stripe-js";
 
-import { FACTOIDS_API_BASE, generateFactoid } from "@/lib/api";
+import { ApiError, FACTOIDS_API_BASE, createCheckoutSession, generateFactoid } from "@/lib/api";
 import { posthog } from "@/lib/posthog";
+
+let stripePromise: Promise<Stripe | null> | null = null;
+let stripePublishableKey: string | null = null;
+
+async function getStripeClient(publishableKey: string): Promise<Stripe | null> {
+  if (!stripePromise || stripePublishableKey !== publishableKey) {
+    stripePublishableKey = publishableKey;
+    stripePromise = loadStripe(publishableKey);
+  }
+  return stripePromise;
+}
 
 interface GenerateFactoidFormProps {
   models: string[];
@@ -27,6 +40,7 @@ export function GenerateFactoidForm({
   const [isStreaming, setIsStreaming] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [status, setStatus] = useState<GenerationStatus>("idle");
+  const [isCheckoutRedirecting, setIsCheckoutRedirecting] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
   const statusResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -51,6 +65,104 @@ export function GenerateFactoidForm({
     statusResetRef.current = setTimeout(() => {
       setStatus("idle");
     }, 2500);
+  };
+
+  const startCheckoutFlow = async ({ retryAfter }: { retryAfter?: number } = {}) => {
+    if (isCheckoutRedirecting || typeof window === "undefined") {
+      return;
+    }
+
+    setIsCheckoutRedirecting(true);
+    posthog.capture("stripe_checkout_initiated", {
+      reason: "rate_limit",
+      retry_after: retryAfter ?? null,
+      topic: topic || "random",
+      model: modelKey || "automatic",
+    });
+
+    try {
+      const successUrl = `${window.location.origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`;
+      const cancelUrl = window.location.href;
+      const metadata: Record<string, unknown> = {};
+      if (retryAfter !== undefined) {
+        metadata.retry_after = retryAfter;
+      }
+      if (topic) {
+        metadata.topic = topic;
+      }
+      if (modelKey) {
+        metadata.model_key = modelKey;
+      }
+      const distinctId = posthog?.get_distinct_id?.();
+      if (distinctId) {
+        metadata.posthog_distinct_id = distinctId;
+      }
+      const session = await createCheckoutSession({
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        source: "rate_limit",
+        metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
+      });
+
+      if (session.checkout_url) {
+        window.location.assign(session.checkout_url);
+        return;
+      }
+
+      if (session.session_id && session.publishable_key) {
+        const stripe = await getStripeClient(session.publishable_key);
+        if (!stripe) {
+          throw new Error("Stripe.js failed to initialize");
+        }
+        const { error } = await stripe.redirectToCheckout({ sessionId: session.session_id });
+        if (error) {
+          throw error;
+        }
+        return;
+      }
+
+      throw new Error("Checkout session missing redirect information");
+    } catch (error) {
+      console.error("Failed to launch Stripe checkout", error);
+      let detail = "Failed to start Stripe checkout";
+      if (error instanceof ApiError) {
+        if (error.status === 503) {
+          detail = "Payments are currently unavailable. Please try again later.";
+        } else if (error.message) {
+          detail = error.message;
+        }
+      } else if (error instanceof Error && error.message) {
+        detail = error.message;
+      }
+
+      posthog.capture("stripe_checkout_failed", {
+        reason: "rate_limit",
+        error: detail,
+        topic: topic || "random",
+        model: modelKey || "automatic",
+      });
+
+      setStatus("error");
+      onGenerationError?.(detail);
+      scheduleStatusReset();
+    } finally {
+      setIsCheckoutRedirecting(false);
+    }
+  };
+
+  const handleRateLimitExceeded = (detail?: string, retryAfter?: number) => {
+    clearStatusReset();
+    const message = detail && detail.trim()
+      ? detail
+      : "You have reached the free factoid limit. Redirecting to checkout...";
+    setStatus("error");
+    onGenerationError?.(message);
+    posthog.capture("factoid_rate_limit_exceeded", {
+      retry_after: retryAfter ?? null,
+      topic: topic || "random",
+      model: modelKey || "automatic",
+    });
+    void startCheckoutFlow({ retryAfter });
   };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -144,6 +256,18 @@ export function GenerateFactoidForm({
         })
         .catch((err) => {
           console.error("Failed to generate factoid", err);
+          if (err instanceof ApiError && err.status === 429) {
+            let retryAfter: number | undefined;
+            if (err.data && typeof err.data === "object" && err.data !== null) {
+              const candidate = (err.data as { retry_after?: unknown }).retry_after;
+              if (typeof candidate === "number") {
+                retryAfter = candidate;
+              }
+            }
+            handleRateLimitExceeded(err.message, retryAfter);
+            return;
+          }
+
           const detail =
             err instanceof Error ? err.message : "Failed to generate factoid";
           setStatus("error");
@@ -205,13 +329,32 @@ export function GenerateFactoidForm({
 
     eventSource.addEventListener("error", (message: MessageEvent<string>) => {
       let detail = "Failed to generate factoid";
+      let code: string | undefined;
+      let retryAfter: number | undefined;
       try {
-        const data = JSON.parse(message.data) as { detail?: string };
+        const data = JSON.parse(message.data) as {
+          detail?: string;
+          code?: string;
+          retry_after?: number;
+        };
         if (data.detail) {
           detail = data.detail;
         }
+        code = data.code;
+        if (typeof data.retry_after === "number") {
+          retryAfter = data.retry_after;
+        }
       } catch {
         // ignore parse errors
+      }
+
+      setIsStreaming(false);
+      eventSource.close();
+      eventSourceRef.current = null;
+
+      if (code === "rate_limit") {
+        handleRateLimitExceeded(detail, retryAfter);
+        return;
       }
 
       posthog.capture("factoid_generation_failed", {
@@ -225,9 +368,6 @@ export function GenerateFactoidForm({
       setStatus("error");
       scheduleStatusReset();
       onGenerationError?.(detail);
-      setIsStreaming(false);
-      eventSource.close();
-      eventSourceRef.current = null;
     });
   };
 
@@ -236,7 +376,9 @@ export function GenerateFactoidForm({
   const baseButtonClass =
     "inline-flex w-full items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60";
   let statusClassName: string;
-  if (status === "success") {
+  if (isCheckoutRedirecting) {
+    statusClassName = "bg-indigo-600 text-white hover:bg-indigo-500";
+  } else if (status === "success") {
     statusClassName = "bg-emerald-600 text-white hover:bg-emerald-500";
   } else if (status === "error") {
     statusClassName = "bg-rose-600 text-white hover:bg-rose-500";
@@ -249,7 +391,9 @@ export function GenerateFactoidForm({
   }
 
   const buttonLabel =
-    status === "success"
+    isCheckoutRedirecting
+      ? "Redirecting to checkout..."
+      : status === "success"
       ? "Factoid ready!"
       : status === "error"
       ? "Generation failed"
@@ -266,7 +410,7 @@ export function GenerateFactoidForm({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3 sm:flex-1">
           <button
             type="submit"
-            disabled={isStreaming}
+            disabled={isStreaming || isCheckoutRedirecting}
             className={`${baseButtonClass} ${statusClassName}`}
             title="Generate a factoid - press show options to pick topic and model"
           >
@@ -276,7 +420,7 @@ export function GenerateFactoidForm({
             <button
               type="button"
               onClick={onShuffle}
-              disabled={isStreaming || shuffleLoading}
+              disabled={isStreaming || shuffleLoading || isCheckoutRedirecting}
               className="inline-flex w-full items-center justify-center rounded-md border border-[color:var(--surface-card-border)] bg-[color:var(--surface-card)] px-4 py-2 text-sm font-medium text-[color:var(--text-secondary)] transition hover:border-[color:var(--surface-card-border-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-outline)] disabled:cursor-not-allowed disabled:opacity-60"
               title="Randomly sample a different batch"
             >
@@ -293,7 +437,7 @@ export function GenerateFactoidForm({
               expanded: newState,
             });
           }}
-          disabled={isStreaming}
+          disabled={isStreaming || isCheckoutRedirecting}
           aria-expanded={showAdvanced}
           aria-controls={optionsId}
           className="text-sm text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-60"

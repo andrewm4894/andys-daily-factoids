@@ -28,3 +28,9 @@ export interface PaginatedResponse<T> {
   next?: string | null;
   previous?: string | null;
 }
+
+export interface CheckoutSessionResponse {
+  session_id: string;
+  checkout_url?: string | null;
+  publishable_key?: string | null;
+}

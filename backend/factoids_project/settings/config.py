@@ -51,6 +51,57 @@ class AppSettings(BaseSettings):
         default=False,
         validation_alias=AliasChoices("POSTHOG_DISABLED", "DJANGO_POSTHOG_DISABLED"),
     )
+    stripe_secret_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("STRIPE_SECRET_KEY", "DJANGO_STRIPE_SECRET_KEY"),
+    )
+    stripe_publishable_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("STRIPE_PUBLISHABLE_KEY", "DJANGO_STRIPE_PUBLISHABLE_KEY"),
+    )
+    stripe_price_id: str | None = Field(
+        default="price_1SAYzlDuK9b9aydCEXpAkQpt",
+        validation_alias=AliasChoices("STRIPE_PRICE_ID", "DJANGO_STRIPE_PRICE_ID"),
+    )
+    stripe_checkout_amount_cents: int = Field(
+        default=500,
+        validation_alias=AliasChoices(
+            "STRIPE_CHECKOUT_AMOUNT_CENTS",
+            "DJANGO_STRIPE_CHECKOUT_AMOUNT_CENTS",
+        ),
+    )
+    stripe_checkout_currency: str = Field(
+        default="usd",
+        validation_alias=AliasChoices(
+            "STRIPE_CHECKOUT_CURRENCY",
+            "DJANGO_STRIPE_CHECKOUT_CURRENCY",
+        ),
+    )
+    stripe_checkout_product_name: str = Field(
+        default="Factoid Booster Pack",
+        validation_alias=AliasChoices(
+            "STRIPE_CHECKOUT_PRODUCT_NAME",
+            "DJANGO_STRIPE_CHECKOUT_PRODUCT_NAME",
+        ),
+    )
+    stripe_success_url: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "STRIPE_SUCCESS_URL",
+            "STRIPE_CHECKOUT_SUCCESS_URL",
+            "DJANGO_STRIPE_SUCCESS_URL",
+            "DJANGO_STRIPE_CHECKOUT_SUCCESS_URL",
+        ),
+    )
+    stripe_cancel_url: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "STRIPE_CANCEL_URL",
+            "STRIPE_CHECKOUT_CANCEL_URL",
+            "DJANGO_STRIPE_CANCEL_URL",
+            "DJANGO_STRIPE_CHECKOUT_CANCEL_URL",
+        ),
+    )
 
     model_config = SettingsConfigDict(
         env_prefix="DJANGO_",
@@ -152,6 +203,46 @@ def get_settings(env_file: str | os.PathLike[str] | None = None) -> AppSettings:
                         or os.getenv("POSTHOG_DISABLED")
                         or "false"
                     ).lower() == "true"
+
+                    self.stripe_secret_key = (
+                        os.getenv("DJANGO_STRIPE_SECRET_KEY")
+                        or os.getenv("STRIPE_SECRET_KEY")
+                    )
+                    self.stripe_publishable_key = (
+                        os.getenv("DJANGO_STRIPE_PUBLISHABLE_KEY")
+                        or os.getenv("STRIPE_PUBLISHABLE_KEY")
+                    )
+                    self.stripe_price_id = (
+                        os.getenv("DJANGO_STRIPE_PRICE_ID")
+                        or os.getenv("STRIPE_PRICE_ID")
+                    )
+                    self.stripe_checkout_amount_cents = int(
+                        os.getenv("DJANGO_STRIPE_CHECKOUT_AMOUNT_CENTS")
+                        or os.getenv("STRIPE_CHECKOUT_AMOUNT_CENTS")
+                        or "500"
+                    )
+                    self.stripe_checkout_currency = (
+                        os.getenv("DJANGO_STRIPE_CHECKOUT_CURRENCY")
+                        or os.getenv("STRIPE_CHECKOUT_CURRENCY")
+                        or "usd"
+                    )
+                    self.stripe_checkout_product_name = (
+                        os.getenv("DJANGO_STRIPE_CHECKOUT_PRODUCT_NAME")
+                        or os.getenv("STRIPE_CHECKOUT_PRODUCT_NAME")
+                        or "Factoid Booster Pack"
+                    )
+                    self.stripe_success_url = (
+                        os.getenv("DJANGO_STRIPE_SUCCESS_URL")
+                        or os.getenv("DJANGO_STRIPE_CHECKOUT_SUCCESS_URL")
+                        or os.getenv("STRIPE_SUCCESS_URL")
+                        or os.getenv("STRIPE_CHECKOUT_SUCCESS_URL")
+                    )
+                    self.stripe_cancel_url = (
+                        os.getenv("DJANGO_STRIPE_CANCEL_URL")
+                        or os.getenv("DJANGO_STRIPE_CHECKOUT_CANCEL_URL")
+                        or os.getenv("STRIPE_CANCEL_URL")
+                        or os.getenv("STRIPE_CHECKOUT_CANCEL_URL")
+                    )
                     
             return FallbackSettings()  # type: ignore
         else:

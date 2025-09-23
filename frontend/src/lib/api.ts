@@ -1,12 +1,42 @@
-import type { Factoid, PaginatedResponse, RateLimitStatus } from "@/lib/types";
+import type {
+  CheckoutSessionResponse,
+  Factoid,
+  PaginatedResponse,
+  RateLimitStatus,
+} from "@/lib/types";
 
-const DEFAULT_BASE = "http://localhost:8000/api/factoids";
+const DEFAULT_FACTOIDS_BASE = "http://localhost:8000/api/factoids";
+const DEFAULT_PAYMENTS_BASE = "http://localhost:8000/api/payments";
+
+function inferPaymentsBase(factoidsBase: string): string {
+  const trimmed = factoidsBase.replace(/\/$/, "");
+  if (trimmed.endsWith("/factoids")) {
+    return `${trimmed.slice(0, -"/factoids".length)}/payments`;
+  }
+  return DEFAULT_PAYMENTS_BASE;
+}
 
 export const FACTOIDS_API_BASE =
-  process.env.NEXT_PUBLIC_FACTOIDS_API_BASE?.replace(/\/$/, "") || DEFAULT_BASE;
+  process.env.NEXT_PUBLIC_FACTOIDS_API_BASE?.replace(/\/$/, "") || DEFAULT_FACTOIDS_BASE;
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const url = `${FACTOIDS_API_BASE}${path}`;
+export const PAYMENTS_API_BASE =
+  process.env.NEXT_PUBLIC_PAYMENTS_API_BASE?.replace(/\/$/, "") ||
+  inferPaymentsBase(FACTOIDS_API_BASE);
+
+export class ApiError extends Error {
+  status: number;
+  data: unknown;
+
+  constructor(message: string, status: number, data: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.data = data;
+  }
+}
+
+async function apiRequest<T>(baseUrl: string, path: string, init?: RequestInit): Promise<T> {
+  const url = `${baseUrl}${path}`;
   const response = await fetch(url, {
     ...init,
     headers: {
@@ -16,12 +46,49 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     cache: "no-store",
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText || response.statusText);
+  const rawBody = await response.text();
+  let parsed: unknown = rawBody;
+  let isJson = false;
+
+  if (rawBody) {
+    try {
+      parsed = JSON.parse(rawBody);
+      isJson = true;
+    } catch {
+      parsed = rawBody;
+    }
+  } else {
+    parsed = null;
+    isJson = response.headers.get("content-type")?.toLowerCase().includes("application/json") ?? false;
   }
 
-  return response.json() as Promise<T>;
+  if (!response.ok) {
+    let message = response.statusText || "Request failed";
+    if (isJson && parsed && typeof parsed === "object" && "detail" in parsed) {
+      const detail = (parsed as { detail?: unknown }).detail;
+      if (typeof detail === "string" && detail.trim()) {
+        message = detail;
+      }
+    } else if (!isJson && typeof parsed === "string" && parsed.trim()) {
+      message = parsed;
+    }
+
+    throw new ApiError(message, response.status, parsed);
+  }
+
+  if (isJson) {
+    return parsed as T;
+  }
+
+  if (typeof parsed === "string" && parsed.length === 0) {
+    return undefined as T;
+  }
+
+  return parsed as T;
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  return apiRequest<T>(FACTOIDS_API_BASE, path, init);
 }
 
 export async function fetchFactoids(pageSize = 20): Promise<Factoid[]> {
@@ -97,4 +164,52 @@ export async function fetchRateLimitStatus(): Promise<RateLimitStatus> {
 export async function fetchModels(): Promise<string[]> {
   const data = await request<{ models: { id: string }[] }>("/models/");
   return data.models.map((model) => model.id);
+}
+
+export interface CheckoutSessionPayload {
+  success_url?: string;
+  cancel_url?: string;
+  source?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export async function createCheckoutSession(
+  payload: CheckoutSessionPayload = {}
+): Promise<CheckoutSessionResponse> {
+  const requestPayload: CheckoutSessionPayload = { ...payload };
+  if (!requestPayload.source) {
+    requestPayload.source = "rate_limit";
+  }
+
+  return apiRequest<CheckoutSessionResponse>(PAYMENTS_API_BASE, "/checkout/", {
+    method: "POST",
+    body: JSON.stringify(requestPayload),
+  });
+}
+
+export interface FulfillCheckoutOptions {
+  topic?: string;
+  modelKey?: string;
+}
+
+export async function fulfillCheckoutSession(
+  sessionId: string,
+  options: FulfillCheckoutOptions = {}
+): Promise<Factoid> {
+  const payload: Record<string, unknown> = {};
+  if (options.topic) {
+    payload.topic = options.topic;
+  }
+  if (options.modelKey) {
+    payload.model_key = options.modelKey;
+  }
+
+  return apiRequest<Factoid>(
+    PAYMENTS_API_BASE,
+    `/checkout/${encodeURIComponent(sessionId)}/fulfill/`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }
+  );
 }

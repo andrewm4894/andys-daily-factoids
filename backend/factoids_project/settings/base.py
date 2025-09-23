@@ -143,3 +143,12 @@ POSTHOG_PROJECT_API_KEY = settings.posthog_project_api_key
 POSTHOG_HOST = settings.posthog_host
 POSTHOG_DEBUG = settings.posthog_debug
 POSTHOG_DISABLED = settings.posthog_disabled
+
+STRIPE_SECRET_KEY = settings.stripe_secret_key
+STRIPE_PUBLISHABLE_KEY = settings.stripe_publishable_key
+STRIPE_PRICE_ID = settings.stripe_price_id
+STRIPE_CHECKOUT_AMOUNT_CENTS = settings.stripe_checkout_amount_cents
+STRIPE_CHECKOUT_CURRENCY = settings.stripe_checkout_currency
+STRIPE_CHECKOUT_PRODUCT_NAME = settings.stripe_checkout_product_name
+STRIPE_SUCCESS_URL = settings.stripe_success_url
+STRIPE_CANCEL_URL = settings.stripe_cancel_url

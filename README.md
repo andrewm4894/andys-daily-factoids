@@ -16,7 +16,7 @@ Andy’s Daily Factoids now runs as a Render-hosted stack: a Django API feeds a 
 - Generate brand new factoids via OpenRouter with optional model overrides.
 - Inspect generation metadata (model, parameters, cost).
 - Capture end-to-end telemetry with PostHog analytics hooks.
-- (Coming soon) Pay-per-factoid Stripe checkout + scheduled newsletters.
+- Unlock additional generations through a Stripe checkout whenever you hit the free limit.
 
 ## How It Works
 
@@ -43,6 +43,14 @@ Andy’s Daily Factoids now runs as a Render-hosted stack: a Django API feeds a 
 | `POSTHOG_HOST` | Optional PostHog host override |
 | `REDIS_URL` | Optional Redis endpoint for distributed rate limiting |
 | `DJANGO_CORS_ALLOWED_ORIGINS` | Origin allowlist for the frontend |
+| `STRIPE_SECRET_KEY` | Server-side Stripe API key used to create checkout sessions |
+| `STRIPE_PUBLISHABLE_KEY` | Optional publishable key returned to the browser when redirecting via Stripe.js |
+| `STRIPE_PRICE_ID` | Optional Stripe Price identifier (defaults to `price_1SAYzlDuK9b9aydCEXpAkQpt`) |
+| `STRIPE_CHECKOUT_AMOUNT_CENTS` | Fallback amount (in cents) when a price ID is not supplied |
+| `STRIPE_CHECKOUT_CURRENCY` | Currency for fallback checkout sessions (defaults to `usd`) |
+| `STRIPE_CHECKOUT_PRODUCT_NAME` | Display name for fallback checkout line items |
+| `STRIPE_SUCCESS_URL` | Default success redirect for Stripe checkout (include `{CHECKOUT_SESSION_ID}` placeholder) |
+| `STRIPE_CANCEL_URL` | Default cancel redirect for Stripe checkout |
 
 ### Frontend (Next.js)
 
@@ -52,6 +60,7 @@ Andy’s Daily Factoids now runs as a Render-hosted stack: a Django API feeds a 
 | `NEXT_PUBLIC_POSTHOG_KEY` | PostHog browser key for client analytics |
 | `NEXT_PUBLIC_POSTHOG_HOST` | Optional PostHog host override |
 | `NEXT_TELEMETRY_DISABLED` | Disable Next.js telemetry (set to `1` in Render) |
+| `NEXT_PUBLIC_PAYMENTS_API_BASE` | Override for the payments API base URL (defaults to Django dev URL) |
 
 Copy `backend/.env.example` for backend secrets and create `frontend/.env.local` (or export env vars) for the frontend. Render manages production secrets via the dashboard as defined in `render.yaml`.
 
