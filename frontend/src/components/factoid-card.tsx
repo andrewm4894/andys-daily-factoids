@@ -155,7 +155,7 @@ export function FactoidCard({
     isExpanded ? "" : " text-center"
   }`;
   const baseArticleClasses =
-    "group relative overflow-hidden rounded-xl border border-[color:var(--surface-card-border)] p-6 text-[color:var(--text-primary)] shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-[color:var(--surface-card-border-hover)] hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-outline)]";
+    "factoid-card group relative overflow-hidden rounded-xl border border-[color:var(--surface-card-border)] p-6 text-[color:var(--text-primary)] shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-[color:var(--surface-card-border-hover)] hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-outline)]";
   const articleBackgroundClass = isAlternate
     ? "bg-[color:var(--surface-card-alt)]"
     : "bg-[color:var(--surface-card)]";

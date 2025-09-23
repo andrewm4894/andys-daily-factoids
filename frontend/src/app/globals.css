@@ -90,6 +90,73 @@
   --chip-muted-text: #e0f2fe;
 }
 
+:root[data-theme="matrix"] {
+  color-scheme: dark;
+  --background: #010a04;
+  --foreground: #d1fae5;
+  --surface-card: rgba(3, 17, 8, 0.92);
+  --surface-card-alt: rgba(5, 26, 12, 0.92);
+  --surface-card-border: rgba(16, 185, 129, 0.45);
+  --surface-card-border-hover: rgba(34, 197, 94, 0.65);
+  --surface-panel: rgba(2, 15, 7, 0.88);
+  --surface-panel-border: rgba(34, 197, 94, 0.42);
+  --surface-muted: rgba(10, 35, 19, 0.85);
+  --text-primary: #bbf7d0;
+  --text-secondary: #4ade80;
+  --text-muted: #22c55e;
+  --accent: #22c55e;
+  --accent-foreground: #021a0a;
+  --focus-outline: #34d399;
+  --card-overlay: linear-gradient(135deg, rgba(34, 197, 94, 0.22), rgba(8, 145, 178, 0.18));
+  --input-bg: rgba(3, 17, 8, 0.75);
+  --input-border: rgba(16, 185, 129, 0.55);
+  --input-border-focus: rgba(45, 212, 191, 0.8);
+  --input-disabled-bg: rgba(4, 25, 12, 0.62);
+  --button-primary-bg: #059669;
+  --button-primary-hover: #10b981;
+  --button-primary-text: #021a0a;
+  --shadow-soft: 0 28px 60px -26px rgba(5, 84, 60, 0.65);
+  --chip-muted-bg: rgba(16, 185, 129, 0.22);
+  --chip-muted-text: #bbf7d0;
+}
+
+:root[data-theme="matrix"] .factoid-card {
+  background-image:
+    linear-gradient(135deg, rgba(34, 197, 94, 0.16), rgba(8, 145, 178, 0.12)),
+    repeating-linear-gradient(
+      0deg,
+      rgba(6, 95, 70, 0.28) 0px,
+      rgba(6, 95, 70, 0.28) 1px,
+      transparent 1px,
+      transparent 8px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(8, 145, 88, 0.22) 0px,
+      rgba(8, 145, 88, 0.22) 1px,
+      transparent 1px,
+      transparent 8px
+    );
+  border-color: rgba(34, 197, 94, 0.55);
+  box-shadow: 0 26px 52px -24px rgba(15, 118, 110, 0.45);
+}
+
+:root[data-theme="matrix"] .factoid-card p,
+:root[data-theme="matrix"] .factoid-card span,
+:root[data-theme="matrix"] .factoid-card button,
+:root[data-theme="matrix"] .factoid-card textarea {
+  color: var(--text-primary);
+}
+
+:root[data-theme="matrix"] .factoid-card button {
+  border-color: rgba(45, 212, 191, 0.35);
+  background-color: rgba(6, 24, 12, 0.65);
+}
+
+:root[data-theme="matrix"] .factoid-card button:hover {
+  background-color: rgba(21, 128, 61, 0.4);
+}
+
 :root[data-theme="rainbow"] {
   color-scheme: light;
   --background: #fff7fb;

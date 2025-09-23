@@ -8,6 +8,7 @@ export const THEME_OPTIONS = [
   { value: "light", label: "Daylight", icon: "☀️", mode: "light" },
   { value: "dark", label: "Midnight", icon: "🌙", mode: "dark" },
   { value: "aurora", label: "Aurora", icon: "🌌", mode: "dark" },
+  { value: "matrix", label: "Matrix", icon: "🖥️", mode: "dark" },
   { value: "rainbow", label: "Rainbow", icon: "🌈", mode: "light" },
 ] as const;
 
