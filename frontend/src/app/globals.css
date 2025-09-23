@@ -255,8 +255,3 @@ a {
   background: var(--accent);
   color: var(--accent-foreground);
 }
-  --font-body: Arial, Helvetica, sans-serif;
-  --font-body: var(--font-geist-sans);
-  --font-body: var(--font-geist-sans);
-  --font-body: "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", "Courier New", monospace;
-  --font-body: var(--font-geist-sans);
