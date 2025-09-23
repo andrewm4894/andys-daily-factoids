@@ -1,0 +1,1 @@
+"""Factoids domain app."""

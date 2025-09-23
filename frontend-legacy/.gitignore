@@ -22,13 +22,5 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Local Netlify folder
-.netlify
-
 .env*
 !.env.example
-
-# Backend Python artifacts
-backend/.venv/
-backend/*.egg-info/
-**/__pycache__/
