@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from unittest.mock import patch
+from urllib.parse import quote
 
 import pytest
 from django.urls import reverse
@@ -54,6 +55,7 @@ def test_factoid_generation_without_api_key_returns_error(settings):
 @pytest.mark.django_db()
 def test_factoid_generation_invokes_openrouter(settings):
     settings.OPENROUTER_API_KEY = "test-key"
+    settings.POSTHOG_PROJECT_API_KEY = "phc_test"
     client = APIClient()
 
     mock_result = GenerationResult(text="Fact", subject="Science", emoji="🧠", raw={})
@@ -61,10 +63,26 @@ def test_factoid_generation_invokes_openrouter(settings):
     with patch(
         "apps.factoids.services.generator.generate_factoid_completion",
         return_value=mock_result,
-    ):
-        response = client.post(reverse("factoids:generate"), {"topic": "science"}, format="json")
+    ) as mock_generate, patch(
+        "apps.factoids.services.generator._build_callbacks",
+        return_value=[],
+    ) as mock_callbacks:
+        response = client.post(
+            reverse("factoids:generate"),
+            {
+                "topic": "science",
+                "posthog_distinct_id": "ph-user",
+                "posthog_properties": {"foo": "bar"},
+            },
+            format="json",
+        )
         assert response.status_code == 201
         assert response.json()["text"] == "Fact"
+        mock_generate.assert_called_once()
+        mock_callbacks.assert_called_once()
+        _, callback_kwargs = mock_callbacks.call_args
+        assert callback_kwargs["distinct_id"] == "ph-user"
+        assert callback_kwargs["extra_properties"] == {"foo": "bar"}
 
 
 @pytest.mark.django_db()
@@ -115,17 +133,26 @@ def test_limits_endpoint_returns_status():
 @pytest.mark.parametrize("topic", ["sse-test"])
 def test_generate_stream_emits_factoid_event(settings, topic):
     settings.OPENROUTER_API_KEY = "key"
+    settings.POSTHOG_PROJECT_API_KEY = "phc_test"
     client = APIClient()
-    url = reverse("factoids:generate-stream") + f"?topic={topic}"
+    encoded_props = quote('{"foo": "bar"}')
+    url = (
+        reverse("factoids:generate-stream")
+        + f"?topic={topic}&posthog_distinct_id=ph-user&posthog_properties={encoded_props}"
+    )
     mock_result = GenerationResult(text="Fact", subject="Science", emoji="🧠", raw={})
 
     with patch(
         "apps.factoids.services.generator.generate_factoid_completion",
         return_value=mock_result,
-    ):
+    ), patch(
+        "apps.factoids.services.generator._build_callbacks",
+        return_value=[],
+    ) as mock_callbacks:
         response = client.get(url)
         assert response.status_code == 200
         assert response["Content-Type"] == "text/event-stream"
         payload = b"".join(response.streaming_content)
         assert b"event: factoid" in payload
         assert b"Fact" in payload
+        mock_callbacks.assert_called_once()

@@ -50,6 +50,8 @@ class FactoidGenerationSerializer(drf_serializers.Serializer):
     topic = drf_serializers.CharField(required=False, allow_blank=True)
     model_key = drf_serializers.CharField(required=False, allow_blank=True)
     temperature = drf_serializers.FloatField(required=False, min_value=0.0, max_value=2.0)
+    posthog_distinct_id = drf_serializers.CharField(required=False, allow_blank=True)
+    posthog_properties = drf_serializers.JSONField(required=False)
 
 
 def _client_hash(request) -> str:
@@ -71,6 +73,8 @@ class FactoidGenerationView(APIView):
         topic = serializer.validated_data.get("topic") or "something surprising"
         model_key = serializer.validated_data.get("model_key")
         temperature = serializer.validated_data.get("temperature")
+        posthog_distinct_id = serializer.validated_data.get("posthog_distinct_id") or None
+        posthog_properties = serializer.validated_data.get("posthog_properties") or None
 
         try:
             factoid = generate_factoid(
@@ -79,6 +83,8 @@ class FactoidGenerationView(APIView):
                 temperature=temperature,
                 client_hash=client_hash,
                 cost_guard=_cost_guard,
+                posthog_distinct_id=posthog_distinct_id,
+                posthog_properties=posthog_properties,
             )
         except RateLimitExceededError as exc:
             return Response(
@@ -149,6 +155,15 @@ class FactoidGenerationStreamView(View):
         client_hash = _client_hash(request)
         profile = "anonymous"
 
+        posthog_distinct_id = request.GET.get("posthog_distinct_id") or None
+        raw_posthog_properties = request.GET.get("posthog_properties")
+        posthog_properties = None
+        if raw_posthog_properties:
+            try:
+                posthog_properties = json.loads(raw_posthog_properties)
+            except json.JSONDecodeError:
+                posthog_properties = None
+
         def event_stream():
             yield _sse("status", {"state": "started"})
             try:
@@ -160,6 +175,8 @@ class FactoidGenerationStreamView(View):
                     profile=profile,
                     request_source=models.RequestSource.MANUAL,
                     cost_guard=_cost_guard,
+                    posthog_distinct_id=posthog_distinct_id,
+                    posthog_properties=posthog_properties,
                 )
             except RateLimitExceededError as exc:
                 yield _sse(

@@ -48,16 +48,74 @@ export function GenerateFactoidForm({ models }: GenerateFactoidFormProps) {
       has_model: !!modelKey,
     });
 
+    const posthogDistinctId = posthog?.get_distinct_id?.() ?? undefined;
+    const posthogProperties: Record<string, unknown> = {};
+    const phAny = posthog as unknown as {
+      persistence?: { props?: Record<string, unknown> };
+      sessionPropsManager?: { getSessionProps?: () => Record<string, unknown> };
+      get_property?: (key: string) => unknown;
+    };
+
+    const persistenceProps = phAny?.persistence?.props;
+    if (persistenceProps && typeof persistenceProps === "object") {
+      for (const [key, value] of Object.entries(persistenceProps)) {
+        if (value !== undefined && value !== null) {
+          posthogProperties[key] = value;
+        }
+      }
+    }
+
+    const sessionProps = phAny?.sessionPropsManager?.getSessionProps?.();
+    if (sessionProps && typeof sessionProps === "object") {
+      for (const [key, value] of Object.entries(sessionProps)) {
+        if (value !== undefined && value !== null) {
+          posthogProperties[key] = value;
+        }
+      }
+    }
+
+    if (typeof window !== "undefined") {
+      posthogProperties.$current_url = window.location.href;
+      if (typeof document !== "undefined" && document.referrer) {
+        posthogProperties.$referrer = document.referrer;
+      }
+    }
+
+    const propertyKeys = [
+      "$browser",
+      "$browser_version",
+      "$device_type",
+      "$device_id",
+      "$ip",
+      "$os",
+      "$os_version",
+    ];
+
+    for (const key of propertyKeys) {
+      const value = phAny?.get_property?.(key);
+      if (value !== undefined && value !== null) {
+        posthogProperties[key] = value as unknown;
+      }
+    }
+
+    const hasPosthogProperties = Object.keys(posthogProperties).length > 0;
+
     const params = new URLSearchParams();
     if (topic) params.append("topic", topic);
     if (modelKey) params.append("model_key", modelKey);
+    if (posthogDistinctId) params.append("posthog_distinct_id", posthogDistinctId);
+    if (hasPosthogProperties)
+      params.append("posthog_properties", JSON.stringify(posthogProperties));
 
     const streamUrl = `${FACTOIDS_API_BASE}/generate/stream/?${params.toString()}`;
 
     if (typeof window === "undefined" || typeof EventSource === "undefined") {
       setIsStreaming(true);
       setToast({ message: "Generating factoid…", tone: "info" });
-      generateFactoid(topic, modelKey)
+      generateFactoid(topic, modelKey, {
+        posthogDistinctId,
+        posthogProperties: hasPosthogProperties ? posthogProperties : undefined,
+      })
         .then(() => {
           setToast({ message: "Factoid generated!", tone: "success" });
           setTopic("");

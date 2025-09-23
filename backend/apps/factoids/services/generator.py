@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional
 
 from django.conf import settings
 from django.utils import timezone
@@ -57,6 +57,8 @@ def generate_factoid(
     profile: str = "anonymous",
     request_source: models.RequestSource = models.RequestSource.MANUAL,
     cost_guard: Optional[CostGuard] = None,
+    posthog_distinct_id: Optional[str] = None,
+    posthog_properties: Optional[dict[str, Any]] = None,
 ) -> models.Factoid:
     rate_limiter = get_rate_limiter()
     limits = settings.RATE_LIMITS.get("factoids", {}).get(profile, {})
@@ -97,13 +99,18 @@ def generate_factoid(
     )
 
     posthog_context = _build_posthog_client()
+    extra_properties: dict[str, Any] | None = None
+    if isinstance(posthog_properties, dict):
+        extra_properties = {k: v for k, v in posthog_properties.items()}
+
     callbacks = _build_callbacks(
         posthog_context.client,
-        distinct_id=client_hash,
+        distinct_id=posthog_distinct_id or client_hash,
         trace_id=str(generation_request.id),
         topic=topic,
         profile=profile,
         request_source=request_source,
+        extra_properties=extra_properties,
     )
 
     try:
@@ -121,15 +128,18 @@ def generate_factoid(
         generation_request.completed_at = timezone.now()
         generation_request.save(update_fields=["status", "error_message", "completed_at"])
         if posthog_context.client:
+            error_properties = {
+                "topic": topic,
+                "profile": profile,
+                "request_source": str(request_source),
+                "generation_request_id": str(generation_request.id),
+            }
+            if extra_properties:
+                error_properties.update(extra_properties)
             posthog_context.client.capture_exception(
                 exc,
-                distinct_id=client_hash,
-                properties={
-                    "topic": topic,
-                    "profile": profile,
-                    "request_source": request_source,
-                    "generation_request_id": str(generation_request.id),
-                },
+                distinct_id=posthog_distinct_id or client_hash,
+                properties=error_properties,
             )
         posthog_context.flush()
         raise GenerationFailedError("Failed to generate factoid") from exc
@@ -165,6 +175,7 @@ def _build_callbacks(
     topic: str,
     profile: str,
     request_source: models.RequestSource,
+    extra_properties: Optional[dict[str, Any]] = None,
 ) -> list[CallbackHandler]:
     if not posthog_client:
         return []
@@ -175,6 +186,8 @@ def _build_callbacks(
         "request_source": str(request_source),
         "generation_request_id": trace_id,
     }
+    if extra_properties:
+        properties.update(extra_properties)
 
     callback = CallbackHandler(
         client=posthog_client,

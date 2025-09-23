@@ -29,13 +29,34 @@ export async function fetchFactoids(): Promise<Factoid[]> {
   return data.results;
 }
 
-export async function generateFactoid(topic?: string, modelKey?: string): Promise<Factoid> {
+export interface GenerateFactoidOptions {
+  posthogDistinctId?: string;
+  posthogProperties?: Record<string, unknown>;
+}
+
+export async function generateFactoid(
+  topic?: string,
+  modelKey?: string,
+  options: GenerateFactoidOptions = {}
+): Promise<Factoid> {
+  const payload: Record<string, unknown> = {};
+
+  if (topic) {
+    payload.topic = topic;
+  }
+  if (modelKey) {
+    payload.model_key = modelKey;
+  }
+  if (options.posthogDistinctId) {
+    payload.posthog_distinct_id = options.posthogDistinctId;
+  }
+  if (options.posthogProperties && Object.keys(options.posthogProperties).length > 0) {
+    payload.posthog_properties = options.posthogProperties;
+  }
+
   return request<Factoid>("/generate/", {
     method: "POST",
-    body: JSON.stringify({
-      topic,
-      model_key: modelKey,
-    }),
+    body: JSON.stringify(payload),
   });
 }
 
