@@ -10,9 +10,15 @@ interface FactoidCardProps {
   factoid: Factoid;
   initiallyExpanded?: boolean;
   isAlternate?: boolean;
+  colorIndex?: number;
 }
 
-export function FactoidCard({ factoid, initiallyExpanded = false, isAlternate = false }: FactoidCardProps) {
+export function FactoidCard({
+  factoid,
+  initiallyExpanded = false,
+  isAlternate = false,
+  colorIndex,
+}: FactoidCardProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -153,7 +159,13 @@ export function FactoidCard({ factoid, initiallyExpanded = false, isAlternate = 
   const articleBackgroundClass = isAlternate
     ? "bg-[color:var(--surface-card-alt)]"
     : "bg-[color:var(--surface-card)]";
-  const articleClasses = `${baseArticleClasses} ${articleBackgroundClass}`;
+  const rainbowClass =
+    typeof colorIndex === "number" && Number.isFinite(colorIndex)
+      ? `rainbow-card-${colorIndex}`
+      : "";
+  const articleClasses = `${baseArticleClasses} ${articleBackgroundClass}${
+    rainbowClass ? ` ${rainbowClass}` : ""
+  }`;
 
   const resolveShareUrl = () => {
     if (typeof window !== "undefined" && window.location?.origin) {

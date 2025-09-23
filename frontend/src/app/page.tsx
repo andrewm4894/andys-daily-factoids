@@ -57,6 +57,7 @@ export default async function HomePage() {
               key={factoid.id}
               factoid={factoid}
               isAlternate={index % 2 === 1}
+              colorIndex={index % 6}
             />
           ))}
           {factoids.length === 0 && (
