@@ -24,8 +24,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export async function fetchFactoids(): Promise<Factoid[]> {
-  const data = await request<PaginatedResponse<Factoid>>("/?page_size=20");
+export async function fetchFactoids(pageSize = 20): Promise<Factoid[]> {
+  const data = await request<PaginatedResponse<Factoid>>(`/?page_size=${pageSize}`);
+  return data.results;
+}
+
+export async function fetchRandomFactoids(limit = 50): Promise<Factoid[]> {
+  const data = await request<{ results: Factoid[] }>(`/random/?limit=${limit}`);
   return data.results;
 }
 

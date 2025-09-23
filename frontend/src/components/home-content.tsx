@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { GenerateFactoidForm } from "@/components/generate-factoid-form";
 import { FactoidCard } from "@/components/factoid-card";
+import { fetchRandomFactoids } from "@/lib/api";
 import type { Factoid } from "@/lib/types";
 
 interface HomeContentProps {
@@ -22,21 +23,45 @@ function shuffleFactoids(factoids: Factoid[]): Factoid[] {
 
 export function HomeContent({ initialFactoids, models }: HomeContentProps) {
   const [factoids, setFactoids] = useState<Factoid[]>(initialFactoids);
+  const [isShuffling, setIsShuffling] = useState(false);
 
   useEffect(() => {
     setFactoids(initialFactoids);
   }, [initialFactoids]);
 
-  const handleShuffle = () => {
-    if (factoids.length <= 1) {
+  const handleShuffle = async () => {
+    if (isShuffling) {
       return;
     }
-    setFactoids((previous) => shuffleFactoids(previous));
+
+    if (factoids.length === 0) {
+      setFactoids(initialFactoids);
+      return;
+    }
+
+    setIsShuffling(true);
+    try {
+      const randomFactoids = await fetchRandomFactoids(50);
+      if (randomFactoids.length > 0) {
+        setFactoids(randomFactoids);
+      } else {
+        setFactoids((previous) => shuffleFactoids(previous));
+      }
+    } catch (error) {
+      console.error("Failed to shuffle factoids", error);
+      setFactoids((previous) => shuffleFactoids(previous));
+    } finally {
+      setIsShuffling(false);
+    }
   };
 
   return (
     <div className="space-y-6">
-      <GenerateFactoidForm models={models} onShuffle={handleShuffle} />
+      <GenerateFactoidForm
+        models={models}
+        onShuffle={handleShuffle}
+        shuffleLoading={isShuffling}
+      />
 
       <section className="space-y-4">
         {factoids.map((factoid, index) => (

@@ -7,7 +7,7 @@ import { fetchFactoids, fetchModels } from "@/lib/api";
 export const revalidate = 0;
 
 export default async function HomePage() {
-  const [factoids, models] = await Promise.all([fetchFactoids(), fetchModels()]);
+  const [factoids, models] = await Promise.all([fetchFactoids(50), fetchModels()]);
 
   return (
     <main className="mx-auto max-w-4xl space-y-6 px-4 py-8">

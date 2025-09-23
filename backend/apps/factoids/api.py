@@ -13,6 +13,7 @@ from django.urls import include, path
 from django.views import View
 from rest_framework import generics, mixins, routers, status, viewsets
 from rest_framework import serializers as drf_serializers
+from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -48,6 +49,18 @@ class FactoidViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.
     queryset = models.Factoid.objects.order_by("-created_at")
     serializer_class = serializers.FactoidSerializer
     pagination_class = FactoidPagination
+
+    @action(detail=False, methods=["get"], url_path="random")
+    def random(self, request):
+        try:
+            limit = int(request.query_params.get("limit", 50))
+        except (TypeError, ValueError):
+            limit = 50
+
+        limit = max(1, min(limit, 100))
+        factoids = models.Factoid.objects.order_by("?")[:limit]
+        serializer = self.get_serializer(factoids, many=True)
+        return Response({"results": serializer.data})
 
 
 class FactoidGenerationSerializer(drf_serializers.Serializer):
