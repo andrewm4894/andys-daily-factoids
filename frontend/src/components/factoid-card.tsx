@@ -8,9 +8,10 @@ import { submitFeedback, submitVote } from "@/lib/api";
 
 interface FactoidCardProps {
   factoid: Factoid;
+  initiallyExpanded?: boolean;
 }
 
-export function FactoidCard({ factoid }: FactoidCardProps) {
+export function FactoidCard({ factoid, initiallyExpanded = false }: FactoidCardProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -19,9 +20,15 @@ export function FactoidCard({ factoid }: FactoidCardProps) {
     undefined,
   );
   const [showChatModal, setShowChatModal] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
+  const [linkCopyStatus, setLinkCopyStatus] = useState<"idle" | "copied">("idle");
   const copyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const linkCopyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const feedbackTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const feedbackFocusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   const trimmedText = factoid.text.trim();
   const words = trimmedText === "" ? [] : trimmedText.split(/\s+/);
@@ -51,13 +58,21 @@ export function FactoidCard({ factoid }: FactoidCardProps) {
           clearTimeout(copyResetRef.current);
           copyResetRef.current = null;
         }
+        if (linkCopyResetRef.current) {
+          clearTimeout(linkCopyResetRef.current);
+          linkCopyResetRef.current = null;
+        }
         setCopyStatus("idle");
+        setLinkCopyStatus("idle");
       }
       return !previous;
     });
   };
 
   const handleCardKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.target !== event.currentTarget) {
+      return;
+    }
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       handleCardToggle();
@@ -69,11 +84,25 @@ export function FactoidCard({ factoid }: FactoidCardProps) {
       if (copyResetRef.current) {
         clearTimeout(copyResetRef.current);
       }
+      if (linkCopyResetRef.current) {
+        clearTimeout(linkCopyResetRef.current);
+      }
+      if (feedbackFocusTimeoutRef.current) {
+        clearTimeout(feedbackFocusTimeoutRef.current);
+      }
     };
   }, []);
 
   const handleVote = async (vote: "up" | "down") => {
     try {
+      setShowFeedback(true);
+      setFeedbackVote(vote);
+      if (feedbackFocusTimeoutRef.current) {
+        clearTimeout(feedbackFocusTimeoutRef.current);
+      }
+      feedbackFocusTimeoutRef.current = setTimeout(() => {
+        feedbackTextareaRef.current?.focus();
+      }, 0);
       setIsSubmitting(true);
       await submitVote(factoid.id, vote);
       router.refresh();
@@ -121,6 +150,17 @@ export function FactoidCard({ factoid }: FactoidCardProps) {
   const articleClasses =
     "group relative overflow-hidden rounded-xl border border-[color:var(--surface-card-border)] bg-[color:var(--surface-card)] p-6 text-[color:var(--text-primary)] shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-[color:var(--surface-card-border-hover)] hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-outline)]";
 
+  const resolveShareUrl = () => {
+    if (typeof window !== "undefined" && window.location?.origin) {
+      return `${window.location.origin}/factoids/${factoid.id}`;
+    }
+    const envBase = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
+    if (envBase) {
+      return `${envBase}/factoids/${factoid.id}`;
+    }
+    return `/factoids/${factoid.id}`;
+  };
+
   const handleCopyFactoid = () => {
     if (copyResetRef.current) {
       clearTimeout(copyResetRef.current);
@@ -128,8 +168,11 @@ export function FactoidCard({ factoid }: FactoidCardProps) {
     }
 
     if (navigator.clipboard?.writeText) {
+      const shareUrl = resolveShareUrl();
+      const copyPayload = `${factoid.text.trim()}\n\nKeep exploring factoids: ${shareUrl}`;
+
       navigator.clipboard
-        .writeText(factoid.text)
+        .writeText(copyPayload)
         .then(() => {
           setCopyStatus("copied");
           copyResetRef.current = setTimeout(() => {
@@ -139,6 +182,32 @@ export function FactoidCard({ factoid }: FactoidCardProps) {
         })
         .catch((error) => {
           console.error("Failed to copy factoid", error);
+        });
+    } else {
+      console.warn("Clipboard API not available");
+    }
+  };
+
+  const handleCopyLink = () => {
+    if (linkCopyResetRef.current) {
+      clearTimeout(linkCopyResetRef.current);
+      linkCopyResetRef.current = null;
+    }
+
+    if (navigator.clipboard?.writeText) {
+      const shareUrl = resolveShareUrl();
+
+      navigator.clipboard
+        .writeText(shareUrl)
+        .then(() => {
+          setLinkCopyStatus("copied");
+          linkCopyResetRef.current = setTimeout(() => {
+            setLinkCopyStatus("idle");
+            linkCopyResetRef.current = null;
+          }, 2000);
+        })
+        .catch((error) => {
+          console.error("Failed to copy link", error);
         });
     } else {
       console.warn("Clipboard API not available");
@@ -174,93 +243,104 @@ export function FactoidCard({ factoid }: FactoidCardProps) {
         {isExpanded && (
           <>
             <div className="mt-6 flex flex-wrap items-center gap-3 text-sm text-[color:var(--text-muted)]">
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                handleVote("up");
-              }}
-              disabled={isSubmitting}
-              className="inline-flex items-center gap-1 rounded-full border border-emerald-200 px-3 py-1 text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
-              title="My mind is blown!"
-            >
-              <span aria-hidden>🤯</span>
-              Mind blown ({factoid.votes_up})
-            </button>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                handleVote("down");
-              }}
-              disabled={isSubmitting}
-              className="inline-flex items-center gap-1 rounded-full border border-rose-200 px-3 py-1 text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
-              title="Meh"
-            >
-              <span aria-hidden>😒</span>
-              Meh ({factoid.votes_down})
-            </button>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                handleGoogleSearch();
-              }}
-              className="inline-flex items-center gap-2 rounded-full border border-sky-200 px-3 py-1 text-sky-700 hover:bg-sky-50"
-              aria-label="Search this factoid on Google"
-              title="Search up that bad boi"
-            >
-              <span aria-hidden className="flex items-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  className="h-4 w-4"
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    handleVote("up");
+                  }}
+                  disabled={isSubmitting}
+                  className="inline-flex items-center gap-1 rounded-full border border-emerald-200 px-3 py-1 text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  title="My mind is blown!"
                 >
-                  <path
-                    d="M21.35 11.1h-8.9v2.89h5.12c-.22 1.18-1.34 3.46-5.12 3.46-3.08 0-5.59-2.55-5.59-5.67s2.51-5.67 5.59-5.67c1.75 0 2.92.74 3.59 1.37l2.45-2.36C16.93 3.39 14.84 2.5 12.35 2.5 7.4 2.5 3.35 6.55 3.35 11.5s4.05 9 9 9c5.2 0 8.65-3.65 8.65-8.8 0-.59-.06-1.04-.15-1.6z"
-                    fill="#4285F4"
-                  />
-                </svg>
-              </span>
-              this ASAP!
-            </button>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                handleCopyFactoid();
-              }}
-              className="inline-flex items-center gap-2 rounded-full border border-[color:var(--surface-card-border)] px-3 py-1 text-[color:var(--text-secondary)] hover:bg-[color:var(--surface-muted)]"
-              aria-label="Copy factoid text"
-              title="Copy this factoid"
-            >
-              <span aria-hidden>{copyStatus === "copied" ? "✅" : "📋"}</span>
-              {copyStatus === "copied" ? "Copied!" : "Copy"}
-            </button>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                setShowChatModal(true);
-              }}
-              className="inline-flex items-center gap-2 rounded-full border border-indigo-200 px-3 py-1 text-indigo-700 hover:bg-indigo-50"
-              aria-label="Chat about this factoid"
-              title="Discuss with our AI overlords"
-            >
-              <span aria-hidden>💬</span>
-              Chat
-            </button>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                setShowFeedback((prev) => !prev);
-              }}
-              className="ml-auto text-sm font-medium text-[color:var(--text-secondary)] underline-offset-4 hover:text-[color:var(--text-primary)] hover:underline"
-            >
-              {showFeedback ? "Cancel" : "Leave feedback"}
-            </button>
-          </div>
+                  <span aria-hidden>🤯</span>
+                  Mind blown ({factoid.votes_up})
+                </button>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    handleVote("down");
+                  }}
+                  disabled={isSubmitting}
+                  className="inline-flex items-center gap-1 rounded-full border border-rose-200 px-3 py-1 text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  title="Meh"
+                >
+                  <span aria-hidden>😒</span>
+                  Meh ({factoid.votes_down})
+                </button>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    handleGoogleSearch();
+                  }}
+                  className="inline-flex items-center gap-2 rounded-full border border-sky-200 px-3 py-1 text-sky-700 hover:bg-sky-50"
+                  aria-label="Search this factoid on Google"
+                  title="Search up that bad boi"
+                >
+                  <span aria-hidden className="flex items-center">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      className="h-4 w-4"
+                    >
+                      <path
+                        d="M21.35 11.1h-8.9v2.89h5.12c-.22 1.18-1.34 3.46-5.12 3.46-3.08 0-5.59-2.55-5.59-5.67s2.51-5.67 5.59-5.67c1.75 0 2.92.74 3.59 1.37l2.45-2.36C16.93 3.39 14.84 2.5 12.35 2.5 7.4 2.5 3.35 6.55 3.35 11.5s4.05 9 9 9c5.2 0 8.65-3.65 8.65-8.8 0-.59-.06-1.04-.15-1.6z"
+                        fill="#4285F4"
+                      />
+                    </svg>
+                  </span>
+                  this ASAP!
+                </button>
+              </div>
+              <div className="ml-auto flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    handleCopyFactoid();
+                  }}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--surface-card-border)] text-[color:var(--text-secondary)] hover:bg-[color:var(--surface-muted)]"
+                  aria-label="Copy factoid text"
+                  title="Copy this factoid"
+                >
+                  <span aria-hidden>{copyStatus === "copied" ? "✅" : "📋"}</span>
+                  <span className="sr-only">
+                    {copyStatus === "copied" ? "Copied" : "Copy"}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    handleCopyLink();
+                  }}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--surface-card-border)] text-[color:var(--text-secondary)] hover:bg-[color:var(--surface-muted)]"
+                  aria-label="Copy link to this factoid"
+                  title="Copy link"
+                >
+                  <span aria-hidden>{linkCopyStatus === "copied" ? "🔗" : "🌐"}</span>
+                  <span className="sr-only">
+                    {linkCopyStatus === "copied" ? "Link copied" : "Copy link"}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setShowChatModal(true);
+                  }}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                  aria-label="Chat about this factoid"
+                  title="Discuss with our AI overlords"
+                >
+                  <span aria-hidden>💬</span>
+                  <span className="sr-only">Chat</span>
+                </button>
+              </div>
+            </div>
 
           {showFeedback && (
             <div
@@ -297,6 +377,7 @@ export function FactoidCard({ factoid }: FactoidCardProps) {
                 placeholder="Optional feedback..."
                 value={feedbackText}
                 onChange={(event) => setFeedbackText(event.target.value)}
+                ref={feedbackTextareaRef}
               />
               <button
                 type="button"

@@ -29,6 +29,10 @@ export async function fetchFactoids(): Promise<Factoid[]> {
   return data.results;
 }
 
+export async function fetchFactoidById(id: string): Promise<Factoid> {
+  return request<Factoid>(`/${id}/`);
+}
+
 export interface GenerateFactoidOptions {
   posthogDistinctId?: string;
   posthogProperties?: Record<string, unknown>;

@@ -1,14 +1,34 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 
 import { GenerateFactoidForm } from "@/components/generate-factoid-form";
 import { FactoidCard } from "@/components/factoid-card";
 import { ThemeMenu } from "@/components/theme-menu";
-import { fetchFactoids, fetchModels } from "@/lib/api";
+import { fetchFactoidById, fetchFactoids, fetchModels } from "@/lib/api";
+import type { Factoid } from "@/lib/types";
+
+interface FactoidPageProps {
+  params: {
+    id: string;
+  };
+}
 
 export const revalidate = 0;
 
-export default async function HomePage() {
-  const [factoids, models] = await Promise.all([fetchFactoids(), fetchModels()]);
+export default async function FactoidPage({ params }: FactoidPageProps) {
+  const { id } = params;
+
+  let factoid: Factoid;
+  try {
+    factoid = await fetchFactoidById(id);
+  } catch {
+    notFound();
+  }
+
+  const [models, recent] = await Promise.all([fetchModels(), fetchFactoids()]);
+
+  const dedupedRecent: Factoid[] = recent.filter((item) => item.id !== factoid.id);
+  const orderedFactoids: Factoid[] = [factoid, ...dedupedRecent];
 
   return (
     <main className="mx-auto max-w-4xl space-y-6 px-4 py-8">
@@ -51,16 +71,16 @@ export default async function HomePage() {
       <GenerateFactoidForm models={models} />
 
       <section className="space-y-4">
-        <div className="space-y-4">
-          {factoids.map((factoid) => (
-            <FactoidCard key={factoid.id} factoid={factoid} />
-          ))}
-          {factoids.length === 0 && (
-            <p className="rounded-md border border-dashed border-[color:var(--surface-card-border)] p-6 text-center text-sm text-[color:var(--text-muted)]">
-              No factoids yet. Generate one to get started!
-            </p>
-          )}
-        </div>
+        <p className="text-sm text-[color:var(--text-muted)]">
+          You&apos;re viewing a shared factoid first, followed by the latest discoveries.
+        </p>
+        {orderedFactoids.map((item, index) => (
+          <FactoidCard
+            key={item.id}
+            factoid={item}
+            initiallyExpanded={index === 0}
+          />
+        ))}
       </section>
     </main>
   );
