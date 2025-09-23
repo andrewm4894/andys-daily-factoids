@@ -18,14 +18,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen bg-[color:var(--background)] text-[color:var(--foreground)] transition-colors duration-300">
-        <ThemeProvider>
-          <PostHogProvider>
-            <Suspense fallback={<></>}>
+        <Suspense fallback={<></>}>
+          <ThemeProvider>
+            <PostHogProvider>
               <PostHogPageView />
-            </Suspense>
-            {children}
-          </PostHogProvider>
-        </ThemeProvider>
+              {children}
+            </PostHogProvider>
+          </ThemeProvider>
+        </Suspense>
       </body>
     </html>
   );
