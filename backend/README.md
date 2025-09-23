@@ -37,3 +37,7 @@ uv lock
 - `pyproject.toml` – dependencies and tooling managed via uv
 
 Further setup (Celery, Redis, LangGraph, etc.) will come in later phases.
+
+## Observability
+
+PostHog error tracking is wired in automatically when `POSTHOG_PROJECT_API_KEY` is set. Use `POSTHOG_DEBUG` to enable verbose logging locally and `POSTHOG_DISABLED` to stop calls entirely (handy for tests or offline development). Exceptions raised inside Django views are captured via PostHog’s Django integration and augmented with headers for context.

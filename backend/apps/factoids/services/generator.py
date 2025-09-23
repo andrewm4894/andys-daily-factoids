@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass
 from typing import Any, Optional
 
 from django.conf import settings
@@ -11,6 +10,7 @@ from django.utils import timezone
 from posthog import Posthog
 from posthog.ai.langchain import CallbackHandler
 
+from apps.core.posthog import get_posthog_client
 from apps.core.services import CostGuard, RateLimitConfig, RateLimitExceeded, get_rate_limiter
 from apps.factoids import models
 from apps.factoids.prompts import build_factoid_generation_prompt
@@ -35,20 +35,6 @@ class CostBudgetExceededError(Exception):
 class GenerationFailedError(Exception):
     def __init__(self, detail: str) -> None:
         self.detail = detail
-
-
-@dataclass
-class _PosthogContext:
-    client: Posthog | None
-
-    def flush(self) -> None:
-        if not self.client:
-            return
-        try:
-            self.client.flush()
-        finally:
-            self.client.shutdown()
-
 
 def generate_factoid(
     *,
@@ -104,13 +90,13 @@ def generate_factoid(
         num_examples=5,
     )
 
-    posthog_context = _build_posthog_client()
+    posthog_client = get_posthog_client()
     extra_properties: dict[str, Any] | None = None
     if isinstance(posthog_properties, dict):
         extra_properties = {k: v for k, v in posthog_properties.items()}
 
     callbacks = _build_callbacks(
-        posthog_context.client,
+        posthog_client,
         distinct_id=posthog_distinct_id or client_hash,
         trace_id=str(generation_request.id),
         topic=topic,
@@ -133,7 +119,7 @@ def generate_factoid(
         generation_request.error_message = str(exc)
         generation_request.completed_at = timezone.now()
         generation_request.save(update_fields=["status", "error_message", "completed_at"])
-        if posthog_context.client:
+        if posthog_client:
             error_properties = {
                 "topic": topic,
                 "profile": profile,
@@ -142,12 +128,11 @@ def generate_factoid(
             }
             if extra_properties:
                 error_properties.update(extra_properties)
-            posthog_context.client.capture_exception(
+            posthog_client.capture_exception(
                 exc,
                 distinct_id=posthog_distinct_id or client_hash,
                 properties=error_properties,
             )
-        posthog_context.flush()
         raise GenerationFailedError("Failed to generate factoid") from exc
 
     factoid = _persist_factoid(result, resolved_model, generation_request)
@@ -160,17 +145,7 @@ def generate_factoid(
     )
 
     guard.record(profile, 0.1)
-    posthog_context.flush()
     return factoid
-
-
-def _build_posthog_client() -> _PosthogContext:
-    api_key = getattr(settings, "POSTHOG_PROJECT_API_KEY", None)
-    if not api_key:
-        return _PosthogContext(client=None)
-    host = getattr(settings, "POSTHOG_HOST", "https://us.i.posthog.com")
-    client = Posthog(api_key, host=host)
-    return _PosthogContext(client=client)
 
 
 def _build_callbacks(

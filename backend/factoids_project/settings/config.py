@@ -43,6 +43,14 @@ class AppSettings(BaseSettings):
         default="https://us.i.posthog.com",
         validation_alias=AliasChoices("POSTHOG_HOST", "DJANGO_POSTHOG_HOST"),
     )
+    posthog_debug: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("POSTHOG_DEBUG", "DJANGO_POSTHOG_DEBUG"),
+    )
+    posthog_disabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("POSTHOG_DISABLED", "DJANGO_POSTHOG_DISABLED"),
+    )
 
     model_config = SettingsConfigDict(
         env_prefix="DJANGO_",
@@ -134,6 +142,16 @@ def get_settings(env_file: str | os.PathLike[str] | None = None) -> AppSettings:
                         or os.getenv("POSTHOG_HOST")
                         or "https://us.i.posthog.com"
                     )
+                    self.posthog_debug = (
+                        os.getenv("DJANGO_POSTHOG_DEBUG")
+                        or os.getenv("POSTHOG_DEBUG")
+                        or "false"
+                    ).lower() == "true"
+                    self.posthog_disabled = (
+                        os.getenv("DJANGO_POSTHOG_DISABLED")
+                        or os.getenv("POSTHOG_DISABLED")
+                        or "false"
+                    ).lower() == "true"
                     
             return FallbackSettings()  # type: ignore
         else:
