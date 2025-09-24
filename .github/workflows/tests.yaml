@@ -35,6 +35,11 @@ jobs:
         cd frontend
         npm run lint
 
+    - name: Check frontend formatting
+      run: |
+        cd frontend
+        npm run format:check
+
     - name: Build frontend application
       run: |
         cd frontend
@@ -75,6 +80,11 @@ jobs:
       run: |
         cd backend
         uv run ruff check .
+
+    - name: Check backend formatting
+      run: |
+        cd backend
+        uv run ruff format --check .
 
     - name: Run backend tests
       run: |
