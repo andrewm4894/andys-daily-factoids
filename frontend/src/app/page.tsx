@@ -7,7 +7,10 @@ import { fetchFactoids, fetchModels } from "@/lib/api";
 export const revalidate = 0;
 
 export default async function HomePage() {
-  const [factoids, models] = await Promise.all([fetchFactoids(50), fetchModels()]);
+  const [factoids, models] = await Promise.all([
+    fetchFactoids(50),
+    fetchModels(),
+  ]);
 
   return (
     <main className="mx-auto max-w-4xl space-y-6 px-4 py-8">
@@ -22,7 +25,8 @@ export default async function HomePage() {
             </Link>
           </h1>
           <p className="text-base text-[color:var(--text-secondary)]">
-            mind blowing and sometimes &apos;meh&apos; factoids from our AI overlords!
+            mind blowing and sometimes &apos;meh&apos; factoids from our AI
+            overlords!
           </p>
         </div>
         <div className="flex items-center gap-3">

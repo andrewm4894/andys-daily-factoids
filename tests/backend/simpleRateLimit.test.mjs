@@ -6,7 +6,7 @@ import { describe, it, expect } from './testFramework.mjs';
 // Test the IP detection and validation functions directly
 function getClientIP(headers) {
   if (!headers) return 'unknown';
-  
+
   // 1. Try Cloudflare IP (most trusted)
   if (headers['cf-connecting-ip']) {
     return headers['cf-connecting-ip'];
@@ -24,7 +24,7 @@ function getClientIP(headers) {
   else if (headers['x-real-ip']) {
     return headers['x-real-ip'];
   }
-  
+
   return 'unknown';
 }
 
@@ -33,11 +33,11 @@ function isValidIP(ip) {
   const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
   // IPv6 regex (simplified)
   const ipv6Regex = /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/;
-  
+
   if (!ipv4Regex.test(ip) && !ipv6Regex.test(ip)) {
     return false;
   }
-  
+
   // Additional validation for IPv4
   if (ipv4Regex.test(ip)) {
     const parts = ip.split('.');
@@ -46,7 +46,7 @@ function isValidIP(ip) {
       return num >= 0 && num <= 255;
     });
   }
-  
+
   return true;
 }
 
@@ -64,7 +64,7 @@ function generateFallbackId(headers) {
   const userAgent = headers['user-agent'] || 'unknown';
   const acceptLanguage = headers['accept-language'] || 'unknown';
   const acceptEncoding = headers['accept-encoding'] || 'unknown';
-  
+
   const combined = `${userAgent}-${acceptLanguage}-${acceptEncoding}`;
   return `fallback-${hashString(combined).substring(0, 16)}`;
 }
@@ -136,10 +136,10 @@ describe('Fallback ID Generation Tests', () => {
       'accept-language': 'en-US',
       'accept-encoding': 'gzip'
     };
-    
+
     const id1 = generateFallbackId(headers);
     const id2 = generateFallbackId(headers);
-    
+
     expect(id1).toBe(id2);
     expect(id1).toMatch(/^fallback-[a-f0-9]+$/);
   });
@@ -150,23 +150,23 @@ describe('Fallback ID Generation Tests', () => {
       'accept-language': 'en-US',
       'accept-encoding': 'gzip'
     };
-    
+
     const headers2 = {
       'user-agent': 'Chrome/91.0',
       'accept-language': 'en-US',
       'accept-encoding': 'gzip'
     };
-    
+
     const id1 = generateFallbackId(headers1);
     const id2 = generateFallbackId(headers2);
-    
+
     expect(id1).not.toBe(id2);
   });
 
   it('should handle missing headers gracefully', () => {
     const headers = {};
     const id = generateFallbackId(headers);
-    
+
     expect(id).toMatch(/^fallback-[a-f0-9]+$/);
   });
 });
@@ -183,7 +183,7 @@ describe('Rate Limit Configuration Tests', () => {
     // Global limits should be reasonable for cost control
     expect(RATE_LIMIT.GLOBAL_GENERATIONS_PER_HOUR).toBeGreaterThan(0);
     expect(RATE_LIMIT.GLOBAL_GENERATIONS_PER_DAY).toBeGreaterThan(RATE_LIMIT.GLOBAL_GENERATIONS_PER_HOUR);
-    
+
     // Per-IP limits should be reasonable for individual users
     expect(RATE_LIMIT.PER_IP_GENERATIONS_PER_HOUR).toBeGreaterThan(0);
     expect(RATE_LIMIT.PER_IP_GENERATIONS_PER_MINUTE).toBeGreaterThan(0);
@@ -205,14 +205,14 @@ describe('Hash Function Tests', () => {
     const input = 'test string';
     const hash1 = hashString(input);
     const hash2 = hashString(input);
-    
+
     expect(hash1).toBe(hash2);
   });
 
   it('should generate different hashes for different inputs', () => {
     const hash1 = hashString('input 1');
     const hash2 = hashString('input 2');
-    
+
     expect(hash1).not.toBe(hash2);
   });
 

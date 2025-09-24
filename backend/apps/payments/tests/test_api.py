@@ -111,10 +111,13 @@ def test_checkout_fulfill_generates_factoid(client, settings):
         created_by=generation_request,
     )
 
-    with mock.patch(
-        "apps.payments.api.stripe.checkout.Session.retrieve",
-        return_value=SimpleNamespace(payment_status="paid", client_reference_id="hash123"),
-    ), mock.patch("apps.payments.api.generate_factoid", return_value=factoid) as generate_mock:
+    with (
+        mock.patch(
+            "apps.payments.api.stripe.checkout.Session.retrieve",
+            return_value=SimpleNamespace(payment_status="paid", client_reference_id="hash123"),
+        ),
+        mock.patch("apps.payments.api.generate_factoid", return_value=factoid) as generate_mock,
+    ):
         response = client.post(
             "/api/payments/checkout/cs_paid/fulfill/",
             {"topic": "space"},

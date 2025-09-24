@@ -129,7 +129,7 @@ process.on('exit', () => {
   console.log(`  ✅ Passed: ${testResults.passed}`);
   console.log(`  ❌ Failed: ${testResults.failed}`);
   console.log(`  📈 Total: ${testResults.passed + testResults.failed}`);
-  
+
   if (testResults.failed > 0) {
     console.log(`\n❌ Failed Tests:`);
     testResults.tests

@@ -2,14 +2,19 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { THEME_OPTIONS, ThemeName, useTheme } from "@/components/theme-provider";
+import {
+  THEME_OPTIONS,
+  ThemeName,
+  useTheme,
+} from "@/components/theme-provider";
 
 export function ThemeMenu() {
   const { theme, setTheme, options, isReady } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  const current = options.find((option) => option.value === theme) ?? THEME_OPTIONS[0];
+  const current =
+    options.find((option) => option.value === theme) ?? THEME_OPTIONS[0];
 
   useEffect(() => {
     if (!isOpen) {
@@ -84,7 +89,10 @@ export function ThemeMenu() {
                 </span>
                 <span className="flex-1">{option.label}</span>
                 {isActive && (
-                  <span aria-hidden className="text-sm text-[color:var(--accent)]">
+                  <span
+                    aria-hidden
+                    className="text-sm text-[color:var(--accent)]"
+                  >
                     ●
                   </span>
                 )}

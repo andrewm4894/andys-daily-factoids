@@ -69,7 +69,7 @@ Copy `backend/.env.example` for backend secrets and create `frontend/.env.local`
 Prerequisites: Node.js 20+, `uv` (for Python dependency management), and Postgres/Redis if you want to mirror production locally.
 
 ```bash
-# Install dependencies
+# Install dependencies (includes pre-commit hooks)
 make install
 
 # Apply database migrations (SQLite by default locally)
@@ -86,6 +86,47 @@ make run
 ```
 
 The frontend points at `http://localhost:8000/api/factoids` by default. Adjust `NEXT_PUBLIC_FACTOIDS_API_BASE` if you proxy or tunnel the API.
+
+## Code Quality & Pre-commit Hooks
+
+This project uses pre-commit hooks to ensure code quality and consistency across both backend and frontend:
+
+### Backend (Python)
+- **Ruff**: Linting (E, F, I rules) and code formatting
+- **MyPy**: Type checking with Django stubs
+- **General hooks**: Trailing whitespace, end-of-file, YAML/JSON validation
+
+### Frontend (TypeScript/JavaScript)
+- **ESLint**: Linting with Next.js configuration
+- **Prettier**: Code formatting for consistent style
+- **General hooks**: File validation and formatting
+
+### Usage
+
+```bash
+# Install pre-commit hooks (done automatically with `make install`)
+make precommit-install
+
+# Run all pre-commit hooks on all files
+make precommit
+# or
+make precommit-run
+
+# Update pre-commit hooks to latest versions
+make precommit-update
+
+# Manual linting (runs the same tools as pre-commit)
+make lint              # Both backend and frontend
+make lint-backend      # Backend only (Ruff + MyPy)
+make lint-frontend     # Frontend only (ESLint)
+
+# Frontend formatting
+cd frontend && npm run format        # Format with Prettier
+cd frontend && npm run format:check  # Check formatting
+cd frontend && npm run lint:fix      # Fix ESLint issues
+```
+
+Pre-commit hooks run automatically on every commit. If a hook fails, the commit is blocked until issues are resolved.
 
 ## Testing
 

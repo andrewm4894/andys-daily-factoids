@@ -18,6 +18,7 @@ from apps.factoids.services.openrouter import (
     model_supports_tools,
 )
 
+
 class FakeMessage:
     def __init__(self, *, content: str, tool_calls: list | None = None):
         self.content = content
@@ -187,15 +188,11 @@ def test_model_supports_tools_caches_result(mock_fetch):
 
     mock_fetch.side_effect = fake_fetch
 
-    assert model_supports_tools(
-        "model-1", api_key="key", base_url="https://example.com"
-    )
+    assert model_supports_tools("model-1", api_key="key", base_url="https://example.com")
     mock_fetch.assert_called_once()
 
     mock_fetch.reset_mock()
-    assert model_supports_tools(
-        "model-1", api_key="key", base_url="https://example.com"
-    )
+    assert model_supports_tools("model-1", api_key="key", base_url="https://example.com")
     mock_fetch.assert_not_called()
 
 
@@ -211,9 +208,7 @@ def test_model_supports_tools_returns_false_when_not_supported(mock_fetch):
 
     mock_fetch.side_effect = fake_fetch
 
-    assert not model_supports_tools(
-        "model-1", api_key="key", base_url="https://example.com"
-    )
+    assert not model_supports_tools("model-1", api_key="key", base_url="https://example.com")
 
 
 @patch.dict("apps.factoids.services.openrouter._MODEL_TOOL_SUPPORT", {}, clear=True)

@@ -12,7 +12,7 @@ def bootstrap_django() -> None:
     """Initialise Django using the local settings module."""
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "factoids_project.settings.local")
-    import django  # noqa: WPS433 - runtime import to avoid Django at module import time
+    import django  # noqa: E402 - runtime import to avoid Django at module import time
 
     django.setup()
 
@@ -25,7 +25,9 @@ def parse_args() -> argparse.Namespace:
         )
     )
     parser.add_argument("--topic", default="space exploration", help="Topic prompt for the factoid")
-    parser.add_argument("--model", dest="model_key", default=None, help="Optional OpenRouter model key")
+    parser.add_argument(
+        "--model", dest="model_key", default=None, help="Optional OpenRouter model key"
+    )
     parser.add_argument(
         "--temperature",
         type=float,
@@ -56,15 +58,14 @@ def main() -> int:
 
     bootstrap_django()
 
-    from django.conf import settings  # noqa: WPS433 - imported after Django setup
-
-    from apps.factoids import models  # noqa: WPS433 - lazily import Django models
-    from apps.factoids.services.generator import (  # noqa: WPS433 - defer heavy import
+    from apps.factoids import models  # noqa: E402 - lazily import Django models
+    from apps.factoids.services.generator import (  # noqa: E402 - defer heavy import
         CostBudgetExceededError,
         GenerationFailedError,
         RateLimitExceededError,
         generate_factoid,
     )
+    from django.conf import settings  # noqa: E402 - imported after Django setup
 
     client_hash = args.client_hash or uuid.uuid4().hex
     request_source = models.RequestSource(args.request_source)

@@ -27,7 +27,9 @@ export default async function FactoidPage({ params }: FactoidPageProps) {
 
   const [models, recent] = await Promise.all([fetchModels(), fetchFactoids()]);
 
-  const dedupedRecent: Factoid[] = recent.filter((item) => item.id !== factoid.id);
+  const dedupedRecent: Factoid[] = recent.filter(
+    (item) => item.id !== factoid.id
+  );
   const orderedFactoids: Factoid[] = [factoid, ...dedupedRecent];
 
   return (
@@ -72,7 +74,8 @@ export default async function FactoidPage({ params }: FactoidPageProps) {
 
       <section className="space-y-4">
         <p className="text-sm text-[color:var(--text-muted)]">
-          You&apos;re viewing a shared factoid first, followed by the latest discoveries.
+          You&apos;re viewing a shared factoid first, followed by the latest
+          discoveries.
         </p>
         {orderedFactoids.map((item, index) => (
           <FactoidCard
