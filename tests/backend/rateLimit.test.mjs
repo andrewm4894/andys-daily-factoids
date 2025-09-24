@@ -20,5 +20,4 @@ describe('Anonymous profile rate-limits', () => {
   });
 });
 
-console.log('
-🧪 Rate limit configuration sanity checks complete.');
+console.log('🧪 Rate limit configuration sanity checks complete.');

@@ -25,7 +25,6 @@ from apps.factoids.services.generator import (
 from apps.payments import models
 from apps.payments.services import get_payment_gateway
 
-
 app_name = "payments"
 
 
@@ -68,13 +67,11 @@ class CheckoutSessionCreateView(APIView):
         serializer.is_valid(raise_exception=True)
 
         client_hash = _client_hash(request)
-        success_url = (
-            serializer.validated_data.get("success_url")
-            or getattr(settings, "STRIPE_SUCCESS_URL", None)
+        success_url = serializer.validated_data.get("success_url") or getattr(
+            settings, "STRIPE_SUCCESS_URL", None
         )
-        cancel_url = (
-            serializer.validated_data.get("cancel_url")
-            or getattr(settings, "STRIPE_CANCEL_URL", success_url)
+        cancel_url = serializer.validated_data.get("cancel_url") or getattr(
+            settings, "STRIPE_CANCEL_URL", success_url
         )
 
         if not success_url or not cancel_url:
@@ -167,9 +164,9 @@ class CheckoutSessionCompleteView(APIView):
             )
 
         try:
-            payment_session = models.PaymentSession.objects.select_related("requested_generation").get(
-                stripe_session_id=session_id
-            )
+            payment_session = models.PaymentSession.objects.select_related(
+                "requested_generation"
+            ).get(stripe_session_id=session_id)
         except models.PaymentSession.DoesNotExist:
             return Response(
                 {"detail": "Checkout session not found"},
@@ -180,7 +177,10 @@ class CheckoutSessionCompleteView(APIView):
         serializer.is_valid(raise_exception=True)
 
         existing_factoid = _get_factoid_from_payment_session(payment_session)
-        if payment_session.status == models.PaymentStatus.COMPLETED and existing_factoid is not None:
+        if (
+            payment_session.status == models.PaymentStatus.COMPLETED
+            and existing_factoid is not None
+        ):
             return Response(
                 factoid_serializers.FactoidSerializer(existing_factoid).data,
                 status=status.HTTP_200_OK,
@@ -203,7 +203,9 @@ class CheckoutSessionCompleteView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        client_hash = payment_session.client_hash or getattr(remote_session, "client_reference_id", None)
+        client_hash = payment_session.client_hash or getattr(
+            remote_session, "client_reference_id", None
+        )
         if not client_hash:
             return Response(
                 {"detail": "Unable to determine client for checkout session"},
@@ -212,7 +214,9 @@ class CheckoutSessionCompleteView(APIView):
 
         metadata = payment_session.metadata or {}
         resolved_topic = serializer.validated_data.get("topic") or metadata.get("topic") or None
-        resolved_model_key = serializer.validated_data.get("model_key") or metadata.get("model_key") or None
+        resolved_model_key = (
+            serializer.validated_data.get("model_key") or metadata.get("model_key") or None
+        )
         posthog_distinct_id = metadata.get("posthog_distinct_id")
 
         try:
@@ -247,7 +251,9 @@ class CheckoutSessionCompleteView(APIView):
         updated_metadata = dict(metadata)
         updated_metadata["factoid_id"] = str(factoid.id)
         payment_session.metadata = updated_metadata
-        payment_session.save(update_fields=["status", "requested_generation", "metadata", "updated_at"])
+        payment_session.save(
+            update_fields=["status", "requested_generation", "metadata", "updated_at"]
+        )
 
         return Response(
             factoid_serializers.FactoidSerializer(factoid).data,

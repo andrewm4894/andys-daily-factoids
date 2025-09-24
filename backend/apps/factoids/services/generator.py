@@ -37,6 +37,7 @@ class GenerationFailedError(Exception):
     def __init__(self, detail: str) -> None:
         self.detail = detail
 
+
 def generate_factoid(
     *,
     topic: str,
@@ -149,9 +150,7 @@ def generate_factoid(
     generation_request.status = models.RequestStatus.SUCCEEDED
     generation_request.completed_at = timezone.now()
     generation_request.actual_cost_usd = 0.1
-    generation_request.save(
-        update_fields=["status", "completed_at", "actual_cost_usd"]
-    )
+    generation_request.save(update_fields=["status", "completed_at", "actual_cost_usd"])
 
     guard.record(profile, 0.1)
     return factoid

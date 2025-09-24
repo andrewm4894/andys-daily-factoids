@@ -17,7 +17,8 @@ function inferPaymentsBase(factoidsBase: string): string {
 }
 
 export const FACTOIDS_API_BASE =
-  process.env.NEXT_PUBLIC_FACTOIDS_API_BASE?.replace(/\/$/, "") || DEFAULT_FACTOIDS_BASE;
+  process.env.NEXT_PUBLIC_FACTOIDS_API_BASE?.replace(/\/$/, "") ||
+  DEFAULT_FACTOIDS_BASE;
 
 export const PAYMENTS_API_BASE =
   process.env.NEXT_PUBLIC_PAYMENTS_API_BASE?.replace(/\/$/, "") ||
@@ -35,7 +36,11 @@ export class ApiError extends Error {
   }
 }
 
-async function apiRequest<T>(baseUrl: string, path: string, init?: RequestInit): Promise<T> {
+async function apiRequest<T>(
+  baseUrl: string,
+  path: string,
+  init?: RequestInit
+): Promise<T> {
   const url = `${baseUrl}${path}`;
   const response = await fetch(url, {
     ...init,
@@ -59,7 +64,11 @@ async function apiRequest<T>(baseUrl: string, path: string, init?: RequestInit):
     }
   } else {
     parsed = null;
-    isJson = response.headers.get("content-type")?.toLowerCase().includes("application/json") ?? false;
+    isJson =
+      response.headers
+        .get("content-type")
+        ?.toLowerCase()
+        .includes("application/json") ?? false;
   }
 
   if (!response.ok) {
@@ -92,7 +101,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export async function fetchFactoids(pageSize = 20): Promise<Factoid[]> {
-  const data = await request<PaginatedResponse<Factoid>>(`/?page_size=${pageSize}`);
+  const data = await request<PaginatedResponse<Factoid>>(
+    `/?page_size=${pageSize}`
+  );
   return data.results;
 }
 
@@ -126,7 +137,10 @@ export async function generateFactoid(
   if (options.posthogDistinctId) {
     payload.posthog_distinct_id = options.posthogDistinctId;
   }
-  if (options.posthogProperties && Object.keys(options.posthogProperties).length > 0) {
+  if (
+    options.posthogProperties &&
+    Object.keys(options.posthogProperties).length > 0
+  ) {
     payload.posthog_properties = options.posthogProperties;
   }
 
@@ -136,7 +150,10 @@ export async function generateFactoid(
   });
 }
 
-export async function submitVote(factoidId: string, vote: "up" | "down"): Promise<Factoid> {
+export async function submitVote(
+  factoidId: string,
+  vote: "up" | "down"
+): Promise<Factoid> {
   return request<Factoid>(`/${factoidId}/vote/`, {
     method: "POST",
     body: JSON.stringify({ vote }),

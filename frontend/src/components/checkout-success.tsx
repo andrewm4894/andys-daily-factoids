@@ -19,7 +19,10 @@ export function CheckoutSuccess({ sessionId }: CheckoutSuccessProps) {
   const [status, setStatus] = useState<FulfillmentStatus>("idle");
   const [error, setError] = useState<string | null>(null);
 
-  const hasSessionId = useMemo(() => typeof sessionId === "string" && sessionId.length > 0, [sessionId]);
+  const hasSessionId = useMemo(
+    () => typeof sessionId === "string" && sessionId.length > 0,
+    [sessionId]
+  );
 
   const requestFulfillment = useCallback(() => {
     if (!hasSessionId || !sessionId) {
@@ -66,7 +69,8 @@ export function CheckoutSuccess({ sessionId }: CheckoutSuccessProps) {
           Thanks for supporting Andy&apos;s Daily Factoids!
         </h1>
         <p className="text-[color:var(--text-secondary)]">
-          Your payment unlocks an immediate factoid. We generate it as soon as this page loads.
+          Your payment unlocks an immediate factoid. We generate it as soon as
+          this page loads.
         </p>
       </header>
 
@@ -80,7 +84,10 @@ export function CheckoutSuccess({ sessionId }: CheckoutSuccessProps) {
         <div className="space-y-3">
           <div className="rounded-md border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900 shadow-sm">
             <p className="font-semibold">We hit a snag</p>
-            <p className="mt-1">{error ?? "An unexpected error occurred while fulfilling your purchase."}</p>
+            <p className="mt-1">
+              {error ??
+                "An unexpected error occurred while fulfilling your purchase."}
+            </p>
           </div>
           <div className="flex flex-wrap gap-3">
             <button
@@ -105,8 +112,8 @@ export function CheckoutSuccess({ sessionId }: CheckoutSuccessProps) {
           <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900 shadow-sm">
             <p className="font-semibold">You&apos;re good to go!</p>
             <p className="mt-1">
-              We generated this factoid just for you. You can keep exploring from the homepage whenever you&apos;re
-              ready.
+              We generated this factoid just for you. You can keep exploring
+              from the homepage whenever you&apos;re ready.
             </p>
           </div>
           <FactoidCard factoid={factoid} initiallyExpanded />

@@ -1,15 +1,19 @@
-.PHONY: help install install-frontend install-backend local local-backend local-frontend migrate-backend seed-backend run factoid test test-backend test-frontend test-rate-limit lint lint-backend lint-frontend smoke-backend-api test-generate-factoid
+.PHONY: help install install-frontend install-backend install-precommit local local-backend local-frontend migrate-backend seed-backend run factoid test test-backend test-frontend test-rate-limit lint lint-backend lint-frontend precommit precommit-install precommit-run precommit-update smoke-backend-api test-generate-factoid
 
 help: ## Show available make targets
 	@awk -F ':.*## ' 'BEGIN {print "Available targets:"} /^[a-zA-Z0-9_-]+:.*##/ {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-install: install-backend install-frontend ## Install backend and frontend dependencies
+install: install-backend install-frontend install-precommit ## Install backend, frontend, and pre-commit dependencies
 
 install-backend: ## Install backend dependencies via uv
 	cd backend && uv sync --extra dev
 
 install-frontend: ## Install frontend dependencies
 	cd ./frontend && npm install
+
+install-precommit: ## Install pre-commit hooks
+	uv tool install pre-commit
+	pre-commit install
 
 local: ## Run backend and frontend dev servers (alias for `make run`)
 	@$(MAKE) run
@@ -50,7 +54,7 @@ test-integration: ## Run integration tests
 
 test-rate-limit: ## Run rate limit checks
 	@echo "Testing rate limit functionality..."
-	node scripts/testRateLimit.mjs
+	node tests/backend/rateLimit.test.mjs
 
 lint: ## Run all linting
 	@echo "Running all linting..."
@@ -73,3 +77,16 @@ lint-frontend: ## Lint frontend files
 
 run: ## Run backend and frontend dev servers concurrently
 	@bash -lc 'trap "kill 0" EXIT; (cd backend && uv run python manage.py runserver) & (cd frontend && npm run dev)'
+
+precommit: ## Run pre-commit hooks on all files (alias for precommit-run)
+	@$(MAKE) precommit-run
+
+precommit-install: ## Install pre-commit hooks
+	uv tool install pre-commit
+	pre-commit install
+
+precommit-run: ## Run pre-commit hooks on all files
+	pre-commit run --all-files
+
+precommit-update: ## Update pre-commit hooks to latest versions
+	pre-commit autoupdate

@@ -60,13 +60,16 @@ def test_factoid_generation_invokes_openrouter(settings):
 
     mock_result = GenerationResult(text="Fact", subject="Science", emoji="🧠", raw={})
 
-    with patch(
-        "apps.factoids.services.generator.generate_factoid_completion",
-        return_value=mock_result,
-    ) as mock_generate, patch(
-        "apps.factoids.services.generator._build_callbacks",
-        return_value=[],
-    ) as mock_callbacks:
+    with (
+        patch(
+            "apps.factoids.services.generator.generate_factoid_completion",
+            return_value=mock_result,
+        ) as mock_generate,
+        patch(
+            "apps.factoids.services.generator._build_callbacks",
+            return_value=[],
+        ) as mock_callbacks,
+    ):
         response = client.post(
             reverse("factoids:generate"),
             {
@@ -167,13 +170,16 @@ def test_generate_stream_emits_factoid_event(settings, topic):
     )
     mock_result = GenerationResult(text="Fact", subject="Science", emoji="🧠", raw={})
 
-    with patch(
-        "apps.factoids.services.generator.generate_factoid_completion",
-        return_value=mock_result,
-    ), patch(
-        "apps.factoids.services.generator._build_callbacks",
-        return_value=[],
-    ) as mock_callbacks:
+    with (
+        patch(
+            "apps.factoids.services.generator.generate_factoid_completion",
+            return_value=mock_result,
+        ),
+        patch(
+            "apps.factoids.services.generator._build_callbacks",
+            return_value=[],
+        ) as mock_callbacks,
+    ):
         response = client.get(url)
         assert response.status_code == 200
         assert response["Content-Type"] == "text/event-stream"

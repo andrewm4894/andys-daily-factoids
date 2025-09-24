@@ -20,6 +20,7 @@ def _safe_json_loads(value: str) -> Any:
     except json.JSONDecodeError:
         return value
 
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DEFAULT_ENV_FILE = BASE_DIR / ".env"
 
@@ -156,14 +157,14 @@ def get_settings(env_file: str | os.PathLike[str] | None = None) -> AppSettings:
                 def __init__(self):
                     self.debug = os.getenv("DJANGO_DEBUG", "False").lower() == "true"
                     self.secret_key = os.getenv("DJANGO_SECRET_KEY", "development-secret-key")
-                    
+
                     # Parse allowed hosts manually
                     hosts_env = os.getenv("DJANGO_ALLOWED_HOSTS", "")
                     if hosts_env:
                         self.allowed_hosts = [h.strip() for h in hosts_env.split(",") if h.strip()]
                     else:
                         self.allowed_hosts = []
-                    
+
                     # Parse CORS origins manually
                     cors_env = os.getenv("DJANGO_CORS_ALLOWED_ORIGINS", "")
                     if cors_env:
@@ -194,9 +195,7 @@ def get_settings(env_file: str | os.PathLike[str] | None = None) -> AppSettings:
                         or "https://us.i.posthog.com"
                     )
                     self.posthog_debug = (
-                        os.getenv("DJANGO_POSTHOG_DEBUG")
-                        or os.getenv("POSTHOG_DEBUG")
-                        or "false"
+                        os.getenv("DJANGO_POSTHOG_DEBUG") or os.getenv("POSTHOG_DEBUG") or "false"
                     ).lower() == "true"
                     self.posthog_disabled = (
                         os.getenv("DJANGO_POSTHOG_DISABLED")
@@ -204,17 +203,14 @@ def get_settings(env_file: str | os.PathLike[str] | None = None) -> AppSettings:
                         or "false"
                     ).lower() == "true"
 
-                    self.stripe_secret_key = (
-                        os.getenv("DJANGO_STRIPE_SECRET_KEY")
-                        or os.getenv("STRIPE_SECRET_KEY")
+                    self.stripe_secret_key = os.getenv("DJANGO_STRIPE_SECRET_KEY") or os.getenv(
+                        "STRIPE_SECRET_KEY"
                     )
-                    self.stripe_publishable_key = (
-                        os.getenv("DJANGO_STRIPE_PUBLISHABLE_KEY")
-                        or os.getenv("STRIPE_PUBLISHABLE_KEY")
-                    )
-                    self.stripe_price_id = (
-                        os.getenv("DJANGO_STRIPE_PRICE_ID")
-                        or os.getenv("STRIPE_PRICE_ID")
+                    self.stripe_publishable_key = os.getenv(
+                        "DJANGO_STRIPE_PUBLISHABLE_KEY"
+                    ) or os.getenv("STRIPE_PUBLISHABLE_KEY")
+                    self.stripe_price_id = os.getenv("DJANGO_STRIPE_PRICE_ID") or os.getenv(
+                        "STRIPE_PRICE_ID"
                     )
                     self.stripe_checkout_amount_cents = int(
                         os.getenv("DJANGO_STRIPE_CHECKOUT_AMOUNT_CENTS")
@@ -243,7 +239,7 @@ def get_settings(env_file: str | os.PathLike[str] | None = None) -> AppSettings:
                         or os.getenv("STRIPE_CANCEL_URL")
                         or os.getenv("STRIPE_CHECKOUT_CANCEL_URL")
                     )
-                    
+
             return FallbackSettings()  # type: ignore
         else:
             raise

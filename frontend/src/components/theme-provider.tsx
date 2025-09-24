@@ -28,7 +28,7 @@ const THEME_MODE_MAP = THEME_OPTIONS.reduce(
     acc[option.value] = option.mode;
     return acc;
   },
-  {} as Record<ThemeName, ThemeMode>,
+  {} as Record<ThemeName, ThemeMode>
 );
 
 interface ThemeContextValue {
@@ -83,7 +83,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         const cleanedSearch = url.searchParams.toString();
         router.replace(
           `${url.pathname}${cleanedSearch ? `?${cleanedSearch}` : ""}${url.hash}`,
-          { scroll: false },
+          { scroll: false }
         );
       } catch (error) {
         console.error("Failed to clean invalid theme query parameter", error);
@@ -97,7 +97,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? false;
+    const prefersDark =
+      window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? false;
     setThemeState(prefersDark ? "dark" : "light");
     setIsReady(true);
   }, [router, themeQuery]);
@@ -131,21 +132,25 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         const nextHash = url.hash;
         router.replace(
           `${url.pathname}${nextSearch ? `?${nextSearch}` : ""}${nextHash}`,
-          { scroll: false },
+          { scroll: false }
         );
       } catch (error) {
         console.error("Failed to update theme query parameter", error);
       }
     },
-    [router],
+    [router]
   );
 
   const contextValue = useMemo<ThemeContextValue>(
     () => ({ theme, setTheme, options: THEME_OPTIONS, isReady }),
-    [theme, setTheme, isReady],
+    [theme, setTheme, isReady]
   );
 
-  return <ThemeContext.Provider value={contextValue}>{children}</ThemeContext.Provider>;
+  return (
+    <ThemeContext.Provider value={contextValue}>
+      {children}
+    </ThemeContext.Provider>
+  );
 }
 
 export function useTheme() {

@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 import { loadStripe } from "@stripe/stripe-js";
 import type { Stripe } from "@stripe/stripe-js";
 
-import { ApiError, FACTOIDS_API_BASE, createCheckoutSession, generateFactoid } from "@/lib/api";
+import {
+  ApiError,
+  FACTOIDS_API_BASE,
+  createCheckoutSession,
+  generateFactoid,
+} from "@/lib/api";
 import { posthog } from "@/lib/posthog";
 
 let stripePromise: Promise<Stripe | null> | null = null;
@@ -67,7 +72,9 @@ export function GenerateFactoidForm({
     }, 2500);
   };
 
-  const startCheckoutFlow = async ({ retryAfter }: { retryAfter?: number } = {}) => {
+  const startCheckoutFlow = async ({
+    retryAfter,
+  }: { retryAfter?: number } = {}) => {
     if (isCheckoutRedirecting || typeof window === "undefined") {
       return;
     }
@@ -114,7 +121,9 @@ export function GenerateFactoidForm({
         if (!stripe) {
           throw new Error("Stripe.js failed to initialize");
         }
-        const { error } = await stripe.redirectToCheckout({ sessionId: session.session_id });
+        const { error } = await stripe.redirectToCheckout({
+          sessionId: session.session_id,
+        });
         if (error) {
           throw error;
         }
@@ -127,7 +136,8 @@ export function GenerateFactoidForm({
       let detail = "Failed to start Stripe checkout";
       if (error instanceof ApiError) {
         if (error.status === 503) {
-          detail = "Payments are currently unavailable. Please try again later.";
+          detail =
+            "Payments are currently unavailable. Please try again later.";
         } else if (error.message) {
           detail = error.message;
         }
@@ -152,9 +162,10 @@ export function GenerateFactoidForm({
 
   const handleRateLimitExceeded = (detail?: string, retryAfter?: number) => {
     clearStatusReset();
-    const message = detail && detail.trim()
-      ? detail
-      : "You have reached the free factoid limit. Redirecting to checkout...";
+    const message =
+      detail && detail.trim()
+        ? detail
+        : "You have reached the free factoid limit. Redirecting to checkout...";
     setStatus("error");
     onGenerationError?.(message);
     posthog.capture("factoid_rate_limit_exceeded", {
@@ -235,7 +246,8 @@ export function GenerateFactoidForm({
     const params = new URLSearchParams();
     if (topic) params.append("topic", topic);
     if (modelKey) params.append("model_key", modelKey);
-    if (posthogDistinctId) params.append("posthog_distinct_id", posthogDistinctId);
+    if (posthogDistinctId)
+      params.append("posthog_distinct_id", posthogDistinctId);
     if (hasPosthogProperties)
       params.append("posthog_properties", JSON.stringify(posthogProperties));
 
@@ -259,7 +271,8 @@ export function GenerateFactoidForm({
           if (err instanceof ApiError && err.status === 429) {
             let retryAfter: number | undefined;
             if (err.data && typeof err.data === "object" && err.data !== null) {
-              const candidate = (err.data as { retry_after?: unknown }).retry_after;
+              const candidate = (err.data as { retry_after?: unknown })
+                .retry_after;
               if (typeof candidate === "number") {
                 retryAfter = candidate;
               }
@@ -390,16 +403,15 @@ export function GenerateFactoidForm({
       "bg-[color:var(--button-primary-bg)] text-[color:var(--button-primary-text)] hover:bg-[color:var(--button-primary-hover)]";
   }
 
-  const buttonLabel =
-    isCheckoutRedirecting
-      ? "Redirecting to checkout..."
-      : status === "success"
+  const buttonLabel = isCheckoutRedirecting
+    ? "Redirecting to checkout..."
+    : status === "success"
       ? "Factoid ready!"
       : status === "error"
-      ? "Generation failed"
-      : isStreaming || status === "starting"
-      ? "Generating..."
-      : "Generate factoid";
+        ? "Generation failed"
+        : isStreaming || status === "starting"
+          ? "Generating..."
+          : "Generate factoid";
 
   return (
     <form
@@ -442,14 +454,21 @@ export function GenerateFactoidForm({
           aria-controls={optionsId}
           className="text-sm text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {showAdvanced ? "Hide options" : "Show options"} {showAdvanced ? "↑" : "↓"}
+          {showAdvanced ? "Hide options" : "Show options"}{" "}
+          {showAdvanced ? "↑" : "↓"}
         </button>
       </div>
 
       {showAdvanced && (
-        <div id={optionsId} className="space-y-4 border-t border-[color:var(--surface-card-border)] pt-4">
+        <div
+          id={optionsId}
+          className="space-y-4 border-t border-[color:var(--surface-card-border)] pt-4"
+        >
           <div>
-            <label htmlFor="topic" className="block text-sm font-medium text-[color:var(--text-primary)]">
+            <label
+              htmlFor="topic"
+              className="block text-sm font-medium text-[color:var(--text-primary)]"
+            >
               Topic (optional)
             </label>
             <input
@@ -464,7 +483,10 @@ export function GenerateFactoidForm({
           </div>
 
           <div>
-            <label htmlFor="model" className="block text-sm font-medium text-[color:var(--text-primary)]">
+            <label
+              htmlFor="model"
+              className="block text-sm font-medium text-[color:var(--text-primary)]"
+            >
               Model (optional)
             </label>
             <select

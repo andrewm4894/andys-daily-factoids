@@ -184,7 +184,7 @@ describe('RateLimitStatus Component', () => {
 
   it('should show different status colors based on usage', () => {
     const { rerender } = render(<RateLimitStatus {...defaultProps} />);
-    
+
     // Low usage - should have status-good class
     let statusDiv = document.querySelector('.rate-limit-status');
     expect(statusDiv).toHaveClass('status-good');

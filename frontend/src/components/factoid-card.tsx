@@ -27,29 +27,32 @@ export function FactoidCard({
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackVote, setFeedbackVote] = useState<"up" | "down" | undefined>(
-    undefined,
+    undefined
   );
   const [showChatModal, setShowChatModal] = useState(false);
   const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
-  const [linkCopyStatus, setLinkCopyStatus] = useState<"idle" | "copied">("idle");
+  const [linkCopyStatus, setLinkCopyStatus] = useState<"idle" | "copied">(
+    "idle"
+  );
   const [showMetadataPopover, setShowMetadataPopover] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
-  const [metadataPosition, setMetadataPosition] = useState<{ top: number; left: number } | null>(
-    null,
-  );
+  const [metadataPosition, setMetadataPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
   const copyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const linkCopyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const feedbackTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const feedbackFocusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
+    null
   );
   const metadataButtonRef = useRef<HTMLButtonElement | null>(null);
   const metadataPopoverRef = useRef<HTMLDivElement | null>(null);
 
   const trimmedText = factoid.text.trim();
   const words = trimmedText === "" ? [] : trimmedText.split(/\s+/);
-  
+
   // Deterministically pick between 4, 5, or 6 words for visual variety
   // Use factoid ID to ensure consistent server/client rendering
   const getWordCount = () => {
@@ -61,10 +64,12 @@ export function FactoidCard({
     }
     return counts[Math.abs(hash) % counts.length];
   };
-  
+
   const maxWords = getWordCount();
   const teaserText =
-    words.length > maxWords ? `${words.slice(0, maxWords).join(" ")}…` : trimmedText;
+    words.length > maxWords
+      ? `${words.slice(0, maxWords).join(" ")}…`
+      : trimmedText;
   const displayEmoji = factoid.emoji || "✨";
 
   const handleCardToggle = () => {
@@ -176,7 +181,7 @@ export function FactoidCard({
       metadataEntries.push({ label: "Model", value: modelValue });
     }
     const otherKeys = Object.entries(rawObject).filter(
-      ([key]) => key !== "model" && key !== "raw",
+      ([key]) => key !== "model" && key !== "raw"
     );
     for (const [key, value] of otherKeys) {
       if (value == null) {
@@ -191,7 +196,8 @@ export function FactoidCard({
         if (value == null) {
           continue;
         }
-        const formatted = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+        const formatted =
+          typeof value === "string" ? value : JSON.stringify(value, null, 2);
         metadataEntries.push({ label: `raw.${key}`, value: formatted });
       }
     }
@@ -256,9 +262,7 @@ export function FactoidCard({
 
   const headlineText = isExpanded ? factoid.text : teaserText;
   const headerClasses = `flex gap-4${
-    isExpanded
-      ? " items-start"
-      : " items-center justify-center text-center"
+    isExpanded ? " items-start" : " items-center justify-center text-center"
   }`;
   const headlineContainerClasses = isExpanded ? "flex-1" : "flex-none";
   const headlineTextClasses = `text-lg text-[color:var(--text-primary)] whitespace-pre-wrap${
@@ -369,9 +373,7 @@ export function FactoidCard({
             {displayEmoji}
           </span>
           <div className={headlineContainerClasses}>
-            <p className={headlineTextClasses}>
-              {headlineText || "Factoid"}
-            </p>
+            <p className={headlineTextClasses}>{headlineText || "Factoid"}</p>
           </div>
         </div>
 
@@ -441,7 +443,9 @@ export function FactoidCard({
                   aria-label="Copy factoid text"
                   title="Copy this factoid"
                 >
-                  <span aria-hidden>{copyStatus === "copied" ? "✅" : "📋"}</span>
+                  <span aria-hidden>
+                    {copyStatus === "copied" ? "✅" : "📋"}
+                  </span>
                   <span className="sr-only">
                     {copyStatus === "copied" ? "Copied" : "Copy"}
                   </span>
@@ -456,7 +460,9 @@ export function FactoidCard({
                   aria-label="Copy link to this factoid"
                   title="Copy link"
                 >
-                  <span aria-hidden>{linkCopyStatus === "copied" ? "✅" : "🔗"}</span>
+                  <span aria-hidden>
+                    {linkCopyStatus === "copied" ? "✅" : "🔗"}
+                  </span>
                   <span className="sr-only">
                     {linkCopyStatus === "copied" ? "Link copied" : "Copy link"}
                   </span>
@@ -496,7 +502,9 @@ export function FactoidCard({
                     <span aria-hidden>ℹ️</span>
                     <span className="sr-only">Details</span>
                   </button>
-                  {isMounted && showMetadataPopover && metadataPosition &&
+                  {isMounted &&
+                    showMetadataPopover &&
+                    metadataPosition &&
                     createPortal(
                       <div
                         ref={metadataPopoverRef}
@@ -527,40 +535,40 @@ export function FactoidCard({
                           </dl>
                         )}
                       </div>,
-                      document.body,
+                      document.body
                     )}
                 </div>
               </div>
             </div>
 
-          {showFeedback && (
-            <div
-              className="mt-4 space-y-3 rounded-md border border-[color:var(--surface-card-border)] bg-[color:var(--surface-muted)] p-4"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <textarea
-                className="w-full rounded-md border border-[color:var(--input-border)] bg-[color:var(--input-bg)] p-2 text-sm text-[color:var(--text-secondary)] focus:border-[color:var(--input-border-focus)] focus:outline-none"
-                rows={3}
-                placeholder="Optional feedback..."
-                value={feedbackText}
-                onChange={(event) => setFeedbackText(event.target.value)}
-                ref={feedbackTextareaRef}
-              />
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  handleFeedbackSubmit();
-                }}
-                disabled={isSubmitting}
-                className="rounded-md bg-[color:var(--button-primary-bg)] px-3 py-2 text-sm font-medium text-[color:var(--button-primary-text)] transition-colors hover:bg-[color:var(--button-primary-hover)] disabled:cursor-not-allowed disabled:opacity-60"
+            {showFeedback && (
+              <div
+                className="mt-4 space-y-3 rounded-md border border-[color:var(--surface-card-border)] bg-[color:var(--surface-muted)] p-4"
+                onClick={(event) => event.stopPropagation()}
               >
-                Submit feedback
-              </button>
-            </div>
-          )}
-        </>
-      )}
+                <textarea
+                  className="w-full rounded-md border border-[color:var(--input-border)] bg-[color:var(--input-bg)] p-2 text-sm text-[color:var(--text-secondary)] focus:border-[color:var(--input-border-focus)] focus:outline-none"
+                  rows={3}
+                  placeholder="Optional feedback..."
+                  value={feedbackText}
+                  onChange={(event) => setFeedbackText(event.target.value)}
+                  ref={feedbackTextareaRef}
+                />
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    handleFeedbackSubmit();
+                  }}
+                  disabled={isSubmitting}
+                  className="rounded-md bg-[color:var(--button-primary-bg)] px-3 py-2 text-sm font-medium text-[color:var(--button-primary-text)] transition-colors hover:bg-[color:var(--button-primary-hover)] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Submit feedback
+                </button>
+              </div>
+            )}
+          </>
+        )}
       </div>
       {isMounted &&
         showChatModal &&
@@ -579,9 +587,12 @@ export function FactoidCard({
               className="w-full max-w-sm rounded-lg border border-[color:var(--surface-card-border)] bg-[color:var(--surface-card)] p-6 shadow-xl"
               onClick={(event) => event.stopPropagation()}
             >
-              <h2 className="text-lg font-semibold text-[color:var(--text-primary)]">Chat coming soon</h2>
+              <h2 className="text-lg font-semibold text-[color:var(--text-primary)]">
+                Chat coming soon
+              </h2>
               <p className="mt-2 text-sm text-[color:var(--text-muted)]">
-                Chatting with our AI overlords is almost here. Thanks for your patience!
+                Chatting with our AI overlords is almost here. Thanks for your
+                patience!
               </p>
               <button
                 type="button"
@@ -595,7 +606,7 @@ export function FactoidCard({
               </button>
             </div>
           </div>,
-          document.body,
+          document.body
         )}
     </article>
   );

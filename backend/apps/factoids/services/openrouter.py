@@ -259,7 +259,7 @@ def model_supports_tools(
         return _MODEL_TOOL_SUPPORT[cache_key]
 
     try:
-        models_payload = fetch_openrouter_models(
+        fetch_openrouter_models(
             api_key=api_key,
             base_url=base_url,
         )
