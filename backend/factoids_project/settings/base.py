@@ -139,6 +139,9 @@ RATE_LIMITS = {
 
 OPENROUTER_API_KEY = settings.openrouter_api_key
 OPENROUTER_BASE_URL = settings.openrouter_base_url
+
+# Factoid generation settings
+FACTOID_GENERATION_EXAMPLES_COUNT = settings.factoid_generation_examples_count
 POSTHOG_PROJECT_API_KEY = settings.posthog_project_api_key
 POSTHOG_HOST = settings.posthog_host
 POSTHOG_DEBUG = settings.posthog_debug

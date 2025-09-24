@@ -85,6 +85,13 @@ class AppSettings(BaseSettings):
             "DJANGO_STRIPE_CHECKOUT_PRODUCT_NAME",
         ),
     )
+    factoid_generation_examples_count: int = Field(
+        default=100,
+        validation_alias=AliasChoices(
+            "FACTOID_GENERATION_EXAMPLES_COUNT",
+            "DJANGO_FACTOID_GENERATION_EXAMPLES_COUNT",
+        ),
+    )
     stripe_success_url: str | None = Field(
         default=None,
         validation_alias=AliasChoices(

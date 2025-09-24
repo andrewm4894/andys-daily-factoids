@@ -4,13 +4,15 @@ from __future__ import annotations
 
 from typing import Optional
 
+from django.conf import settings
+
 from apps.factoids.models import Factoid
 
 
 def build_factoid_generation_prompt(
     topic: Optional[str] = None,
     recent_factoids: Optional[list[Factoid]] = None,
-    num_examples: int = 25,
+    num_examples: int = settings.FACTOID_GENERATION_EXAMPLES_COUNT,
     use_factoid_tool: bool = False,
 ) -> str:
     """Build a comprehensive prompt for factoid generation including recent examples."""

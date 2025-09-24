@@ -85,7 +85,9 @@ def generate_factoid(
         started_at=timezone.now(),
     )
 
-    recent_factoids = list(models.Factoid.objects.order_by("-created_at")[:10])
+    recent_factoids = list(
+        models.Factoid.objects.order_by("-created_at")[: settings.FACTOID_GENERATION_EXAMPLES_COUNT]
+    )
     supports_tools = model_supports_tools(
         resolved_model,
         api_key=api_key,
@@ -95,7 +97,7 @@ def generate_factoid(
     prompt = build_factoid_generation_prompt(
         topic=topic if topic else None,
         recent_factoids=recent_factoids,
-        num_examples=5,
+        num_examples=settings.FACTOID_GENERATION_EXAMPLES_COUNT,
         use_factoid_tool=supports_tools,
     )
 
