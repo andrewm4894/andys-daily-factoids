@@ -261,7 +261,7 @@ export function FactoidCard({
       : " items-center justify-center text-center"
   }`;
   const headlineContainerClasses = isExpanded ? "flex-1" : "flex-none";
-  const headlineTextClasses = `text-lg font-semibold text-[color:var(--text-primary)] whitespace-pre-wrap${
+  const headlineTextClasses = `text-lg text-[color:var(--text-primary)] whitespace-pre-wrap${
     isExpanded ? "" : " text-center"
   }`;
   const baseArticleClasses =
