@@ -365,7 +365,7 @@ export function FactoidCard({
       />
       <div className="relative z-[1]">
         <div className={headerClasses}>
-          <span className="text-3xl" aria-hidden>
+          <span className="text-3xl mr-2" aria-hidden>
             {displayEmoji}
           </span>
           <div className={headlineContainerClasses}>
