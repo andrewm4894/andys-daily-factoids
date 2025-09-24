@@ -22,6 +22,13 @@ class ChatMessageRole(models.TextChoices):
 
 class ChatSession(models.Model):
     id = models.UUIDField(primary_key=True, editable=False, default=uuid.uuid4)
+    factoid = models.ForeignKey(
+        "factoids.Factoid",
+        null=True,
+        blank=True,
+        related_name="chat_sessions",
+        on_delete=models.CASCADE,
+    )
     client_hash = models.CharField(max_length=128, blank=True)
     api_key = models.ForeignKey(
         "core.APIKey",
@@ -72,6 +79,7 @@ class ChatMessage(models.Model):
 class ChatToolCall(models.Model):
     id = models.BigAutoField(primary_key=True)
     message = models.ForeignKey(ChatMessage, related_name="tool_calls", on_delete=models.CASCADE)
+    call_id = models.CharField(max_length=128, blank=True)
     tool_name = models.CharField(max_length=64)
     arguments = models.JSONField()
     result = models.JSONField(null=True, blank=True)

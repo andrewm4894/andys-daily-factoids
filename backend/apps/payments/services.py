@@ -122,8 +122,41 @@ def get_payment_gateway() -> StripePaymentGateway | None:
     )
 
 
+@lru_cache()
+def get_chat_payment_gateway() -> StripePaymentGateway | None:
+    """Payment gateway configured for factoid chat unlocks."""
+
+    secret_key = getattr(settings, "STRIPE_SECRET_KEY", None)
+    price_id = getattr(settings, "STRIPE_FACTOID_CHAT_PRICE_ID", None)
+    if not secret_key or not price_id:
+        return None
+
+    amount_cents = int(
+        getattr(
+            settings,
+            "STRIPE_FACTOID_CHAT_AMOUNT_CENTS",
+            getattr(settings, "STRIPE_CHECKOUT_AMOUNT_CENTS", 500),
+        )
+    )
+    currency = getattr(
+        settings,
+        "STRIPE_FACTOID_CHAT_CURRENCY",
+        getattr(settings, "STRIPE_CHECKOUT_CURRENCY", "usd"),
+    )
+    product_name = getattr(settings, "STRIPE_FACTOID_CHAT_PRODUCT_NAME", "Factoid Chat")
+
+    return StripePaymentGateway(
+        secret_key=secret_key,
+        price_id=price_id,
+        default_amount_cents=amount_cents,
+        currency=currency,
+        product_name=product_name,
+    )
+
+
 __all__ = [
     "PaymentGateway",
     "StripePaymentGateway",
     "get_payment_gateway",
+    "get_chat_payment_gateway",
 ]

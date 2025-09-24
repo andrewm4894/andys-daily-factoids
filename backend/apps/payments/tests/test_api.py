@@ -34,8 +34,10 @@ def disable_posthog(settings):
 @pytest.fixture(autouse=True)
 def clear_gateway_cache():
     services.get_payment_gateway.cache_clear()
+    services.get_chat_payment_gateway.cache_clear()
     yield
     services.get_payment_gateway.cache_clear()
+    services.get_chat_payment_gateway.cache_clear()
 
 
 @pytest.mark.django_db

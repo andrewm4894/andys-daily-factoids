@@ -34,3 +34,49 @@ export interface CheckoutSessionResponse {
   checkout_url?: string | null;
   publishable_key?: string | null;
 }
+
+export type ChatMessageRole = "user" | "assistant" | "tool";
+
+export interface ChatToolCall {
+  id: string | null;
+  tool_name: string;
+  arguments?: Record<string, unknown> | null;
+  result?: unknown;
+}
+
+export interface ChatMessage {
+  id: number;
+  role: ChatMessageRole;
+  content: unknown;
+  metadata?: Record<string, unknown> | null;
+  created_at: string;
+  tool_calls?: ChatToolCall[];
+}
+
+export interface ChatSessionSummary {
+  id: string;
+  status: string;
+  model_key: string;
+  factoid_id?: string | null;
+  created_at: string;
+  last_activity_at?: string | null;
+}
+
+export interface ChatRateLimitSnapshot {
+  per_minute: number;
+  current_window_requests: number;
+}
+
+export interface ChatSessionResponse {
+  session: ChatSessionSummary;
+  messages: ChatMessage[];
+  rate_limit: ChatRateLimitSnapshot;
+}
+
+export interface ChatRateLimitErrorData {
+  detail: string;
+  code: "rate_limit";
+  retry_after: number;
+  rate_limit: ChatRateLimitSnapshot;
+  checkout_session?: CheckoutSessionResponse;
+}

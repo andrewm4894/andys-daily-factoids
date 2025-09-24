@@ -142,6 +142,11 @@ OPENROUTER_BASE_URL = settings.openrouter_base_url
 
 # Factoid generation settings
 FACTOID_GENERATION_EXAMPLES_COUNT = settings.factoid_generation_examples_count
+FACTOID_AGENT_SEARCH_URL = settings.factoid_agent_search_url
+FACTOID_AGENT_SEARCH_API_KEY = settings.factoid_agent_search_api_key
+FACTOID_AGENT_SEARCH_TIMEOUT = settings.factoid_agent_search_timeout
+FACTOID_CHAT_RATE_LIMIT_PER_MINUTE = settings.factoid_chat_rate_limit_per_minute
+TAVILY_API_KEY = settings.tavily_api_key
 POSTHOG_PROJECT_API_KEY = settings.posthog_project_api_key
 POSTHOG_HOST = settings.posthog_host
 POSTHOG_DEBUG = settings.posthog_debug
@@ -155,3 +160,7 @@ STRIPE_CHECKOUT_CURRENCY = settings.stripe_checkout_currency
 STRIPE_CHECKOUT_PRODUCT_NAME = settings.stripe_checkout_product_name
 STRIPE_SUCCESS_URL = settings.stripe_success_url
 STRIPE_CANCEL_URL = settings.stripe_cancel_url
+STRIPE_FACTOID_CHAT_PRICE_ID = settings.stripe_factoid_chat_price_id
+STRIPE_FACTOID_CHAT_AMOUNT_CENTS = settings.stripe_factoid_chat_amount_cents
+STRIPE_FACTOID_CHAT_CURRENCY = settings.stripe_factoid_chat_currency
+STRIPE_FACTOID_CHAT_PRODUCT_NAME = settings.stripe_factoid_chat_product_name

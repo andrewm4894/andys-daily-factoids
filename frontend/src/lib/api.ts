@@ -1,5 +1,7 @@
 import type {
   CheckoutSessionResponse,
+  ChatRateLimitErrorData,
+  ChatSessionResponse,
   Factoid,
   PaginatedResponse,
   RateLimitStatus,
@@ -7,6 +9,7 @@ import type {
 
 const DEFAULT_FACTOIDS_BASE = "http://localhost:8000/api/factoids";
 const DEFAULT_PAYMENTS_BASE = "http://localhost:8000/api/payments";
+const DEFAULT_CHAT_BASE = "http://localhost:8000/api/chat";
 
 function inferPaymentsBase(factoidsBase: string): string {
   const trimmed = factoidsBase.replace(/\/$/, "");
@@ -16,6 +19,14 @@ function inferPaymentsBase(factoidsBase: string): string {
   return DEFAULT_PAYMENTS_BASE;
 }
 
+function inferChatBase(factoidsBase: string): string {
+  const trimmed = factoidsBase.replace(/\/$/, "");
+  if (trimmed.endsWith("/factoids")) {
+    return `${trimmed.slice(0, -"/factoids".length)}/chat`;
+  }
+  return DEFAULT_CHAT_BASE;
+}
+
 export const FACTOIDS_API_BASE =
   process.env.NEXT_PUBLIC_FACTOIDS_API_BASE?.replace(/\/$/, "") ||
   DEFAULT_FACTOIDS_BASE;
@@ -23,6 +34,10 @@ export const FACTOIDS_API_BASE =
 export const PAYMENTS_API_BASE =
   process.env.NEXT_PUBLIC_PAYMENTS_API_BASE?.replace(/\/$/, "") ||
   inferPaymentsBase(FACTOIDS_API_BASE);
+
+export const CHAT_API_BASE =
+  process.env.NEXT_PUBLIC_CHAT_API_BASE?.replace(/\/$/, "") ||
+  inferChatBase(FACTOIDS_API_BASE);
 
 export class ApiError extends Error {
   status: number;
@@ -98,6 +113,10 @@ async function apiRequest<T>(
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return apiRequest<T>(FACTOIDS_API_BASE, path, init);
+}
+
+async function chatRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  return apiRequest<T>(CHAT_API_BASE, path, init);
 }
 
 export async function fetchFactoids(pageSize = 20): Promise<Factoid[]> {
@@ -228,5 +247,88 @@ export async function fulfillCheckoutSession(
       method: "POST",
       body: JSON.stringify(payload),
     }
+  );
+}
+
+export interface CreateChatSessionPayload {
+  factoidId: string;
+  message?: string;
+  modelKey?: string;
+  temperature?: number;
+  posthogDistinctId?: string;
+  posthogProperties?: Record<string, unknown>;
+}
+
+export async function createChatSession(
+  payload: CreateChatSessionPayload
+): Promise<ChatSessionResponse> {
+  const body: Record<string, unknown> = {
+    factoid_id: payload.factoidId,
+  };
+
+  if (payload.message) {
+    body.message = payload.message;
+  }
+  if (payload.modelKey) {
+    body.model_key = payload.modelKey;
+  }
+  if (typeof payload.temperature === "number") {
+    body.temperature = payload.temperature;
+  }
+  if (payload.posthogDistinctId) {
+    body.posthog_distinct_id = payload.posthogDistinctId;
+  }
+  if (
+    payload.posthogProperties &&
+    Object.keys(payload.posthogProperties).length > 0
+  ) {
+    body.posthog_properties = payload.posthogProperties;
+  }
+
+  return chatRequest<ChatSessionResponse>("/sessions/", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export interface SendChatMessagePayload {
+  sessionId: string;
+  message: string;
+  posthogProperties?: Record<string, unknown>;
+}
+
+export async function sendChatMessage(
+  payload: SendChatMessagePayload
+): Promise<ChatSessionResponse> {
+  const body: Record<string, unknown> = {
+    message: payload.message,
+  };
+
+  if (
+    payload.posthogProperties &&
+    Object.keys(payload.posthogProperties).length > 0
+  ) {
+    body.posthog_properties = payload.posthogProperties;
+  }
+
+  return chatRequest<ChatSessionResponse>(
+    `/sessions/${encodeURIComponent(payload.sessionId)}/messages/`,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    }
+  );
+}
+
+export function isChatRateLimitError(
+  error: unknown
+): error is ApiError & { data: ChatRateLimitErrorData } {
+  return (
+    error instanceof ApiError &&
+    error.status === 429 &&
+    !!error.data &&
+    typeof error.data === "object" &&
+    "code" in error.data &&
+    (error.data as { code?: unknown }).code === "rate_limit"
   );
 }
