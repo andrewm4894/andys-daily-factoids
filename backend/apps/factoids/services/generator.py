@@ -10,6 +10,8 @@ from django.utils import timezone
 from posthog import Posthog
 from posthog.ai.langchain import CallbackHandler
 
+from apps.core.braintrust import get_braintrust_callback_handler, initialize_braintrust
+from apps.core.langsmith import get_langsmith_callback_handler, initialize_langsmith
 from apps.core.posthog import get_posthog_client
 from apps.core.services import CostGuard, RateLimitConfig, RateLimitExceeded, get_rate_limiter
 from apps.factoids import models
@@ -167,27 +169,46 @@ def _build_callbacks(
     profile: str,
     request_source: models.RequestSource,
     extra_properties: Optional[dict[str, Any]] = None,
-) -> list[CallbackHandler]:
-    if not posthog_client:
-        return []
+) -> list[Any]:
+    callbacks = []
 
-    properties = {
-        "topic": topic,
-        "profile": profile,
-        "request_source": str(request_source),
-        "generation_request_id": trace_id,
-    }
-    if extra_properties:
-        properties.update(extra_properties)
+    # PostHog callback
+    if posthog_client:
+        properties = {
+            "topic": topic,
+            "profile": profile,
+            "request_source": str(request_source),
+            "generation_request_id": trace_id,
+        }
+        if extra_properties:
+            properties.update(extra_properties)
 
-    callback = CallbackHandler(
-        client=posthog_client,
-        distinct_id=distinct_id,
-        trace_id=trace_id,
-        properties=properties,
-        groups={"profile": profile} if profile else None,
-    )
-    return [callback]
+        posthog_callback = CallbackHandler(
+            client=posthog_client,
+            distinct_id=distinct_id,
+            trace_id=trace_id,
+            properties=properties,
+            groups={"profile": profile} if profile else None,
+        )
+        callbacks.append(posthog_callback)
+
+    # Initialize Braintrust (this will set up global handler automatically)
+    initialize_braintrust()
+
+    # Optionally add a specific Braintrust callback for this generation
+    braintrust_callback = get_braintrust_callback_handler()
+    if braintrust_callback:
+        callbacks.append(braintrust_callback)
+
+    # Initialize LangSmith (this will set up global tracing automatically)
+    initialize_langsmith()
+
+    # Optionally add a specific LangSmith callback for this generation
+    langsmith_callback = get_langsmith_callback_handler()
+    if langsmith_callback:
+        callbacks.append(langsmith_callback)
+
+    return callbacks
 
 
 def _persist_factoid(

@@ -150,6 +150,13 @@ POSTHOG_HOST = settings.posthog_host
 POSTHOG_DEBUG = settings.posthog_debug
 POSTHOG_DISABLED = settings.posthog_disabled
 
+BRAINTRUST_API_KEY = settings.braintrust_api_key
+
+# LangSmith configuration
+LANGSMITH_API_KEY = settings.langsmith_api_key
+LANGSMITH_PROJECT = settings.langsmith_project
+LANGSMITH_TRACING = settings.langsmith_tracing
+
 STRIPE_SECRET_KEY = settings.stripe_secret_key
 STRIPE_PUBLISHABLE_KEY = settings.stripe_publishable_key
 STRIPE_PRICE_ID = settings.stripe_price_id

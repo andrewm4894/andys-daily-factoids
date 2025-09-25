@@ -20,6 +20,8 @@ from posthog.ai.langchain import CallbackHandler
 from pydantic import BaseModel, Field
 
 from apps.chat import models as chat_models
+from apps.core.braintrust import get_braintrust_callback_handler, initialize_braintrust
+from apps.core.langsmith import get_langsmith_callback_handler, initialize_langsmith
 from apps.core.posthog import get_posthog_client
 from apps.factoids.models import Factoid
 
@@ -262,7 +264,7 @@ def run_factoid_agent(
 
     posthog_client = get_posthog_client()
     trace_id = str(session.id)
-    callbacks = _build_posthog_callbacks(
+    callbacks = _build_callbacks(
         client=posthog_client,
         distinct_id=distinct_id,
         trace_id=trace_id,
@@ -423,33 +425,52 @@ def _merge_properties(
     return merged
 
 
-def _build_posthog_callbacks(
+def _build_callbacks(
     *,
     client: Posthog | None,
     distinct_id: str,
     trace_id: str,
     factoid: Factoid,
     extra_properties: dict[str, Any] | None,
-) -> list[CallbackHandler]:
-    if not client:
-        return []
+) -> list[Any]:
+    callbacks = []
 
-    properties = {
-        "factoid_id": str(factoid.id),
-        "factoid_subject": factoid.subject,
-        "factoid_emoji": factoid.emoji,
-    }
-    if extra_properties:
-        properties.update(extra_properties)
+    # PostHog callback
+    if client:
+        properties = {
+            "factoid_id": str(factoid.id),
+            "factoid_subject": factoid.subject,
+            "factoid_emoji": factoid.emoji,
+        }
+        if extra_properties:
+            properties.update(extra_properties)
 
-    callback = CallbackHandler(
-        client=client,
-        distinct_id=distinct_id,
-        trace_id=trace_id,
-        properties=properties,
-        groups={"factoid": str(factoid.id)},
-    )
-    return [callback]
+        posthog_callback = CallbackHandler(
+            client=client,
+            distinct_id=distinct_id,
+            trace_id=trace_id,
+            properties=properties,
+            groups={"factoid": str(factoid.id)},
+        )
+        callbacks.append(posthog_callback)
+
+    # Initialize Braintrust (this will set up global handler automatically)
+    initialize_braintrust()
+
+    # Optionally add a specific Braintrust callback for this chat session
+    braintrust_callback = get_braintrust_callback_handler()
+    if braintrust_callback:
+        callbacks.append(braintrust_callback)
+
+    # Initialize LangSmith (this will set up global tracing automatically)
+    initialize_langsmith()
+
+    # Optionally add a specific LangSmith callback for this chat session
+    langsmith_callback = get_langsmith_callback_handler()
+    if langsmith_callback:
+        callbacks.append(langsmith_callback)
+
+    return callbacks
 
 
 def _extract_text(payload: Any) -> str:

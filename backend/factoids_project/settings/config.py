@@ -77,6 +77,22 @@ class AppSettings(BaseSettings):
         default=False,
         validation_alias=AliasChoices("POSTHOG_DISABLED", "DJANGO_POSTHOG_DISABLED"),
     )
+    braintrust_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("BRAINTRUST_API_KEY", "DJANGO_BRAINTRUST_API_KEY"),
+    )
+    langsmith_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("LANGSMITH_API_KEY", "DJANGO_LANGSMITH_API_KEY"),
+    )
+    langsmith_project: str | None = Field(
+        default="andys-daily-factoids",
+        validation_alias=AliasChoices("LANGSMITH_PROJECT", "DJANGO_LANGSMITH_PROJECT"),
+    )
+    langsmith_tracing: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("LANGSMITH_TRACING", "DJANGO_LANGSMITH_TRACING"),
+    )
     stripe_secret_key: str | None = Field(
         default=None,
         validation_alias=AliasChoices("STRIPE_SECRET_KEY", "DJANGO_STRIPE_SECRET_KEY"),
@@ -278,6 +294,22 @@ def get_settings(env_file: str | os.PathLike[str] | None = None) -> AppSettings:
                     self.posthog_disabled = (
                         os.getenv("DJANGO_POSTHOG_DISABLED")
                         or os.getenv("POSTHOG_DISABLED")
+                        or "false"
+                    ).lower() == "true"
+                    self.braintrust_api_key = os.getenv("DJANGO_BRAINTRUST_API_KEY") or os.getenv(
+                        "BRAINTRUST_API_KEY"
+                    )
+                    self.langsmith_api_key = os.getenv("DJANGO_LANGSMITH_API_KEY") or os.getenv(
+                        "LANGSMITH_API_KEY"
+                    )
+                    self.langsmith_project = (
+                        os.getenv("DJANGO_LANGSMITH_PROJECT")
+                        or os.getenv("LANGSMITH_PROJECT")
+                        or "andys-daily-factoids"
+                    )
+                    self.langsmith_tracing = (
+                        os.getenv("DJANGO_LANGSMITH_TRACING")
+                        or os.getenv("LANGSMITH_TRACING")
                         or "false"
                     ).lower() == "true"
 

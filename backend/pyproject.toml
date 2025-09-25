@@ -24,6 +24,9 @@ dependencies = [
     "langchain>=0.3.0,<0.4.0",
     "langchain-openai>=0.2.0,<0.3.0",
     "langchain-tavily>=0.1.0",
+    "braintrust>=0.0.130",
+    "braintrust-langchain>=0.0.4",
+    "langsmith>=0.1.149",
 ]
 
 [project.optional-dependencies]
