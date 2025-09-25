@@ -1,12 +1,13 @@
 "use client";
 
-import { createPortal } from "react-dom";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 
 import type { Factoid } from "@/lib/types";
 import { submitFeedback, submitVote } from "@/lib/api";
 import { useTheme } from "@/components/theme-provider";
+import { FactoidChatPanel } from "@/components/factoid-chat-panel";
 
 interface FactoidCardProps {
   factoid: Factoid;
@@ -29,7 +30,7 @@ export function FactoidCard({
   const [feedbackVote, setFeedbackVote] = useState<"up" | "down" | undefined>(
     undefined
   );
-  const [showChatModal, setShowChatModal] = useState(false);
+  const [showChat, setShowChat] = useState(false);
   const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
   const [linkCopyStatus, setLinkCopyStatus] = useState<"idle" | "copied">(
@@ -76,6 +77,7 @@ export function FactoidCard({
     setIsExpanded((previous) => {
       if (previous) {
         setShowFeedback(false);
+        setShowChat(false);
         setShowMetadataPopover(false);
         if (copyResetRef.current) {
           clearTimeout(copyResetRef.current);
@@ -471,7 +473,9 @@ export function FactoidCard({
                   type="button"
                   onClick={(event) => {
                     event.stopPropagation();
-                    setShowChatModal(true);
+                    setShowFeedback(false);
+                    setIsExpanded(true);
+                    setShowChat((previous) => !previous);
                   }}
                   className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-indigo-200 text-indigo-700 hover:bg-indigo-50"
                   aria-label="Chat about this factoid"
@@ -567,47 +571,15 @@ export function FactoidCard({
                 </button>
               </div>
             )}
+            {showChat && (
+              <FactoidChatPanel
+                factoid={factoid}
+                onClose={() => setShowChat(false)}
+              />
+            )}
           </>
         )}
       </div>
-      {isMounted &&
-        showChatModal &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Chat coming soon"
-            onClick={(event) => {
-              event.stopPropagation();
-              setShowChatModal(false);
-            }}
-          >
-            <div
-              className="w-full max-w-sm rounded-lg border border-[color:var(--surface-card-border)] bg-[color:var(--surface-card)] p-6 shadow-xl"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <h2 className="text-lg font-semibold text-[color:var(--text-primary)]">
-                Chat coming soon
-              </h2>
-              <p className="mt-2 text-sm text-[color:var(--text-muted)]">
-                Chatting with our AI overlords is almost here. Thanks for your
-                patience!
-              </p>
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setShowChatModal(false);
-                }}
-                className="mt-4 w-full rounded-md bg-[color:var(--button-primary-bg)] px-3 py-2 text-sm font-medium text-[color:var(--button-primary-text)] transition-colors hover:bg-[color:var(--button-primary-hover)]"
-              >
-                Got it
-              </button>
-            </div>
-          </div>,
-          document.body
-        )}
     </article>
   );
 }

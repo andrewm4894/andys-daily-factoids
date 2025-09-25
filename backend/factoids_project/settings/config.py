@@ -36,6 +36,31 @@ class AppSettings(BaseSettings):
     db_conn_max_age: int = 60
     openrouter_api_key: str | None = None
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    factoid_agent_default_model: str = Field(
+        default="openai/gpt-5-mini",
+        validation_alias=AliasChoices(
+            "FACTOID_AGENT_DEFAULT_MODEL",
+            "DJANGO_FACTOID_AGENT_DEFAULT_MODEL",
+        ),
+    )
+    factoid_chat_rate_limit_per_minute: int = Field(
+        default=10,
+        validation_alias=AliasChoices(
+            "FACTOID_CHAT_RATE_LIMIT_PER_MINUTE",
+            "DJANGO_FACTOID_CHAT_RATE_LIMIT_PER_MINUTE",
+        ),
+    )
+    factoid_agent_default_model: str = Field(
+        default="openai/gpt-5-mini",
+        validation_alias=AliasChoices(
+            "FACTOID_AGENT_DEFAULT_MODEL",
+            "DJANGO_FACTOID_AGENT_DEFAULT_MODEL",
+        ),
+    )
+    tavily_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("TAVILY_API_KEY", "DJANGO_TAVILY_API_KEY"),
+    )
     posthog_project_api_key: str | None = Field(
         default=None,
         validation_alias=AliasChoices("POSTHOG_PROJECT_API_KEY", "DJANGO_POSTHOG_PROJECT_API_KEY"),
@@ -83,6 +108,34 @@ class AppSettings(BaseSettings):
         validation_alias=AliasChoices(
             "STRIPE_CHECKOUT_PRODUCT_NAME",
             "DJANGO_STRIPE_CHECKOUT_PRODUCT_NAME",
+        ),
+    )
+    stripe_factoid_chat_price_id: str | None = Field(
+        default="price_1SAv3RDuK9b9aydCBjVtNIPx",
+        validation_alias=AliasChoices(
+            "STRIPE_FACTOID_CHAT_PRICE_ID",
+            "DJANGO_STRIPE_FACTOID_CHAT_PRICE_ID",
+        ),
+    )
+    stripe_factoid_chat_amount_cents: int = Field(
+        default=900,
+        validation_alias=AliasChoices(
+            "STRIPE_FACTOID_CHAT_AMOUNT_CENTS",
+            "DJANGO_STRIPE_FACTOID_CHAT_AMOUNT_CENTS",
+        ),
+    )
+    stripe_factoid_chat_currency: str = Field(
+        default="usd",
+        validation_alias=AliasChoices(
+            "STRIPE_FACTOID_CHAT_CURRENCY",
+            "DJANGO_STRIPE_FACTOID_CHAT_CURRENCY",
+        ),
+    )
+    stripe_factoid_chat_product_name: str = Field(
+        default="Factoid Chat",  # Provided product name
+        validation_alias=AliasChoices(
+            "STRIPE_FACTOID_CHAT_PRODUCT_NAME",
+            "DJANGO_STRIPE_FACTOID_CHAT_PRODUCT_NAME",
         ),
     )
     factoid_generation_examples_count: int = Field(
@@ -192,6 +245,24 @@ def get_settings(env_file: str | os.PathLike[str] | None = None) -> AppSettings:
                         "DJANGO_OPENROUTER_BASE_URL",
                         "https://openrouter.ai/api/v1",
                     )
+                    self.factoid_agent_default_model = (
+                        os.getenv("DJANGO_FACTOID_AGENT_DEFAULT_MODEL")
+                        or os.getenv("FACTOID_AGENT_DEFAULT_MODEL")
+                        or "openai/gpt-5-mini"
+                    )
+                    self.factoid_chat_rate_limit_per_minute = int(
+                        os.getenv("DJANGO_FACTOID_CHAT_RATE_LIMIT_PER_MINUTE")
+                        or os.getenv("FACTOID_CHAT_RATE_LIMIT_PER_MINUTE")
+                        or "10"
+                    )
+                    self.factoid_agent_default_model = (
+                        os.getenv("DJANGO_FACTOID_AGENT_DEFAULT_MODEL")
+                        or os.getenv("FACTOID_AGENT_DEFAULT_MODEL")
+                        or "openai/gpt-5-mini"
+                    )
+                    self.tavily_api_key = os.getenv("DJANGO_TAVILY_API_KEY") or os.getenv(
+                        "TAVILY_API_KEY"
+                    )
 
                     self.posthog_project_api_key = os.getenv(
                         "DJANGO_POSTHOG_PROJECT_API_KEY"
@@ -233,6 +304,26 @@ def get_settings(env_file: str | os.PathLike[str] | None = None) -> AppSettings:
                         os.getenv("DJANGO_STRIPE_CHECKOUT_PRODUCT_NAME")
                         or os.getenv("STRIPE_CHECKOUT_PRODUCT_NAME")
                         or "Factoid Booster Pack"
+                    )
+                    self.stripe_factoid_chat_price_id = (
+                        os.getenv("DJANGO_STRIPE_FACTOID_CHAT_PRICE_ID")
+                        or os.getenv("STRIPE_FACTOID_CHAT_PRICE_ID")
+                        or "price_1SAv3RDuK9b9aydCBjVtNIPx"
+                    )
+                    self.stripe_factoid_chat_amount_cents = int(
+                        os.getenv("DJANGO_STRIPE_FACTOID_CHAT_AMOUNT_CENTS")
+                        or os.getenv("STRIPE_FACTOID_CHAT_AMOUNT_CENTS")
+                        or "900"
+                    )
+                    self.stripe_factoid_chat_currency = (
+                        os.getenv("DJANGO_STRIPE_FACTOID_CHAT_CURRENCY")
+                        or os.getenv("STRIPE_FACTOID_CHAT_CURRENCY")
+                        or "usd"
+                    )
+                    self.stripe_factoid_chat_product_name = (
+                        os.getenv("DJANGO_STRIPE_FACTOID_CHAT_PRODUCT_NAME")
+                        or os.getenv("STRIPE_FACTOID_CHAT_PRODUCT_NAME")
+                        or "Factoid Chat"
                     )
                     self.stripe_success_url = (
                         os.getenv("DJANGO_STRIPE_SUCCESS_URL")

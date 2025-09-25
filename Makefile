@@ -68,6 +68,18 @@ lint-backend: ## Lint backend files
 smoke-backend-api: ## Hit the local factoid generation endpoint for a quick sanity check
 	cd backend && uv run python scripts/smoke_generate_factoid.py
 
+smoke-chat-agent: ## Exercise the chat agent web_search tool interactively (quick test suite)
+	cd backend && uv run python scripts/chat_agent_examples.py
+
+smoke-chat-agent-search: ## Test examples that should trigger web search
+	cd backend && uv run python scripts/chat_agent_examples.py search
+
+smoke-chat-agent-no-search: ## Test examples that should NOT trigger web search
+	cd backend && uv run python scripts/chat_agent_examples.py no-search
+
+smoke-chat-agent-edge: ## Test edge case examples for web search behavior
+	cd backend && uv run python scripts/chat_agent_examples.py edge
+
 test-generate-factoid: ## Generate a factoid via the service layer (includes PostHog analytics when configured)
 	cd backend && uv run python scripts/test_generate_factoid.py
 
