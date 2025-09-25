@@ -36,6 +36,13 @@ class AppSettings(BaseSettings):
     db_conn_max_age: int = 60
     openrouter_api_key: str | None = None
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    factoid_agent_default_model: str = Field(
+        default="openai/gpt-5-mini",
+        validation_alias=AliasChoices(
+            "FACTOID_AGENT_DEFAULT_MODEL",
+            "DJANGO_FACTOID_AGENT_DEFAULT_MODEL",
+        ),
+    )
     factoid_chat_rate_limit_per_minute: int = Field(
         default=10,
         validation_alias=AliasChoices(
@@ -237,6 +244,11 @@ def get_settings(env_file: str | os.PathLike[str] | None = None) -> AppSettings:
                     self.openrouter_base_url = os.getenv(
                         "DJANGO_OPENROUTER_BASE_URL",
                         "https://openrouter.ai/api/v1",
+                    )
+                    self.factoid_agent_default_model = (
+                        os.getenv("DJANGO_FACTOID_AGENT_DEFAULT_MODEL")
+                        or os.getenv("FACTOID_AGENT_DEFAULT_MODEL")
+                        or "openai/gpt-5-mini"
                     )
                     self.factoid_chat_rate_limit_per_minute = int(
                         os.getenv("DJANGO_FACTOID_CHAT_RATE_LIMIT_PER_MINUTE")
