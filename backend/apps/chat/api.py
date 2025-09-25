@@ -23,7 +23,6 @@ from apps.chat.services import (
 from apps.chat.services.payments import create_chat_checkout_session
 from apps.core.services import RateLimitConfig, RateLimitExceeded, get_rate_limiter
 from apps.factoids import models as factoid_models
-from apps.factoids.services.openrouter import DEFAULT_FACTOID_MODEL
 
 app_name = "chat"
 
@@ -106,7 +105,9 @@ class ChatSessionCreateView(APIView):
                     exc, client_hash, factoid, distinct_id, posthog_properties
                 )
 
-        resolved_model = model_key or DEFAULT_FACTOID_MODEL
+        resolved_model = model_key or getattr(
+            settings, "FACTOID_AGENT_DEFAULT_MODEL", "openai/gpt-5-mini"
+        )
         session = chat_models.ChatSession.objects.create(
             factoid=factoid,
             client_hash=client_hash,
@@ -206,7 +207,8 @@ class ChatMessageCreateView(APIView):
             factoid=factoid,
             distinct_id=posthog_distinct_id,
             posthog_properties=posthog_properties,
-            model_key=session.model_key or DEFAULT_FACTOID_MODEL,
+            model_key=session.model_key
+            or getattr(settings, "FACTOID_AGENT_DEFAULT_MODEL", "openai/gpt-5-mini"),
             temperature=session.config.get("temperature"),
         )
 
