@@ -36,6 +36,7 @@ from apps.chat.services.factoid_agent import (  # noqa: E402
 )
 from apps.core.posthog import get_posthog_client  # noqa: E402
 from apps.factoids.models import Factoid  # noqa: E402
+from django.conf import settings  # noqa: E402
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage  # noqa: E402
 from posthog.ai.langchain import CallbackHandler  # noqa: E402
 
@@ -80,8 +81,14 @@ def _build_callbacks(
 def _run_agent(messages: Sequence[str]) -> tuple[bool, list[str]]:
     """Run agent and return (success, tools_used)."""
     factoid = _get_demo_factoid()
+    default_model = getattr(settings, "FACTOID_AGENT_DEFAULT_MODEL", "openai/gpt-5-mini")
+    model_from_factoid = (
+        factoid.generation_metadata.get("model")  # type: ignore[union-attr]
+        if isinstance(getattr(factoid, "generation_metadata", None), dict)
+        else None
+    )
     config = FactoidAgentConfig(
-        model_key=factoid.generation_metadata.get("model", "openai/gpt-4o-mini"),
+        model_key=model_from_factoid or default_model,
         temperature=0.7,
         distinct_id="smoke-demo",
         trace_id="smoke-demo-trace",
