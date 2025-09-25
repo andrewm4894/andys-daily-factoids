@@ -1,7 +1,7 @@
-import '@testing-library/jest-dom'
+import "@testing-library/jest-dom";
 
 // Mock Next.js router
-jest.mock('next/navigation', () => ({
+jest.mock("next/navigation", () => ({
   useRouter() {
     return {
       push: jest.fn(),
@@ -10,74 +10,74 @@ jest.mock('next/navigation', () => ({
       back: jest.fn(),
       forward: jest.fn(),
       refresh: jest.fn(),
-    }
+    };
   },
   useSearchParams() {
-    return new URLSearchParams()
+    return new URLSearchParams();
   },
   usePathname() {
-    return ''
+    return "";
   },
-}))
+}));
 
 // Mock Stripe
-jest.mock('@stripe/stripe-js', () => ({
-  loadStripe: jest.fn(() => 
+jest.mock("@stripe/stripe-js", () => ({
+  loadStripe: jest.fn(() =>
     Promise.resolve({
       redirectToCheckout: jest.fn(() => Promise.resolve({ error: null })),
     })
   ),
-}))
+}));
 
 // Mock window.location for tests
-delete window.location
+delete window.location;
 window.location = {
   ...window.location,
   assign: jest.fn(),
-  href: 'http://localhost:3000',
-  origin: 'http://localhost:3000',
-}
+  href: "http://localhost:3000",
+  origin: "http://localhost:3000",
+};
 
 // Mock clipboard API
 Object.assign(navigator, {
   clipboard: {
     writeText: jest.fn(() => Promise.resolve()),
   },
-})
+});
 
 // Mock ResizeObserver
 global.ResizeObserver = jest.fn().mockImplementation(() => ({
   observe: jest.fn(),
   unobserve: jest.fn(),
   disconnect: jest.fn(),
-}))
+}));
 
 // Mock IntersectionObserver
 global.IntersectionObserver = jest.fn().mockImplementation(() => ({
   observe: jest.fn(),
   unobserve: jest.fn(),
   disconnect: jest.fn(),
-}))
+}));
 
 // Mock EventSource for SSE testing
 global.EventSource = jest.fn().mockImplementation(() => ({
   addEventListener: jest.fn(),
   removeEventListener: jest.fn(),
   close: jest.fn(),
-}))
+}));
 
 // Mock react-markdown and remark-gfm
-jest.mock('react-markdown', () => {
+jest.mock("react-markdown", () => {
   return function ReactMarkdown({ children }) {
-    return children
-  }
-})
+    return children;
+  };
+});
 
-jest.mock('remark-gfm', () => {
+jest.mock("remark-gfm", () => {
   return function remarkGfm() {
-    return {}
-  }
-})
+    return {};
+  };
+});
 
 // Mock scrollIntoView
-Element.prototype.scrollIntoView = jest.fn()
+Element.prototype.scrollIntoView = jest.fn();
