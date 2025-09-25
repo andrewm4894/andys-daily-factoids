@@ -318,9 +318,7 @@ def _persist_tool_result(session: chat_models.ChatSession, payload: dict[str, An
     if not isinstance(payload, dict):
         return
 
-    call_id = str(payload.get("tool_call_id", ""))
-    if not call_id:
-        return
+    call_id = str(payload.get("tool_call_id") or "")
 
     content = payload.get("content")
     if isinstance(content, str):
@@ -329,12 +327,11 @@ def _persist_tool_result(session: chat_models.ChatSession, payload: dict[str, An
         except json.JSONDecodeError:
             content = {"text": content}
 
-    chat_models.ChatToolCall.objects.filter(
-        message__session=session,
-        call_id=call_id,
-    ).update(result=content)
-
     if call_id:
+        chat_models.ChatToolCall.objects.filter(
+            message__session=session,
+            call_id=call_id,
+        ).update(result=content)
         return
 
     # If we could not match by call_id (some providers omit it), update the
