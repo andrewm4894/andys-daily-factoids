@@ -2,21 +2,13 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from dataclasses import dataclass
 from typing import Annotated, Any, Iterable, Sequence, TypedDict
 
 from django.conf import settings
 from langchain_core.callbacks import CallbackManagerForToolRun
-from langchain_core.messages import (
-    AIMessage,
-    BaseMessage,
-    HumanMessage,
-    SystemMessage,
-    ToolMessage,
-)
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import BaseTool
 from langchain_openai import ChatOpenAI
@@ -30,12 +22,11 @@ from pydantic import BaseModel, Field
 from apps.chat import models as chat_models
 from apps.core.posthog import get_posthog_client
 from apps.factoids.models import Factoid
-from apps.factoids.services.openrouter import DEFAULT_FACTOID_MODEL
 
 try:
-    from langchain_tavily import TavilySearchResults
+    from langchain_tavily import TavilySearch
 except ImportError:  # pragma: no cover - optional dependency
-    TavilySearchResults = None  # type: ignore[assignment]
+    TavilySearch = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -62,12 +53,12 @@ class SearchInput(BaseModel):
 
 
 class WebSearchTool(BaseTool):
-    """Use Tavily search to surface supporting references for the factoid."""
+    """Retrieve supporting references via Tavily."""
 
     name: str = "web_search"
     description: str = (
-        "Use this tool to find recent sources, background material, or verification"
-        " for the factoid. Provide the core subject or user question in the query."
+        "Look up the factoid on the open web when you need citations, external"
+        " context, or to verify new details."
     )
     args_schema: type[BaseModel] = SearchInput
 
@@ -82,7 +73,7 @@ class WebSearchTool(BaseTool):
         self._factoid = factoid
         self._max_results = max_results
         self._tavily_api_key = tavily_api_key
-        self._available = TavilySearchResults is not None and bool(tavily_api_key)
+        self._available = TavilySearch is not None and bool(tavily_api_key)
 
     def _run(  # type: ignore[override]
         self,
@@ -108,13 +99,13 @@ class WebSearchTool(BaseTool):
 
         requested = min(max_results or self._max_results, self._max_results)
         try:
-            if TavilySearchResults is None:  # pragma: no cover - defensive
-                raise RuntimeError("TavilySearchResults is unavailable")
-            tool = TavilySearchResults(
+            if TavilySearch is None:  # pragma: no cover - defensive
+                raise RuntimeError("TavilySearch is unavailable")
+            tool = TavilySearch(
                 max_results=requested,
                 tavily_api_key=self._tavily_api_key,
             )
-            payload = tool.invoke(actual_query)
+            payload = tool.invoke({"query": actual_query})
         except Exception as exc:  # pragma: no cover - network/runtime failure
             logger.warning("Tavily search failed: %s", exc)
             return {
@@ -138,103 +129,18 @@ def _build_search_tool(
     tavily_api_key: str | None,
     max_results: int,
 ) -> BaseTool | None:
-    if TavilySearchResults is None or not tavily_api_key:
-        return None
+    if TavilySearch is None:
+        return WebSearchTool(
+            factoid=factoid,
+            tavily_api_key=None,
+            max_results=max_results,
+        )
+
     return WebSearchTool(
         factoid=factoid,
         tavily_api_key=tavily_api_key,
         max_results=max_results,
     )
-
-
-class FactoidReportTool(BaseTool):
-    """Generate a longer, shareable report about the factoid."""
-
-    name: str = "make_factoid_report"
-    description: str = (
-        "Expand the core factoid into a concise markdown report with context,"
-        " implications, and a short shareable summary. Use when the user asks"
-        " for more detail or something to share with others."
-    )
-
-    def __init__(
-        self,
-        *,
-        factoid: Factoid,
-        model_key: str,
-        api_key: str | None,
-        base_url: str,
-        distinct_id: str,
-        trace_id: str,
-        posthog_client: Posthog | None,
-        extra_properties: dict[str, Any] | None,
-        temperature: float = 0.6,
-    ) -> None:
-        super().__init__()
-        self._factoid = factoid
-        self._model_key = model_key
-        self._api_key = api_key
-        self._base_url = base_url.rstrip("/")
-        self._temperature = temperature
-        self._distinct_id = distinct_id
-        self._trace_id = trace_id
-        self._posthog_client = posthog_client
-        self._extra_properties = extra_properties or {}
-
-    def _run(  # type: ignore[override]
-        self,
-        directive: str | None = None,
-        run_manager: CallbackManagerForToolRun | None = None,
-    ) -> str:
-        if not self._api_key:
-            return (
-                "Report generation is unavailable because the language model API key"
-                " is not configured."
-            )
-
-        manager = run_manager or CallbackManagerForToolRun.get_noop_manager()
-
-        llm = ChatOpenAI(
-            api_key=self._api_key,
-            base_url=self._base_url,
-            model=self._model_key,
-            temperature=self._temperature,
-        )
-
-        messages = _build_report_messages(self._factoid, directive)
-        callbacks = _build_posthog_callbacks(
-            client=self._posthog_client,
-            distinct_id=self._distinct_id,
-            trace_id=f"{self._trace_id}:report",
-            factoid=self._factoid,
-            extra_properties={"tool": "make_factoid_report", **self._extra_properties},
-        )
-
-        collected_callbacks: list[Any] = []
-        if callbacks:
-            collected_callbacks.extend(callbacks)
-        child_manager = manager.get_child()
-        if getattr(child_manager, "handlers", None):
-            collected_callbacks.extend(child_manager.handlers)
-
-        invoke_config: dict[str, Any] = {}
-        if collected_callbacks:
-            invoke_config["callbacks"] = collected_callbacks
-
-        try:
-            response = llm.invoke(messages, config=invoke_config)
-        except Exception as exc:  # pragma: no cover - defensive
-            manager.on_tool_error(exc)
-            raise
-
-        report_text = _normalise_content(response.content)
-        payload = {
-            "status": "report_ready",
-            "markdown": report_text,
-        }
-        payload_json = json.dumps(payload)
-        manager.on_tool_end(payload_json)
-        return payload_json
 
 
 @dataclass
@@ -277,26 +183,13 @@ class FactoidAgent:
             tavily_api_key=getattr(settings, "TAVILY_API_KEY", None),
             max_results=5,
         )
-        report_tool = FactoidReportTool(
-            factoid=factoid,
-            model_key=config.model_key,
-            api_key=api_key,
-            base_url=base_url,
-            distinct_id=config.distinct_id,
-            trace_id=config.trace_id,
-            posthog_client=posthog_client,
-            extra_properties=_merge_properties(
-                config.posthog_properties, {"factoid_id": str(factoid.id)}
-            ),
-        )
 
         tools: list[BaseTool] = []
         if search_tool:
             tools.append(search_tool)
-        tools.append(report_tool)
 
         if tools:
-            self._model = self._model.bind_tools(tools)
+            self._model = self._model.bind_tools(tools, tool_choice="auto")
 
         self._tool_node = ToolNode(tools)
         self._graph = self._build_graph()
@@ -323,6 +216,8 @@ class FactoidAgent:
         invoke_config: dict[str, Any] = {}
         if callbacks:
             invoke_config["callbacks"] = callbacks
+
+        invoke_config.setdefault("tool_choice", "auto")
 
         messages = [self._system_message, *state.get("messages", [])]
         response = self._model.invoke(messages, config=invoke_config)
@@ -357,7 +252,12 @@ def run_factoid_agent(
 ) -> list[BaseMessage]:
     """Execute the factoid agent and return the updated message list."""
 
-    resolved_model = model_key or DEFAULT_FACTOID_MODEL
+    default_model = getattr(
+        settings,
+        "FACTOID_AGENT_DEFAULT_MODEL",
+        "openai/gpt-5-mini",
+    )
+    resolved_model = model_key or default_model
     resolved_temperature = temperature if temperature is not None else 0.7
 
     posthog_client = get_posthog_client()
@@ -435,23 +335,15 @@ def _chat_message_to_langchain(message: chat_models.ChatMessage) -> BaseMessage 
 
     if message.role == chat_models.ChatMessageRole.ASSISTANT:
         content = payload.get("content") if isinstance(payload, dict) else payload
-        raw_additional = payload.get("additional_kwargs") if isinstance(payload, dict) else {}
-        if isinstance(raw_additional, dict):
-            additional_kwargs = raw_additional
-        else:
-            additional_kwargs = {}
-        raw_tool_calls = None
-        if isinstance(payload, dict):
-            raw_tool_calls = payload.get("tool_calls")
-            if not raw_tool_calls:
-                raw_tool_calls = payload.get("additional_kwargs", {}).get("tool_calls")
+        additional_kwargs = payload.get("additional_kwargs") if isinstance(payload, dict) else {}
+        raw_tool_calls = payload.get("tool_calls") if isinstance(payload, dict) else None
         if isinstance(raw_tool_calls, list):
             tool_calls = raw_tool_calls
         else:
             tool_calls = []
         return AIMessage(
             content=content,
-            additional_kwargs=additional_kwargs,
+            additional_kwargs=additional_kwargs or {},
             tool_calls=tool_calls,
         )
 
@@ -482,64 +374,23 @@ def build_system_prompt(factoid: Factoid) -> str:
         " about the factoid.\n"
         "   - Always pass a clear query; default to the factoid subject/text if the"
         " user does not specify.\n"
-        '   - Return value includes {{"query": ... , "results": [...]}} '
-        "that you can cite or summarise.\n"
-        "2. make_factoid_report(directive: string | None) -> markdown string\n"
-        "   - Call only when the user explicitly requests a detailed report,"
-        " write-up, markdown export, or shareable summary.\n"
-        "   - Never use this tool when the user wants a brief answer, citation, or"
-        " link—respond directly (optionally after web_search).\n"
-        "   - Return concise, well-structured markdown (2-3 paragraphs and bullet"
-        " highlights).\n"
-        '   - The tool returns JSON like {{"status": "report_ready",'
-        ' "markdown": ...}}. Do not expose the markdown. Reply with a brief'
-        " confirmation and direct the user to the download link.\n\n"
-        "Examples:\n"
-        '- User: "Where can I read more about this?" -> Use web_search to find'
-        " links, then answer with sources. Do NOT call make_factoid_report.\n"
-        '- User: "Please create a downloadable report I can share" -> Call'
-        " make_factoid_report and then acknowledge the download link.\n\n"
+        '   - Return value includes {{"query": ... , "results": [...]}}'
+        " that you can cite or summarise.\n"
+        "   - Call this tool whenever the user explicitly asks for sources or verification.\n"
+        "     Perform the search before drafting your final answer.\n\n"
         "Guidelines:\n"
         "- Ground answers in the factoid and reputable sources.\n"
         "- Use web_search to locate citations, links, or when you need to double-check facts.\n"
-        "- Only call make_factoid_report when the user clearly requests a report,"
-        " shareable markdown, or detailed write-up.\n"
-        "  If the intent is unclear, ask the user whether they want a report"
-        " instead of calling the tool.\n"
+        "- If you promise to search, call web_search through the tool interface.\n"
+        "  Never describe the call in plain text—execute it so the tool returns results.\n"
+        "- IMPORTANT: Use web_search efficiently - make one comprehensive search instead of\n"
+        "  multiple separate calls. Combine related queries into a single search when possible.\n"
+        "- CRITICAL: DO NOT include raw JSON data, search results, or tool output in your\n"
+        "  response. Tool results appear separately. Only provide natural conversation and\n"
+        "  summaries.\n"
         "- Include disclaimers when information is uncertain or speculative.\n"
         "- Keep tone friendly, concise, and curious."
     ).format(subject=subject, emoji=emoji, text=factoid.text)
-
-
-def _build_report_messages(factoid: Factoid, directive: str | None) -> list[BaseMessage]:
-    prompt = ChatPromptTemplate.from_messages(
-        [
-            (
-                "system",
-                "You write short markdown reports (2-3 paragraphs) that expand on a factoid."
-                " Provide background context, interesting implications, and include a bullet list"
-                " of shareable highlights at the end. Always stay grounded in well-known"
-                " information and mention if verification is required.",
-            ),
-            (
-                "human",
-                (
-                    "Factoid subject: {subject}\n"
-                    "Factoid emoji: {emoji}\n"
-                    "Factoid text: {text}\n\n"
-                    "Write the expanded report. {extra}"
-                ),
-            ),
-        ]
-    )
-
-    extra = directive or "Focus on why this factoid matters and who might find it useful."
-    return prompt.format_messages(
-        subject=factoid.subject or "Unknown subject",
-        emoji=factoid.emoji or "✨",
-        text=factoid.text,
-        extra=extra,
-    )
 
 
 def _normalise_content(content: Any) -> str:
@@ -641,7 +492,6 @@ def _normalise_search_results(payload: Any, limit: int) -> list[dict[str, Any]]:
             results.append({"title": title, "snippet": snippet, "url": url})
         if len(results) >= limit:
             break
-
     return results
 
 

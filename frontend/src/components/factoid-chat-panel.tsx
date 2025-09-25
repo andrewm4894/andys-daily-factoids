@@ -230,8 +230,7 @@ export function FactoidChatPanel({ factoid, onClose }: FactoidChatPanelProps) {
             {factoidHeader || "Factoid Chat"}
           </h3>
           <p className="text-xs text-[color:var(--text-muted)]">
-            Ask follow-up questions, request sources, or generate a shareable
-            report.
+            Ask follow-up questions or request supporting sources.
           </p>
         </div>
         <button
@@ -317,19 +316,7 @@ export function FactoidChatPanel({ factoid, onClose }: FactoidChatPanelProps) {
               {message.role === "assistant" &&
                 Array.isArray(message.tool_calls) &&
                 message.tool_calls.length > 0 && (
-                  <div className="max-w-[90%] rounded-md bg-slate-50 p-2 text-[10px] text-slate-600">
-                    <p className="font-medium">Tools used:</p>
-                    <ul className="list-disc space-y-1 pl-4">
-                      {message.tool_calls.map((call, index) => (
-                        <ToolCallItem
-                          key={call.id ?? index}
-                          call={call}
-                          factoid={factoid}
-                          index={index}
-                        />
-                      ))}
-                    </ul>
-                  </div>
+                  <CollapsibleToolResults toolCalls={message.tool_calls} />
                 )}
             </div>
           );
@@ -372,15 +359,38 @@ export function FactoidChatPanel({ factoid, onClose }: FactoidChatPanelProps) {
   );
 }
 
-function ToolCallItem({
-  call,
-  factoid,
-  index,
-}: {
-  call: ChatToolCall;
-  factoid: Factoid;
-  index: number;
-}) {
+function CollapsibleToolResults({ toolCalls }: { toolCalls: ChatToolCall[] }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const toolNames = toolCalls
+    .map((call) => call.tool_name ?? "tool")
+    .join(", ");
+
+  return (
+    <div className="max-w-[90%] rounded-md bg-slate-50 p-2 text-[10px] text-slate-600">
+      <button
+        type="button"
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="flex w-full items-center justify-between text-left hover:bg-slate-100 rounded px-1 py-0.5"
+      >
+        <span className="font-medium">
+          Tools used: {toolNames} ({toolCalls.length})
+        </span>
+        <span className="ml-2 text-slate-400">{isExpanded ? "▼" : "▶"}</span>
+      </button>
+      {isExpanded && (
+        <ul className="mt-2 space-y-1 border-t border-slate-200 pt-2">
+          {toolCalls.map((call, index) => (
+            <ToolCallItem key={call.id ?? index} call={call} />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function ToolCallItem({ call }: { call: ChatToolCall }) {
+  const toolName = call.tool_name ?? "tool";
+
   const parsedResult = useMemo(() => {
     if (!call.result) {
       return null;
@@ -395,23 +405,8 @@ function ToolCallItem({
     return call.result;
   }, [call.result]);
 
-  const reportMarkdown = useMemo(() => {
-    if (call.tool_name !== "make_factoid_report" || !parsedResult) {
-      return null;
-    }
-    if (typeof parsedResult === "string") {
-      return parsedResult;
-    }
-    if (typeof parsedResult === "object") {
-      const record = parsedResult as Record<string, unknown>;
-      const candidate = record.markdown ?? record.text ?? record.content;
-      return typeof candidate === "string" ? candidate : null;
-    }
-    return null;
-  }, [call.tool_name, parsedResult]);
-
   const searchData = useMemo(() => {
-    if (call.tool_name !== "web_search" || !parsedResult) {
+    if (toolName !== "web_search" || !parsedResult) {
       return null;
     }
     if (typeof parsedResult !== "object") {
@@ -447,7 +442,7 @@ function ToolCallItem({
         return { title, snippet, url };
       });
     return { query, results };
-  }, [call.tool_name, parsedResult]);
+  }, [toolName, parsedResult]);
 
   const fallbackText = useMemo(() => {
     if (!parsedResult) {
@@ -462,48 +457,14 @@ function ToolCallItem({
     return String(parsedResult);
   }, [parsedResult]);
 
-  const [downloadUrl, fileName] = useReportDownload(
-    call.tool_name,
-    reportMarkdown,
-    factoid,
-    call,
-    index
-  );
-
-  const isReport = call.tool_name === "make_factoid_report";
-  const isSearch = call.tool_name === "web_search";
-
   return (
-    <li>
+    <li className="border-b border-slate-100 pb-2 last:border-b-0">
       <div className="flex flex-col gap-1">
         <span className="font-medium text-[color:var(--text-primary)]">
-          {call.tool_name}
+          {toolName}
         </span>
 
-        {isReport ? (
-          <>
-            {reportMarkdown ? (
-              <p className="text-[color:var(--text-secondary)]">
-                Report generated. Use the link below to download the full
-                markdown.
-              </p>
-            ) : (
-              <p className="italic text-[color:var(--text-muted)]">
-                Generating report...
-              </p>
-            )}
-            {downloadUrl && fileName && (
-              <a
-                href={downloadUrl}
-                download={fileName}
-                className="inline-flex w-max items-center gap-2 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 text-[10px] font-medium text-indigo-700 hover:bg-indigo-100"
-              >
-                Download report (.md)
-                <span aria-hidden>⬇</span>
-              </a>
-            )}
-          </>
-        ) : isSearch ? (
+        {toolName === "web_search" ? (
           <div className="space-y-2">
             {searchData?.query && (
               <p className="text-[10px] uppercase tracking-wide text-[color:var(--text-muted)]">
@@ -558,68 +519,6 @@ function ToolCallItem({
         )}
       </div>
     </li>
-  );
-}
-
-function useReportDownload(
-  toolName: string,
-  text: string | null,
-  factoid: Factoid,
-  call: ChatToolCall,
-  index: number
-): [string | null, string | null] {
-  const [url, setUrl] = useState<string | null>(null);
-  const [fileName, setFileName] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (toolName !== "make_factoid_report" || !text) {
-      setUrl(null);
-      setFileName(null);
-      return undefined;
-    }
-
-    const blob = new Blob([text], { type: "text/markdown" });
-    const objectUrl = URL.createObjectURL(blob);
-    const subjectSlug = slugify(factoid.subject || factoid.id || "factoid");
-    const callIdentifier = call.id
-      ? slugify(call.id)
-      : slugify(String(index + 1), "run");
-    const label = factoid.emoji
-      ? slugify(`${subjectSlug}-${factoid.emoji}`)
-      : subjectSlug;
-    const name = `factoid-report-${label}-${callIdentifier}.md`;
-
-    setUrl(objectUrl);
-    setFileName(name);
-
-    return () => {
-      URL.revokeObjectURL(objectUrl);
-    };
-  }, [
-    toolName,
-    text,
-    factoid.subject,
-    factoid.id,
-    factoid.emoji,
-    call.id,
-    index,
-  ]);
-
-  return [url, fileName];
-}
-
-function slugify(value: string, fallback = "factoid"): string {
-  const trimmed = value?.trim();
-  if (!trimmed) {
-    return fallback;
-  }
-  return (
-    trimmed
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)+/g, "")
-      .replace(/-+/g, "-")
-      .slice(0, 80) || fallback
   );
 }
 

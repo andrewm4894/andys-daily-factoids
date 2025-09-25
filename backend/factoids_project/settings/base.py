@@ -146,6 +146,7 @@ FACTOID_AGENT_SEARCH_URL = settings.factoid_agent_search_url
 FACTOID_AGENT_SEARCH_API_KEY = settings.factoid_agent_search_api_key
 FACTOID_AGENT_SEARCH_TIMEOUT = settings.factoid_agent_search_timeout
 FACTOID_CHAT_RATE_LIMIT_PER_MINUTE = settings.factoid_chat_rate_limit_per_minute
+FACTOID_AGENT_DEFAULT_MODEL = settings.factoid_agent_default_model
 TAVILY_API_KEY = settings.tavily_api_key
 POSTHOG_PROJECT_API_KEY = settings.posthog_project_api_key
 POSTHOG_HOST = settings.posthog_host

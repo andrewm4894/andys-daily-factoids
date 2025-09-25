@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 
 import type { Factoid } from "@/lib/types";

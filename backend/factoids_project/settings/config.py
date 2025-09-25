@@ -64,6 +64,13 @@ class AppSettings(BaseSettings):
             "DJANGO_FACTOID_CHAT_RATE_LIMIT_PER_MINUTE",
         ),
     )
+    factoid_agent_default_model: str = Field(
+        default="openai/gpt-5-mini",
+        validation_alias=AliasChoices(
+            "FACTOID_AGENT_DEFAULT_MODEL",
+            "DJANGO_FACTOID_AGENT_DEFAULT_MODEL",
+        ),
+    )
     tavily_api_key: str | None = Field(
         default=None,
         validation_alias=AliasChoices("TAVILY_API_KEY", "DJANGO_TAVILY_API_KEY"),
@@ -267,6 +274,11 @@ def get_settings(env_file: str | os.PathLike[str] | None = None) -> AppSettings:
                         os.getenv("DJANGO_FACTOID_CHAT_RATE_LIMIT_PER_MINUTE")
                         or os.getenv("FACTOID_CHAT_RATE_LIMIT_PER_MINUTE")
                         or "10"
+                    )
+                    self.factoid_agent_default_model = (
+                        os.getenv("DJANGO_FACTOID_AGENT_DEFAULT_MODEL")
+                        or os.getenv("FACTOID_AGENT_DEFAULT_MODEL")
+                        or "openai/gpt-5-mini"
                     )
                     self.tavily_api_key = os.getenv("DJANGO_TAVILY_API_KEY") or os.getenv(
                         "TAVILY_API_KEY"
