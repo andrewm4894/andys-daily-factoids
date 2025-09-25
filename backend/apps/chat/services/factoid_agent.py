@@ -323,7 +323,7 @@ def serialise_message(message: BaseMessage) -> tuple[str, dict[str, Any]]:
         return chat_models.ChatMessageRole.TOOL, payload
 
     logger.debug("Unsupported message type encountered: %s", type(message))
-    return chat_models.ChatMessageRole.TOOL, {"content": str(message.content)}
+    return chat_models.ChatMessageRole.ASSISTANT, {"content": str(message.content)}
 
 
 def _chat_message_to_langchain(message: chat_models.ChatMessage) -> BaseMessage | None:
