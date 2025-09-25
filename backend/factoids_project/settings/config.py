@@ -337,6 +337,11 @@ def get_settings(env_file: str | os.PathLike[str] | None = None) -> AppSettings:
                         or os.getenv("STRIPE_CANCEL_URL")
                         or os.getenv("STRIPE_CHECKOUT_CANCEL_URL")
                     )
+                    self.factoid_generation_examples_count = int(
+                        os.getenv("DJANGO_FACTOID_GENERATION_EXAMPLES_COUNT")
+                        or os.getenv("FACTOID_GENERATION_EXAMPLES_COUNT")
+                        or "100"
+                    )
 
             return FallbackSettings()  # type: ignore
         else:
