@@ -1,6 +1,6 @@
 "use client";
 
-import {
+import React, {
   useCallback,
   useEffect,
   useMemo,
@@ -9,7 +9,7 @@ import {
   type FormEvent,
 } from "react";
 
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import type {
@@ -529,67 +529,83 @@ function MarkdownContent({
   content: string;
   compact?: boolean;
 }) {
-  return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      components={{
-        p: (props) => (
-          <p
-            {...props}
-            className={compact ? "mb-1 last:mb-0" : "mb-2 last:mb-0"}
-          />
-        ),
-        ul: (props) => (
-          <ul
-            {...props}
-            className={
-              compact
-                ? "mb-1 list-disc pl-4 text-[color:var(--text-secondary)]"
-                : "mb-2 list-disc pl-4 text-[color:var(--text-secondary)]"
-            }
-          />
-        ),
-        ol: (props) => (
-          <ol
-            {...props}
-            className={
-              compact
-                ? "mb-1 list-decimal pl-4 text-[color:var(--text-secondary)]"
-                : "mb-2 list-decimal pl-4 text-[color:var(--text-secondary)]"
-            }
-          />
-        ),
-        li: (props) => <li {...props} className="mb-1 last:mb-0" />,
-        a: (props) => (
-          <a
-            {...props}
-            className="text-indigo-600 underline hover:text-indigo-500"
-            target="_blank"
-            rel="noopener noreferrer"
-          />
-        ),
-        code: ({ inline, children, ...props }) => {
-          if (!inline) {
-            return (
-              <pre
-                className="my-2 overflow-x-auto rounded-md bg-slate-900 p-3 text-[11px] leading-relaxed text-slate-100"
-                {...props}
-              >
-                <code>{children}</code>
-              </pre>
-            );
+  const components = React.useMemo<Components>(
+    () => ({
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      p: ({ node, ...props }) => (
+        <p
+          {...(props as React.HTMLAttributes<HTMLParagraphElement>)}
+          className={compact ? "mb-1 last:mb-0" : "mb-2 last:mb-0"}
+        />
+      ),
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      ul: ({ node, ...props }) => (
+        <ul
+          {...(props as React.HTMLAttributes<HTMLUListElement>)}
+          className={
+            compact
+              ? "mb-1 list-disc pl-4 text-[color:var(--text-secondary)]"
+              : "mb-2 list-disc pl-4 text-[color:var(--text-secondary)]"
           }
+        />
+      ),
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      ol: ({ node, ...props }) => (
+        <ol
+          {...(props as React.HTMLAttributes<HTMLOListElement>)}
+          className={
+            compact
+              ? "mb-1 list-decimal pl-4 text-[color:var(--text-secondary)]"
+              : "mb-2 list-decimal pl-4 text-[color:var(--text-secondary)]"
+          }
+        />
+      ),
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      li: ({ node, ...props }) => (
+        <li
+          {...(props as React.LiHTMLAttributes<HTMLLIElement>)}
+          className="mb-1 last:mb-0"
+        />
+      ),
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      a: ({ node, ...props }) => (
+        <a
+          {...(props as React.AnchorHTMLAttributes<HTMLAnchorElement>)}
+          className="text-indigo-600 underline hover:text-indigo-500"
+          target="_blank"
+          rel="noopener noreferrer"
+        />
+      ),
+      code: ({
+        inline,
+        children,
+        ...props
+      }: React.HTMLAttributes<HTMLElement> & { inline?: boolean }) => {
+        if (!inline) {
           return (
-            <code
-              className="rounded bg-slate-200 px-1 py-0.5 text-[11px] text-slate-800"
-              {...props}
+            <pre
+              className="my-2 overflow-x-auto rounded-md bg-slate-900 p-3 text-[11px] leading-relaxed text-slate-100"
+              {...(props as React.HTMLAttributes<HTMLPreElement>)}
             >
-              {children}
-            </code>
+              <code>{children}</code>
+            </pre>
           );
-        },
-      }}
-    >
+        }
+        return (
+          <code
+            className="rounded bg-slate-200 px-1 py-0.5 text-[11px] text-slate-800"
+            {...(props as React.HTMLAttributes<HTMLElement>)}
+          >
+            {children}
+          </code>
+        );
+      },
+    }),
+    [compact]
+  );
+
+  return (
+    <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
       {content}
     </ReactMarkdown>
   );
