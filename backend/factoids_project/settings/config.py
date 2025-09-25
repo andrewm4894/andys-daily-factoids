@@ -36,27 +36,6 @@ class AppSettings(BaseSettings):
     db_conn_max_age: int = 60
     openrouter_api_key: str | None = None
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
-    factoid_agent_search_url: str | None = Field(
-        default=None,
-        validation_alias=AliasChoices(
-            "FACTOID_AGENT_SEARCH_URL",
-            "DJANGO_FACTOID_AGENT_SEARCH_URL",
-        ),
-    )
-    factoid_agent_search_api_key: str | None = Field(
-        default=None,
-        validation_alias=AliasChoices(
-            "FACTOID_AGENT_SEARCH_API_KEY",
-            "DJANGO_FACTOID_AGENT_SEARCH_API_KEY",
-        ),
-    )
-    factoid_agent_search_timeout: float = Field(
-        default=8.0,
-        validation_alias=AliasChoices(
-            "FACTOID_AGENT_SEARCH_TIMEOUT",
-            "DJANGO_FACTOID_AGENT_SEARCH_TIMEOUT",
-        ),
-    )
     factoid_chat_rate_limit_per_minute: int = Field(
         default=10,
         validation_alias=AliasChoices(
@@ -258,17 +237,6 @@ def get_settings(env_file: str | os.PathLike[str] | None = None) -> AppSettings:
                     self.openrouter_base_url = os.getenv(
                         "DJANGO_OPENROUTER_BASE_URL",
                         "https://openrouter.ai/api/v1",
-                    )
-                    self.factoid_agent_search_url = os.getenv(
-                        "DJANGO_FACTOID_AGENT_SEARCH_URL"
-                    ) or os.getenv("FACTOID_AGENT_SEARCH_URL")
-                    self.factoid_agent_search_api_key = os.getenv(
-                        "DJANGO_FACTOID_AGENT_SEARCH_API_KEY"
-                    ) or os.getenv("FACTOID_AGENT_SEARCH_API_KEY")
-                    self.factoid_agent_search_timeout = float(
-                        os.getenv("DJANGO_FACTOID_AGENT_SEARCH_TIMEOUT")
-                        or os.getenv("FACTOID_AGENT_SEARCH_TIMEOUT")
-                        or "8.0"
                     )
                     self.factoid_chat_rate_limit_per_minute = int(
                         os.getenv("DJANGO_FACTOID_CHAT_RATE_LIMIT_PER_MINUTE")
