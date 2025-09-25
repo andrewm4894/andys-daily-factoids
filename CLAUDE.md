@@ -19,7 +19,7 @@ Andy's Daily Factoids is a Django + Next.js application that generates and displ
 Key Django apps:
 - `apps/factoids/`: Core factoid models, API endpoints, and generation service
 - `apps/core/`: Shared services like rate limiting
-- `apps/payments/`, `apps/analytics/`, `apps/chat/`: Future feature stubs
+- `apps/payments/`, `apps/analytics/`, `apps/chat/`: Additional feature implementations
 
 ## Common Development Commands
 
@@ -56,6 +56,15 @@ make lint-frontend         # Frontend via ESLint
 make factoid               # Generate via Node.js script
 make test-generate-factoid # Generate via Django service layer
 make smoke-backend-api     # Quick API sanity check
+make smoke-chat-agent      # Exercise the chat agent web_search tool interactively
+make smoke-chat-agent-search   # Test examples that should trigger web search
+make smoke-chat-agent-no-search # Test examples that should NOT trigger web search
+make smoke-chat-agent-edge     # Test edge case examples for web search behavior
+
+# Pre-commit hooks
+make precommit             # Run pre-commit hooks on all files
+make precommit-install     # Install pre-commit hooks
+make precommit-update      # Update pre-commit hooks to latest versions
 ```
 
 ### Backend Commands
@@ -79,6 +88,9 @@ npm run dev                # Development with Turbopack
 npm run build              # Production build with Turbopack
 npm run start              # Production server
 npm run lint               # ESLint
+npm run lint:fix           # Fix ESLint issues
+npm run format             # Format with Prettier
+npm run format:check       # Check Prettier formatting
 ```
 
 ## Key Files and Patterns

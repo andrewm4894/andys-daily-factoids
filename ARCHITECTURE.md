@@ -85,7 +85,7 @@ Exceptions surface as `429` (rate limit), `402` (budget exhausted), or `502` (do
 - **Database**: PostgreSQL via `DATABASE_URL` (Render managed). Django models cover factoids, generation requests, votes, feedback, and model cache state (`apps/factoids/models.py`).
 - **Redis (optional)**: If `REDIS_URL` is present, rate limiting uses Redis sorted sets; otherwise an in-process fallback keeps the service usable locally or in environments without Redis.
 - **Static/media**: Static assets collect into `backend/staticfiles/`. Media uploads (e.g., future attachments) land in `backend/media/`.
-- **Other apps**: `apps.core` will ultimately house API keys and shared services; `apps.payments`, `apps.analytics`, and `apps.chat` are stubs prepared for future phases (Stripe checkout, evaluation pipelines, conversational UX).
+- **Other apps**: `apps.core` houses shared services like rate limiting; `apps.payments`, `apps.analytics`, and `apps.chat` provide additional feature implementations (Stripe checkout, evaluation pipelines, conversational UX).
 
 ### Voting & feedback pipeline
 
