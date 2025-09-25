@@ -280,47 +280,49 @@ export function FactoidChatPanel({ factoid, onClose }: FactoidChatPanelProps) {
               : "Ask anything about this factoid to get started."}
           </p>
         )}
-        {messages.map((message) => {
-          const text = renderMessageText(message);
-          const isUser = message.role === "user";
-          const isAssistant = message.role === "assistant";
-          const toolNames = Array.isArray(message.tool_calls)
-            ? message.tool_calls.map((call) => call.tool_name || "tool")
-            : [];
-          const hasToolCalls = toolNames.length > 0;
-          const trimmedText = text.trim();
-          const hasText = trimmedText.length > 0;
-          const bubbleClasses = isUser
-            ? "self-end bg-indigo-50 text-indigo-900"
-            : isAssistant
-              ? "self-start bg-slate-100 text-slate-900"
-              : "self-start bg-emerald-50 text-emerald-900";
+        {messages
+          .filter((message) => message.role !== "tool")
+          .map((message) => {
+            const text = renderMessageText(message);
+            const isUser = message.role === "user";
+            const isAssistant = message.role === "assistant";
+            const toolNames = Array.isArray(message.tool_calls)
+              ? message.tool_calls.map((call) => call.tool_name || "tool")
+              : [];
+            const hasToolCalls = toolNames.length > 0;
+            const trimmedText = text.trim();
+            const hasText = trimmedText.length > 0;
+            const bubbleClasses = isUser
+              ? "self-end bg-indigo-50 text-indigo-900"
+              : isAssistant
+                ? "self-start bg-slate-100 text-slate-900"
+                : "self-start bg-emerald-50 text-emerald-900";
 
-          return (
-            <div key={message.id} className="flex flex-col gap-1">
-              <div
-                className={`max-w-[90%] whitespace-pre-wrap rounded-lg px-3 py-2 text-xs ${bubbleClasses}`}
-              >
-                {hasText ? (
-                  <MarkdownContent content={text} />
-                ) : hasToolCalls ? (
-                  <p className="italic text-[color:var(--text-muted)]">
-                    Calling {toolNames.join(", ")}...
-                  </p>
-                ) : (
-                  <p className="italic text-[color:var(--text-muted)]">
-                    (no content)
-                  </p>
-                )}
+            return (
+              <div key={message.id} className="flex flex-col gap-1">
+                <div
+                  className={`max-w-[90%] whitespace-pre-wrap rounded-lg px-3 py-2 text-xs ${bubbleClasses}`}
+                >
+                  {hasText ? (
+                    <MarkdownContent content={text} />
+                  ) : hasToolCalls ? (
+                    <p className="italic text-[color:var(--text-muted)]">
+                      Calling {toolNames.join(", ")}...
+                    </p>
+                  ) : (
+                    <p className="italic text-[color:var(--text-muted)]">
+                      (no content)
+                    </p>
+                  )}
+                </div>
+                {message.role === "assistant" &&
+                  Array.isArray(message.tool_calls) &&
+                  message.tool_calls.length > 0 && (
+                    <CollapsibleToolResults toolCalls={message.tool_calls} />
+                  )}
               </div>
-              {message.role === "assistant" &&
-                Array.isArray(message.tool_calls) &&
-                message.tool_calls.length > 0 && (
-                  <CollapsibleToolResults toolCalls={message.tool_calls} />
-                )}
-            </div>
-          );
-        })}
+            );
+          })}
         <div ref={messagesEndRef} />
         {isSending && (
           <div className="text-xs text-[color:var(--text-muted)]">
