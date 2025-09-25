@@ -24,7 +24,7 @@ jobs:
     - name: Install frontend dependencies
       run: |
         cd frontend
-        npm ci
+        npm ci --legacy-peer-deps
 
     - name: Run ESLint
       run: |
@@ -99,7 +99,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        cd frontend && npm ci
+        cd frontend && npm ci --legacy-peer-deps
         cd ../backend && uv sync --extra dev
 
     - name: Install pre-commit
@@ -136,7 +136,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        cd frontend && npm ci
+        cd frontend && npm ci --legacy-peer-deps
         cd ../backend && uv sync --extra dev
 
     - name: Run security audit (frontend)
@@ -183,7 +183,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        cd frontend && npm ci
+        cd frontend && npm ci --legacy-peer-deps
         cd ../backend && uv sync --extra dev
 
     - name: Check for outdated dependencies (frontend)
