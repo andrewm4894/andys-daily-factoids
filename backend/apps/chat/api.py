@@ -364,7 +364,7 @@ def _present_session(session: chat_models.ChatSession) -> dict[str, Any]:
 
 def _present_messages(session: chat_models.ChatSession) -> list[dict[str, Any]]:
     messages = []
-    for message in session.messages.order_by("created_at"):
+    for message in session.messages.order_by("created_at").prefetch_related("tool_calls"):
         item = {
             "id": message.id,
             "role": message.role,
