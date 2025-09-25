@@ -1,32 +1,33 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `backend/` hosts the Django project (`factoids_project`) and domain apps (`apps/core`, `apps/factoids`, `apps/payments`); add new services within the nearest app to preserve clear boundaries.
-- `frontend/` holds the Next.js App Router under `src/` with UI pieces in `src/components/` and shared helpers in `src/lib/`.
-- `tests/` mirrors the stack: pytest suites live in `tests/backend/`, rate-limit and smoke automation in `tests/frontend/`, and end-to-end probes in `tests/integration/`.
-- `scripts/` collects Node and Python helpers that the Make targets wrap; prefer invoking them through `make`.
+- `backend/` hosts the Django project (`factoids_project`) with domain apps in `apps/core`, `apps/factoids`, and `apps/payments`; keep new services inside the closest app to preserve boundaries.
+- `frontend/` contains the Next.js App Router under `src/`, with shared UI in `src/components/` and utilities in `src/lib/`.
+- `tests/` mirrors runtime code: pytest suites in `tests/backend/`, frontend automation in `tests/frontend/`, and integration probes in `tests/integration/`.
+- `scripts/` holds Python and Node helpers that power Make targets; prefer `make <task>` over calling scripts directly.
 
 ## Build, Test, and Development Commands
-- `make install` syncs Python deps with `uv` and installs frontend packages via npm.
-- `make local-backend` / `make local-frontend` run Django and Next.js dev servers; `make run` launches both.
-- `make migrate-backend` applies database migrations, while `make seed-backend` loads sample factoids for demos.
-- `make test-backend`, `make test-frontend`, and `make test-integration` cover pytest, ESLint, and integration checks; `make lint` runs Ruff plus ESLint.
+- `make install` aligns Python deps via `uv` and installs frontend packages with npm.
+- `make run` starts Django and Next.js dev servers together; use `make local-backend` or `make local-frontend` when iterating on one side.
+- `make migrate-backend` applies database migrations; follow with `make seed-backend` to load demo factoids.
+- `make test-backend`, `make test-frontend`, and `make test-integration` run pytest, ESLint, and cross-service checks respectively.
+- `make lint` runs Ruff plus ESLint; resolve lint violations before opening a PR.
 
 ## Coding Style & Naming Conventions
-- Python targets 3.10, uses Ruff (`line-length = 100`, rules `E`, `F`, `I`) and pytest discovery (`test_*.py`); annotate new functions and prefer Pydantic models for structured payloads.
-- Next.js code uses TypeScript with `next/core-web-vitals` linting; keep React components functional and name files in PascalCase (`rate-limit-banner.tsx` renders `RateLimitBanner`).
-- Use snake_case for Django modules and fields, PascalCase for classes and React components, and kebab-case for CLI scripts.
+- Python targets 3.10, four-space indentation, Ruff rules `E`, `F`, `I`, and docstring type hints for new functions; prefer Pydantic models for structured payloads.
+- TypeScript follows `next/core-web-vitals` linting; keep React components functional and colocate styles with components.
+- Use snake_case for Django modules and fields, PascalCase for classes and React components, and kebab-case for CLI or script filenames.
 
 ## Testing Guidelines
-- Backend tests rely on `pytest` plus `pytest-django`; mirror app paths under `tests/backend/` and flag external calls with markers.
-- Frontend currently lint-gates changes; add Vitest or Playwright suites in `tests/frontend/` when UI flows need coverage.
-- Extend `tests/integration/` whenever rate limiting or cross-service behavior changes; export the same env vars you use in production before running them.
+- Mirror app structure under `tests/backend/` and mark external integrations with pytest markers.
+- Frontend changes must pass linting; add Vitest or Playwright suites in `tests/frontend/` when behaviour goes beyond static rendering.
+- Extend integration probes in `tests/integration/` whenever rate limiting, payments, or multi-service flows change, and export the same env vars used in production before running them.
 
 ## Commit & Pull Request Guidelines
-- Git history favors short, imperative subjects (e.g., `Remove obsolete GitHub workflows`); keep the summary ≤72 chars and skip trailing punctuation.
-- Reference issues in the description, list manual test steps, and add screenshots or curl traces for UI or API updates.
-- PRs should call out new configuration, migrations, or feature flags and note any follow-up tasks.
+- Write short, imperative commit subjects (≤72 chars) like `Update factoid serializer`; keep descriptions focused on intent and impact.
+- PRs should link issues, list manual test steps (`make test-backend`, curl examples), and call out migrations, new configuration, or feature flags.
+- Attach screenshots or API traces for UI or HTTP changes and note any follow-up tasks or monitoring needs.
 
-## Environment & Secrets
-- Copy `backend/.env.example` and `frontend/.env.local` to supply keys like `OPENROUTER_API_KEY` and `NEXT_PUBLIC_FACTOIDS_API_BASE` before running generators or integration tests.
-- Store sensitive values via Render or local environment variables; `.env.*` files are gitignored—keep them local.
+## Security & Configuration Tips
+- Copy `backend/.env.example` and `frontend/.env.local` before running generators or integration tests; never commit populated `.env.*` files.
+- Store secrets via Render or local environment variables, and rotate keys such as `OPENROUTER_API_KEY` if exposed in logs or scripts.
