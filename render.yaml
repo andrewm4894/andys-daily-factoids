@@ -60,7 +60,7 @@ services:
     name: hourly-factoid
     runtime: python
     plan: starter
-    schedule: "0 * * * *"
+    schedule: "*/30 * * * *"
     buildCommand: |
       pip install uv
       cd backend
