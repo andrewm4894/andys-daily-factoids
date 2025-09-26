@@ -1,4 +1,4 @@
-.PHONY: help install install-frontend install-backend install-precommit local local-backend local-frontend migrate-backend seed-backend run factoid test test-backend test-frontend test-rate-limit lint lint-backend lint-frontend precommit precommit-install precommit-run precommit-update smoke-backend-api test-generate-factoid test-braintrust test-braintrust-simple
+.PHONY: help install install-frontend install-backend install-precommit local local-backend local-frontend migrate-backend seed-backend run factoid test test-backend test-frontend test-rate-limit lint lint-backend lint-frontend precommit precommit-install precommit-run precommit-update smoke-backend-api test-generate-factoid test-braintrust test-braintrust-simple eval eval-structure eval-truthfulness eval-daily eval-install
 
 help: ## Show available make targets
 	@awk -F ':.*## ' 'BEGIN {print "Available targets:"} /^[a-zA-Z0-9_-]+:.*##/ {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -108,3 +108,19 @@ precommit-run: ## Run pre-commit hooks on all files
 
 precommit-update: ## Update pre-commit hooks to latest versions
 	pre-commit autoupdate
+
+# Braintrust Evaluation Commands
+eval-install: ## Install eval dependencies (braintrust and autoevals)
+	cd backend && uv pip install braintrust autoevals
+
+eval: eval-install ## Run all Braintrust evaluations
+	cd backend && uv run python evals/run_evals.py --eval-type all
+
+eval-structure: eval-install ## Test factoid structure parsing only
+	cd backend && uv run python evals/run_evals.py --eval-type structure
+
+eval-truthfulness: eval-install ## Test factoid truthfulness with LLM judge
+	cd backend && uv run python evals/run_evals.py --eval-type truthfulness
+
+eval-daily: eval-install ## Run daily eval on small random sample (5 topics)
+	cd backend && uv run python evals/run_evals.py --daily --sample-size 5
