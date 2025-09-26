@@ -10,7 +10,11 @@ from django.utils import timezone
 from posthog import Posthog
 from posthog.ai.langchain import CallbackHandler
 
-from apps.core.braintrust import get_braintrust_callback_handler, initialize_braintrust
+from apps.core.braintrust import (
+    get_braintrust_callback_handler,
+    initialize_braintrust,
+    log_operation_metadata,
+)
 from apps.core.langsmith import get_langsmith_callback_handler, initialize_langsmith
 from apps.core.posthog import get_posthog_client
 from apps.core.services import CostGuard, RateLimitConfig, RateLimitExceeded, get_rate_limiter
@@ -199,6 +203,11 @@ def _build_callbacks(
     braintrust_callback = get_braintrust_callback_handler()
     if braintrust_callback:
         callbacks.append(braintrust_callback)
+
+    # Log operation metadata for trace filtering
+    log_operation_metadata(
+        "factoid_generation", service="generator", topic=topic, request_source=str(request_source)
+    )
 
     # Initialize LangSmith (this will set up global tracing automatically)
     initialize_langsmith()

@@ -33,6 +33,8 @@ services:
         sync: false
       - key: DJANGO_SECRET_KEY
         sync: false
+      - key: BRAINTRUST_API_KEY
+        sync: false
     healthCheckPath: /api/factoids/
 
   - type: web
@@ -86,4 +88,41 @@ services:
       - key: REDIS_URL
         sync: false
       - key: DJANGO_SECRET_KEY
+        sync: false
+      - key: BRAINTRUST_API_KEY
+        sync: false
+
+  - type: cron
+    name: daily-eval
+    runtime: python
+    plan: starter
+    schedule: "0 12 * * *"
+    buildCommand: |
+      pip install uv
+      cd backend
+      uv sync --extra dev --frozen
+      uv pip install braintrust autoevals
+    startCommand: |
+      cd backend
+      uv run python evals/eval.py --daily --production --sample-size 20
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: DJANGO_SETTINGS_MODULE
+        value: factoids_project.settings.production
+      - key: DJANGO_ALLOWED_HOSTS
+        value: "factoids-backend.onrender.com"
+      - key: POSTHOG_PROJECT_API_KEY
+        value: "phc_FBwJgNVOyAez7il4IvxxhzPuB4YFFBGtanSfm3InYJ5"
+      - key: POSTHOG_HOST
+        value: "https://us.i.posthog.com"
+      - key: DATABASE_URL
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: DJANGO_SECRET_KEY
+        sync: false
+      - key: BRAINTRUST_API_KEY
         sync: false

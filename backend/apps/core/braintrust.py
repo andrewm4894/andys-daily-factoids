@@ -64,3 +64,15 @@ def get_braintrust_callback_handler() -> BraintrustCallbackHandler | None:
     except Exception as exc:
         logger.warning("Failed to create Braintrust callback handler: %s", exc)
         return None
+
+
+def log_operation_metadata(operation_type: str, **metadata):
+    """Log operation metadata to Braintrust for filtering traces."""
+    try:
+        from braintrust import current_span
+
+        span = current_span()
+        if span:
+            span.log(metadata={"operation_type": operation_type, **metadata})
+    except Exception as exc:
+        logger.debug("Failed to log operation metadata to Braintrust: %s", exc)

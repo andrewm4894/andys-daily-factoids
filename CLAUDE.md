@@ -65,6 +65,11 @@ make smoke-chat-agent-edge     # Test edge case examples for web search behavior
 make precommit             # Run pre-commit hooks on all files
 make precommit-install     # Install pre-commit hooks
 make precommit-update      # Update pre-commit hooks to latest versions
+
+# Quality evaluation
+make eval-daily            # Run daily quality evaluation (20 recent factoids)
+make eval-manual           # Manual evaluation of larger sample (100 factoids)
+make eval-debug            # Fast evaluation without truthfulness (50 factoids)
 ```
 
 ### Backend Commands
