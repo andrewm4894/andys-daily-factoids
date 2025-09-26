@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import random
 from dataclasses import dataclass
 from typing import Annotated, Any, Iterable, Sequence, TypedDict
 
@@ -24,6 +25,7 @@ from apps.core.braintrust import get_braintrust_callback_handler, initialize_bra
 from apps.core.langsmith import get_langsmith_callback_handler, initialize_langsmith
 from apps.core.posthog import get_posthog_client
 from apps.factoids.models import Factoid
+from apps.factoids.services.openrouter import fetch_openrouter_models, model_supports_tools
 
 try:
     from langchain_tavily import TavilySearch
@@ -242,6 +244,69 @@ class FactoidAgent:
         return result["messages"]
 
 
+def _random_tool_supporting_model(*, api_key: str, base_url: str) -> str | None:
+    """Select a random model that supports tools for the chat agent."""
+    try:
+        models_payload = fetch_openrouter_models(api_key=api_key, base_url=base_url)
+    except Exception:  # pragma: no cover - network/introspection failure
+        return None
+
+    # Filter for models that support tools and prefer paid/stable models
+    tool_candidates = []
+    preferred_candidates = []
+
+    for item in models_payload:
+        if not isinstance(item, dict):
+            continue
+        model_id = item.get("id")
+        if not isinstance(model_id, str):
+            continue
+
+        # Check if this model supports tools
+        if model_supports_tools(model_id, api_key=api_key, base_url=base_url):
+            tool_candidates.append(model_id)
+
+            # Prefer non-free models and well-known providers to avoid rate limits
+            if not model_id.endswith(":free") and any(
+                provider in model_id
+                for provider in ["openai/", "anthropic/", "google/", "mistralai/"]
+            ):
+                preferred_candidates.append(model_id)
+
+    # Use preferred models if available, otherwise fall back to all tool-supporting models
+    candidates = preferred_candidates if preferred_candidates else tool_candidates
+
+    if not candidates:
+        return None
+
+    return random.choice(candidates)
+
+
+def _resolve_chat_model_key(
+    preferred_model: str | None,
+    *,
+    api_key: str,
+    base_url: str,
+) -> str:
+    """Resolve the model key for chat agent, with random tool-supporting fallback."""
+    if preferred_model:
+        return preferred_model
+
+    # Try to get a random tool-supporting model
+    random_model = _random_tool_supporting_model(api_key=api_key, base_url=base_url)
+    if random_model:
+        return random_model
+
+    # Fallback to default model
+    return getattr(settings, "FACTOID_AGENT_DEFAULT_MODEL", "openai/gpt-4o-mini")
+
+
+def _get_fallback_model() -> str:
+    """Get a reliable fallback model when the selected model fails."""
+    # Use a known stable model that supports tools
+    return "openai/gpt-4o-mini"
+
+
 def run_factoid_agent(
     *,
     factoid: Factoid,
@@ -254,12 +319,14 @@ def run_factoid_agent(
 ) -> list[BaseMessage]:
     """Execute the factoid agent and return the updated message list."""
 
-    default_model = getattr(
-        settings,
-        "FACTOID_AGENT_DEFAULT_MODEL",
-        "openai/gpt-5-mini",
+    api_key = getattr(settings, "OPENROUTER_API_KEY", None)
+    base_url = getattr(settings, "OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+
+    resolved_model = _resolve_chat_model_key(
+        model_key,
+        api_key=api_key,
+        base_url=base_url,
     )
-    resolved_model = model_key or default_model
     resolved_temperature = temperature if temperature is not None else 0.7
 
     posthog_client = get_posthog_client()
@@ -272,21 +339,49 @@ def run_factoid_agent(
         extra_properties=_merge_properties(posthog_properties, {"factoid_id": str(factoid.id)}),
     )
 
-    agent = FactoidAgent(
-        factoid=factoid,
-        config=FactoidAgentConfig(
-            model_key=resolved_model,
-            temperature=resolved_temperature,
-            distinct_id=distinct_id,
-            trace_id=trace_id,
-            posthog_properties=_merge_properties(
-                posthog_properties, {"factoid_id": str(factoid.id)}
+    # Try with the selected model first
+    try:
+        agent = FactoidAgent(
+            factoid=factoid,
+            config=FactoidAgentConfig(
+                model_key=resolved_model,
+                temperature=resolved_temperature,
+                distinct_id=distinct_id,
+                trace_id=trace_id,
+                posthog_properties=_merge_properties(
+                    posthog_properties, {"factoid_id": str(factoid.id)}
+                ),
             ),
-        ),
-        posthog_client=posthog_client,
-    )
-
-    return agent.run(history, callbacks=callbacks)
+            posthog_client=posthog_client,
+        )
+        return agent.run(history, callbacks=callbacks)
+    except Exception as exc:
+        # Check if it's a rate limit or model-specific error
+        error_msg = str(exc).lower()
+        if any(keyword in error_msg for keyword in ["rate limit", "429", "temporarily", "quota"]):
+            # Try with a fallback model
+            fallback_model = _get_fallback_model()
+            if fallback_model != resolved_model:
+                try:
+                    fallback_agent = FactoidAgent(
+                        factoid=factoid,
+                        config=FactoidAgentConfig(
+                            model_key=fallback_model,
+                            temperature=resolved_temperature,
+                            distinct_id=distinct_id,
+                            trace_id=trace_id,
+                            posthog_properties=_merge_properties(
+                                posthog_properties, {"factoid_id": str(factoid.id)}
+                            ),
+                        ),
+                        posthog_client=posthog_client,
+                    )
+                    return fallback_agent.run(history, callbacks=callbacks)
+                except Exception:
+                    # If fallback also fails, re-raise the original exception
+                    pass
+        # Re-raise the original exception if we can't handle it
+        raise exc
 
 
 def history_to_messages(history: Iterable[chat_models.ChatMessage]) -> list[BaseMessage]:

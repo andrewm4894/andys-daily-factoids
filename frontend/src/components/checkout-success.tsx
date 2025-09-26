@@ -116,7 +116,7 @@ export function CheckoutSuccess({ sessionId }: CheckoutSuccessProps) {
               from the homepage whenever you&apos;re ready.
             </p>
           </div>
-          <FactoidCard factoid={factoid} initiallyExpanded />
+          <FactoidCard factoid={factoid} initiallyExpanded models={[]} />
         </div>
       )}
 

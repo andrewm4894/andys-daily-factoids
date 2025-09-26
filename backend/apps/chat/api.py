@@ -105,8 +105,16 @@ class ChatSessionCreateView(APIView):
                     exc, client_hash, factoid, distinct_id, posthog_properties
                 )
 
-        resolved_model = model_key or getattr(
-            settings, "FACTOID_AGENT_DEFAULT_MODEL", "openai/gpt-5-mini"
+        # Use the same model resolution logic as the agent
+        from apps.chat.services.factoid_agent import _resolve_chat_model_key
+
+        api_key = getattr(settings, "OPENROUTER_API_KEY", None)
+        base_url = getattr(settings, "OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+
+        resolved_model = _resolve_chat_model_key(
+            model_key,
+            api_key=api_key,
+            base_url=base_url,
         )
         session = chat_models.ChatSession.objects.create(
             factoid=factoid,

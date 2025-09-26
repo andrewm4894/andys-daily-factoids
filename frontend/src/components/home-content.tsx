@@ -82,6 +82,7 @@ export function HomeContent({ initialFactoids, models }: HomeContentProps) {
           <FactoidCard
             key={factoid.id}
             factoid={factoid}
+            models={models}
             isAlternate={index % 2 === 1}
             colorIndex={index % 6}
           />

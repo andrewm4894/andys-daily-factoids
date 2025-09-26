@@ -29,10 +29,15 @@ import {
 
 interface FactoidChatPanelProps {
   factoid: Factoid;
+  models?: string[];
   onClose?: () => void;
 }
 
-export function FactoidChatPanel({ factoid, onClose }: FactoidChatPanelProps) {
+export function FactoidChatPanel({
+  factoid,
+  models,
+  onClose,
+}: FactoidChatPanelProps) {
   const [session, setSession] = useState<ChatSessionSummary | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [rateLimit, setRateLimit] = useState<ChatRateLimitSnapshot | null>(
@@ -41,6 +46,8 @@ export function FactoidChatPanel({ factoid, onClose }: FactoidChatPanelProps) {
   const [checkoutSession, setCheckoutSession] =
     useState<CheckoutSessionResponse | null>(null);
   const [inputValue, setInputValue] = useState("");
+  const [selectedModel, setSelectedModel] = useState<string>("");
+  const [showModelSelector, setShowModelSelector] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -54,6 +61,8 @@ export function FactoidChatPanel({ factoid, onClose }: FactoidChatPanelProps) {
     setRateLimit(null);
     setCheckoutSession(null);
     setErrorMessage(null);
+    setSelectedModel("");
+    setShowModelSelector(false);
     hasInitializedRef.current = false;
     previousMessageCountRef.current = 0;
   }, [factoid.id]);
@@ -106,7 +115,10 @@ export function FactoidChatPanel({ factoid, onClose }: FactoidChatPanelProps) {
     setIsInitializing(true);
     setErrorMessage(null);
 
-    createChatSession({ factoidId: factoid.id })
+    createChatSession({
+      factoidId: factoid.id,
+      ...(selectedModel && { modelKey: selectedModel }),
+    })
       .then((response) => {
         if (cancelled) {
           return;
@@ -154,6 +166,7 @@ export function FactoidChatPanel({ factoid, onClose }: FactoidChatPanelProps) {
           const response = await createChatSession({
             factoidId: factoid.id,
             message: trimmed,
+            ...(selectedModel && { modelKey: selectedModel }),
           });
           setSession(response.session);
           setMessages(response.messages);
@@ -232,6 +245,96 @@ export function FactoidChatPanel({ factoid, onClose }: FactoidChatPanelProps) {
           <p className="text-xs text-[color:var(--text-muted)]">
             Ask follow-up questions or request supporting sources.
           </p>
+          {session?.model_key && (
+            <div className="mt-1 flex items-center gap-1 text-[10px] text-[color:var(--text-muted)]">
+              <span title="Current AI model">ℹ️</span>
+              <span>Model: {session.model_key}</span>
+            </div>
+          )}
+          {session &&
+            messages.filter((msg) => msg.role === "user").length === 0 &&
+            models &&
+            models.length > 0 && (
+              <div className="mt-2 space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setShowModelSelector(!showModelSelector)}
+                  className="text-xs text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] transition-colors"
+                >
+                  {showModelSelector ? "Hide" : "Change"} AI model{" "}
+                  {showModelSelector ? "▲" : "▼"}
+                </button>
+                {showModelSelector && (
+                  <div className="space-y-2">
+                    <select
+                      value={selectedModel || session.model_key}
+                      onChange={(e) => setSelectedModel(e.target.value)}
+                      className="w-full rounded-md border border-[color:var(--input-border)] bg-[color:var(--input-bg)] px-2 py-1 text-xs text-[color:var(--text-secondary)] focus:border-[color:var(--input-border-focus)] focus:outline-none"
+                    >
+                      <option value="">Random model (recommended)</option>
+                      {models.map((model) => (
+                        <option key={model} value={model}>
+                          {model}
+                        </option>
+                      ))}
+                    </select>
+                    {selectedModel && selectedModel !== session.model_key && (
+                      <div className="space-y-1">
+                        <p className="text-[10px] text-[color:var(--text-muted)]">
+                          Will use: {selectedModel}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // Reset session to force recreation with new model
+                            setSession(null);
+                            setMessages([]);
+                            hasInitializedRef.current = false;
+                            setShowModelSelector(false);
+                          }}
+                          className="text-xs bg-[color:var(--button-primary-bg)] text-[color:var(--button-primary-text)] px-2 py-1 rounded hover:bg-[color:var(--button-primary-hover)] transition-colors"
+                        >
+                          Apply model change
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          {!session && models && models.length > 0 && (
+            <div className="mt-2 space-y-2">
+              <button
+                type="button"
+                onClick={() => setShowModelSelector(!showModelSelector)}
+                className="text-xs text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] transition-colors"
+              >
+                {showModelSelector ? "Hide" : "Choose"} AI model{" "}
+                {showModelSelector ? "▲" : "▼"}
+              </button>
+              {showModelSelector && (
+                <div className="space-y-2">
+                  <select
+                    value={selectedModel}
+                    onChange={(e) => setSelectedModel(e.target.value)}
+                    className="w-full rounded-md border border-[color:var(--input-border)] bg-[color:var(--input-bg)] px-2 py-1 text-xs text-[color:var(--text-secondary)] focus:border-[color:var(--input-border-focus)] focus:outline-none"
+                  >
+                    <option value="">Random model (recommended)</option>
+                    {models.map((model) => (
+                      <option key={model} value={model}>
+                        {model}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedModel && (
+                    <p className="text-[10px] text-[color:var(--text-muted)]">
+                      Selected: {selectedModel}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <button
           type="button"
@@ -274,11 +377,26 @@ export function FactoidChatPanel({ factoid, onClose }: FactoidChatPanelProps) {
 
       <div className="max-h-64 space-y-3 overflow-y-auto rounded-md border border-[color:var(--surface-card-border)] bg-[color:var(--surface-card)] p-3 text-sm">
         {messages.length === 0 && (
-          <p className="text-[color:var(--text-muted)]">
-            {isInitializing
-              ? "Connecting to the factoid agent..."
-              : "Ask anything about this factoid to get started."}
-          </p>
+          <div className="space-y-2 text-[color:var(--text-muted)]">
+            {isInitializing ? (
+              <p>Connecting to the factoid agent...</p>
+            ) : (
+              <>
+                <p>Ask anything about this factoid to get started.</p>
+                {session?.model_key && (
+                  <p className="text-[10px] text-[color:var(--text-muted)] border-l-2 border-[color:var(--surface-card-border)] pl-2">
+                    🤖 Using AI model:{" "}
+                    <span className="font-mono">{session.model_key}</span>
+                    {!selectedModel && models && models.length > 0 && (
+                      <span className="ml-1">
+                        (randomly selected - you can change it above)
+                      </span>
+                    )}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
         )}
         {messages
           .filter((message) => message.role !== "tool")

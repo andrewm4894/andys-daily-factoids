@@ -81,6 +81,7 @@ export default async function FactoidPage({ params }: FactoidPageProps) {
           <FactoidCard
             key={item.id}
             factoid={item}
+            models={models}
             initiallyExpanded={index === 0}
             isAlternate={index % 2 === 1}
             colorIndex={index % 6}

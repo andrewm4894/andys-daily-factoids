@@ -11,6 +11,7 @@ import { FactoidChatPanel } from "@/components/factoid-chat-panel";
 
 interface FactoidCardProps {
   factoid: Factoid;
+  models?: string[];
   initiallyExpanded?: boolean;
   isAlternate?: boolean;
   colorIndex?: number;
@@ -18,6 +19,7 @@ interface FactoidCardProps {
 
 export function FactoidCard({
   factoid,
+  models,
   initiallyExpanded = false,
   isAlternate = false,
   colorIndex,
@@ -574,6 +576,7 @@ export function FactoidCard({
             {showChat && (
               <FactoidChatPanel
                 factoid={factoid}
+                models={models}
                 onClose={() => setShowChat(false)}
               />
             )}
