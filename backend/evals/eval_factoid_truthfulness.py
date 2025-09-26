@@ -1,12 +1,12 @@
-"""Truthfulness eval for factoid generation using autoevals."""
+"""Truthfulness eval for factoid generation using custom scorers."""
 
 import asyncio
 from typing import Any, Dict, List
 
-from autoevals import Factuality
 from braintrust import Eval, init
 
 from evals.core.base import FactoidEvalTask
+from evals.scorers import factoid_truthfulness
 
 
 async def truthfulness_scorer(
@@ -35,22 +35,15 @@ async def truthfulness_scorer(
 
     try:
         # Use autoevals Factuality scorer
-        # We treat the topic as input and the factoid as output
-        # No expected value since we're checking general truthfulness
-        result = await Factuality(
-            input=f"Generate a factoid about: {topic}",
-            output=factoid_text,
-            expected=None,  # We don't have ground truth
-            model="gpt-4-turbo-preview",  # Use GPT-4 as judge
-        )
+        # Use custom truthfulness scorer
+        result = factoid_truthfulness(factoid_text, context={"input": {"topic": topic}})
 
         return {
             "name": "truthfulness",
             "score": result.score,
             "metadata": {
-                "reasoning": result.metadata.get("rationale")
-                if hasattr(result, "metadata")
-                else None,
+                "reasoning": result.metadata.get("reasoning", ""),
+                "verdict": result.metadata.get("verdict", ""),
                 "topic": topic,
                 "factoid_length": len(factoid_text),
             },
@@ -127,28 +120,27 @@ async def run_truthfulness_eval(
     # Default test topics if none provided
     if test_topics is None:
         test_topics = [
-            {"topic": "The Great Wall of China", "category": "history"},
-            {"topic": "Black Holes", "category": "science"},
-            {"topic": "Amazon Rainforest", "category": "nature"},
-            {"topic": "Bitcoin", "category": "technology"},
-            {"topic": "Shakespeare", "category": "literature"},
+            {"input": {"topic": "The Great Wall of China", "category": "history"}},
+            {"input": {"topic": "Black Holes", "category": "science"}},
+            {"input": {"topic": "Amazon Rainforest", "category": "nature"}},
+            {"input": {"topic": "Bitcoin", "category": "technology"}},
+            {"input": {"topic": "Shakespeare", "category": "literature"}},
         ]
 
     # Create the eval task
     task = FactoidEvalTask(model=model)
 
-    # Run the evaluation
+    # Run the evaluation with custom scorer
     result = await Eval(
         name=experiment_name,
-        project="andys-daily-factoids",
         data=test_topics,
         task=task,
-        scores=[truthfulness_scorer, relevance_scorer],
+        scores=[factoid_truthfulness, relevance_scorer],
         metadata={
             "model": model,
             "eval_type": "truthfulness",
             "num_topics": len(test_topics),
-            "judge_model": "gpt-4-turbo-preview",
+            "judge_model": "openai/gpt-4-turbo-preview",
         },
     )
 

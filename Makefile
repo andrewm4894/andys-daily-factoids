@@ -124,3 +124,12 @@ eval-truthfulness: eval-install ## Test factoid truthfulness with LLM judge
 
 eval-daily: eval-install ## Run daily eval on small random sample (5 topics)
 	cd backend && uv run python evals/run_evals.py --daily --sample-size 5
+
+eval-create-dataset: eval-install ## Create Braintrust dataset from production factoids
+	cd backend && uv run python evals/create_production_dataset.py --sample-size 50
+
+eval-production: eval-install ## Run evals on production dataset
+	cd backend && uv run python evals/run_evals.py --use-production-data --sample-size 10
+
+eval-test-scorers: eval-install ## Test custom scorer functions
+	cd backend && uv run python evals/test_scorers.py

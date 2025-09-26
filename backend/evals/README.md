@@ -4,9 +4,14 @@ This directory contains the Braintrust evaluation framework for testing factoid 
 
 ## Quick Start
 
+**Prerequisites**: Ensure `BRAINTRUST_API_KEY` is set in `backend/.env`
+
 ```bash
 # Install dependencies
 make eval-install
+
+# Create production dataset from database
+make eval-create-dataset
 
 # Run all evaluations (structure + truthfulness)
 make eval
@@ -17,20 +22,30 @@ make eval-truthfulness   # Test truthfulness with GPT-4 judge
 
 # Run daily eval on small sample
 make eval-daily
+
+# Run evals on production data
+make eval-production
 ```
 
 ## Available Evaluations
 
 ### 1. Structure Validation
 Tests that generated factoids can be parsed into the required format:
-- Validates presence of text, subject, and emoji fields
-- Checks field length constraints
-- Ensures proper JSON/tool call parsing
+- **JSON Validator** - Uses production parsing logic to validate JSON structure
+- **Field Completeness** - Validates presence and quality of text, subject, emoji fields
+- **Length Constraints** - Checks subject ≤255 chars, emoji ≤16 chars
 
 ### 2. Truthfulness Evaluation
-Uses GPT-4 as a judge (via autoevals) to assess:
-- Factual accuracy of generated factoids
-- Relevance to the requested topic
+Uses GPT-4 as a judge (via OpenRouter) to assess:
+- **Factual Accuracy** - LLM judge determines if factoids are truthful
+- **Topic Relevance** - Keyword-based relevance scoring
+
+## Custom Scorers
+
+All scorers are defined in `evals/scorers.py`:
+
+- `json_is_valid()` - Code scorer using production FactoidPayload validation
+- `factoid_truthfulness()` - LLM-as-judge using OpenRouter GPT-4
 
 ## Project Structure
 

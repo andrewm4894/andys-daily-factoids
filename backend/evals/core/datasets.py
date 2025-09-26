@@ -27,9 +27,48 @@ class DatasetManager:
             with open(topics_file) as f:
                 topics = json.load(f)
 
+        # Wrap topics in input field for Braintrust
+        formatted_topics = [{"input": topic} for topic in topics]
+
         if sample_size:
-            return random.sample(topics, min(sample_size, len(topics)))
-        return topics
+            return random.sample(formatted_topics, min(sample_size, len(formatted_topics)))
+        return formatted_topics
+
+    def load_production_factoids(self, sample_size: int = 50) -> List[Dict[str, Any]]:
+        """Load recent production factoids for evaluation."""
+        try:
+            from apps.factoids.models import Factoid
+
+            # Get most recent factoids
+            recent_factoids = Factoid.objects.order_by("-created_at")[:sample_size]
+
+            eval_data = []
+            for factoid in recent_factoids:
+                eval_data.append(
+                    {
+                        "input": {
+                            "topic": factoid.subject,
+                            "factoid_id": str(factoid.id),
+                            "created_at": factoid.created_at.isoformat(),
+                        },
+                        "expected": {
+                            "text": factoid.text,
+                            "subject": factoid.subject,
+                            "emoji": factoid.emoji,
+                        },
+                        "metadata": {
+                            "votes_up": factoid.votes_up,
+                            "votes_down": factoid.votes_down,
+                            "generation_metadata": factoid.generation_metadata,
+                        },
+                    }
+                )
+
+            return eval_data
+        except Exception as e:
+            print(f"Warning: Could not load production factoids: {e}")
+            # Fall back to test topics
+            return self.load_test_topics(sample_size)
 
     def save_test_topics(self, topics: List[Dict[str, Any]]) -> None:
         """Save test topics to file."""
@@ -58,8 +97,15 @@ class DatasetManager:
 
     def create_daily_sample(self, size: int = 10) -> List[Dict[str, Any]]:
         """Generate a random sample for daily evals."""
-        all_topics = self.load_test_topics()
-        sample = random.sample(all_topics, min(size, len(all_topics)))
+        # Load raw topics without input wrapper
+        topics_file = self.data_dir / "test_topics.json"
+        if topics_file.exists():
+            with open(topics_file) as f:
+                raw_topics = json.load(f)
+        else:
+            raw_topics = self._get_default_test_topics()
+
+        sample = random.sample(raw_topics, min(size, len(raw_topics)))
 
         # Optionally mix in some production topics
         try:
@@ -79,7 +125,8 @@ class DatasetManager:
         except Exception:
             pass  # Skip if database isn't available
 
-        return sample[:size]  # Trim to requested size
+        # Wrap in input field for Braintrust
+        return [{"input": topic} for topic in sample[:size]]
 
     def _get_default_test_topics(self) -> List[Dict[str, Any]]:
         """Get default test topics across various categories."""

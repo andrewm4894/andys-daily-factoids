@@ -9,8 +9,13 @@ from pathlib import Path
 backend_dir = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(backend_dir))
 
+# Load environment variables from .env file
+from dotenv import load_dotenv  # noqa: E402
+
+load_dotenv(backend_dir / ".env")
+
 import click  # noqa: E402
-from braintrust import init  # noqa: E402
+from braintrust import init, init_dataset  # noqa: E402
 
 from evals.core.datasets import DatasetManager  # noqa: E402
 from evals.eval_factoid_structure import run_structure_eval  # noqa: E402
@@ -45,21 +50,46 @@ from evals.eval_factoid_truthfulness import run_truthfulness_eval  # noqa: E402
     is_flag=True,
     help="Show detailed output",
 )
-def run_evals(eval_type, sample_size, model, daily, verbose):
+@click.option(
+    "--use-production-data",
+    is_flag=True,
+    help="Use production factoids dataset instead of test topics",
+)
+@click.option(
+    "--dataset-name",
+    default="production-factoids",
+    help="Name of Braintrust dataset to use",
+)
+def run_evals(eval_type, sample_size, model, daily, verbose, use_production_data, dataset_name):
     """Run Braintrust evaluations for factoid generation."""
     # Initialize Braintrust
     init(project="andys-daily-factoids")
 
     # Load test data
-    dataset_manager = DatasetManager()
-
-    if daily:
-        print(f"Running daily eval with {sample_size} random samples...")
-        test_topics = dataset_manager.create_daily_sample(size=sample_size)
+    if use_production_data:
+        print(f"Loading production dataset: {dataset_name}")
+        try:
+            dataset = init_dataset(project="andys-daily-factoids", name=dataset_name)
+            # Load data from Braintrust dataset
+            data_items = list(dataset)
+            if sample_size:
+                data_items = data_items[:sample_size]
+            test_topics = data_items
+            print(f"Loaded {len(test_topics)} items from production dataset")
+        except Exception as e:
+            print(f"❌ Failed to load production dataset: {e}")
+            print("Falling back to test topics...")
+            dataset_manager = DatasetManager()
+            test_topics = dataset_manager.load_test_topics(sample_size=sample_size)
     else:
-        test_topics = dataset_manager.load_test_topics(sample_size=sample_size)
+        dataset_manager = DatasetManager()
+        if daily:
+            print(f"Running daily eval with {sample_size} random samples...")
+            test_topics = dataset_manager.create_daily_sample(size=sample_size)
+        else:
+            test_topics = dataset_manager.load_test_topics(sample_size=sample_size)
 
-    print(f"Loaded {len(test_topics)} test topics")
+    print(f"Using {len(test_topics)} test cases")
 
     # Track results
     results = []

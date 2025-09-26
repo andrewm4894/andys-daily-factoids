@@ -6,6 +6,7 @@ from typing import Any, Dict, List
 from braintrust import Eval, init
 
 from evals.core.base import FactoidEvalTask, parse_factoid_with_app_logic
+from evals.scorers import json_is_valid
 
 
 def structure_scorer(
@@ -147,23 +148,22 @@ async def run_structure_eval(
     # Default test topics if none provided
     if test_topics is None:
         test_topics = [
-            {"topic": "Ancient Rome", "category": "history"},
-            {"topic": "Quantum Computing", "category": "technology"},
-            {"topic": "Deep Sea Creatures", "category": "nature"},
-            {"topic": "The Moon", "category": "space"},
-            {"topic": "Coffee", "category": "food"},
+            {"input": {"topic": "Ancient Rome", "category": "history"}},
+            {"input": {"topic": "Quantum Computing", "category": "technology"}},
+            {"input": {"topic": "Deep Sea Creatures", "category": "nature"}},
+            {"input": {"topic": "The Moon", "category": "space"}},
+            {"input": {"topic": "Coffee", "category": "food"}},
         ]
 
     # Create the eval task
     task = FactoidEvalTask(model=model)
 
-    # Run the evaluation
+    # Run the evaluation with custom scorer
     result = await Eval(
         name=experiment_name,
-        project="andys-daily-factoids",
         data=test_topics,
         task=task,
-        scores=[structure_scorer, field_completeness_scorer],
+        scores=[json_is_valid, field_completeness_scorer],
         metadata={
             "model": model,
             "eval_type": "structure",
