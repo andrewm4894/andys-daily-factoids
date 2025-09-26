@@ -1,80 +1,95 @@
-# Braintrust Evaluations for Factoid Generation
+# Factoid Quality Evaluation
 
-This directory contains the Braintrust evaluation framework for testing factoid generation quality.
+Unified quality evaluation system for Andy's Daily Factoids using Braintrust.
 
-## Quick Start
+## Overview
 
-**Prerequisites**: Ensure `BRAINTRUST_API_KEY` is set in `backend/.env`
+Single `eval.py` script provides **flexible factoid evaluation** with three key quality metrics:
 
+- **🏗️ Structure Quality**: Validates JSON parsing and required fields
+- **✅ Truthfulness Quality**: LLM-as-judge evaluation using GPT-4
+- **👥 User Feedback**: Score based on user votes (up/down ratio)
+
+## Usage
+
+### Quick Commands
 ```bash
-# Install dependencies
-make eval-install
-
-# Create production dataset from database
-make eval-create-dataset
-
-# Run all evaluations (structure + truthfulness)
-make eval
-
-# Run specific evaluations
-make eval-structure      # Test factoid structure parsing only
-make eval-truthfulness   # Test truthfulness with GPT-4 judge
-
-# Run daily eval on small sample
+# Daily automated evaluation (20 factoids, hybrid approach)
 make eval-daily
 
-# Run evals on production data
-make eval-production
+# Manual evaluation (100 factoids, hybrid approach)
+make eval-manual
 ```
 
-## Available Evaluations
+### Direct Script Usage
+```bash
+# Basic usage
+uv run python evals/eval.py
 
-### 1. Structure Validation
-Tests that generated factoids can be parsed into the required format:
-- **JSON Validator** - Uses production parsing logic to validate JSON structure
-- **Field Completeness** - Validates presence and quality of text, subject, emoji fields
-- **Length Constraints** - Checks subject ≤255 chars, emoji ≤16 chars
+# Hybrid evaluation (default approach)
+uv run python evals/eval.py --hybrid --sample-size 50 --experiment-name "my-test"
 
-### 2. Truthfulness Evaluation
-Uses GPT-4 as a judge (via OpenRouter) to assess:
-- **Factual Accuracy** - LLM judge determines if factoids are truthful
-- **Topic Relevance** - Keyword-based relevance scoring
+# Fast mode (no API calls)
+uv run python evals/eval.py --hybrid --skip-truthfulness
 
-## Custom Scorers
+# Daily mode (auto-generates date-based experiment name)
+uv run python evals/eval.py --daily --hybrid --sample-size 20
 
-All scorers are defined in `evals/scorers.py`:
-
-- `json_is_valid()` - Code scorer using production FactoidPayload validation
-- `factoid_truthfulness()` - LLM-as-judge using OpenRouter GPT-4
-
-## Project Structure
-
-```
-evals/
-├── core/
-│   ├── base.py          # Django integration and eval task wrapper
-│   └── datasets.py      # Test data management
-├── data/
-│   └── test_topics.json # Sample test topics
-├── eval_factoid_structure.py      # Structure validation eval
-├── eval_factoid_truthfulness.py   # Truthfulness eval
-└── run_evals.py         # Main runner script
+# Production mode (uses production Django settings)
+uv run python evals/eval.py --production --daily --hybrid --sample-size 20
 ```
 
-## Viewing Results
+### Parameters
 
-Results are sent to Braintrust dashboard:
-https://www.braintrust.dev/app/andys-daily-factoids
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `--sample-size` | 20 | Number of recent factoids to evaluate |
+| `--experiment-name` | Auto-generated | Custom Braintrust experiment name |
+| `--skip-truthfulness` | False | Skip LLM evaluation to avoid API calls |
+| `--daily` | False | Use daily mode (date-based experiment naming) |
+| `--production` | False | Use production Django settings |
+| `--hybrid` | False | Use hybrid approach: Braintrust traces for structure, DB for user feedback |
 
-## Adding New Evaluations
+## Production Automation
 
-1. Create a new eval file (e.g., `eval_factoid_emoji.py`)
-2. Implement scorer functions
-3. Add to `run_evals.py`
-4. Update Makefile with new command
+**Render Cron Job** runs daily at noon UTC:
+```yaml
+- type: cron
+  name: daily-eval
+  schedule: "0 12 * * *"
+  startCommand: uv run python evals/eval.py --daily --hybrid --production --sample-size 20
+```
 
-## Configuration
+## Files
 
-- Model for generation: `--model openai/gpt-4o-mini`
-- Sample size: `--sample-size 5`
-- Eval type: `--eval-type structure|truthfulness|all`
+- **`eval.py`**: Unified evaluation script with hybrid approach support
+- **`braintrust_traces.py`**: Braintrust API integration for trace retrieval
+- **`scorers.py`**: Custom Braintrust scoring functions
+- **`test_scorers.py`**: Validation tests for scorers
+
+## Results
+
+All results stored in "andys-daily-factoids" project in Braintrust:
+🔗 https://www.braintrust.dev/app/andys-daily-factoids
+
+### Experiment Naming
+- **Daily mode**: `daily-eval-YYYY-MM-DD`
+- **Manual mode**: `manual-eval-YYYYMMDD-HHMMSS`
+- **Custom**: User-specified experiment name
+
+## Quality Benchmarks
+
+**Current scores** (as of latest evaluation):
+- Structure Quality: ~100% (excellent)
+- Truthfulness Quality: ~90% (very good)
+- User Feedback: ~49-50% (room for improvement)
+
+## Performance
+
+| Mode | Sample Size | Truthfulness | Duration |
+|------|-------------|--------------|----------|
+| Daily (Hybrid) | 20 | ✅ Included | ~15 seconds |
+| Manual (Hybrid) | 100 | ✅ Included | ~50 seconds |
+| Fast | 50 | ❌ Skipped | ~2 seconds |
+
+Simple, unified, and flexible evaluation system for comprehensive factoid quality monitoring!

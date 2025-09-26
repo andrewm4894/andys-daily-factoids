@@ -21,7 +21,11 @@ from posthog.ai.langchain import CallbackHandler
 from pydantic import BaseModel, Field
 
 from apps.chat import models as chat_models
-from apps.core.braintrust import get_braintrust_callback_handler, initialize_braintrust
+from apps.core.braintrust import (
+    get_braintrust_callback_handler,
+    initialize_braintrust,
+    log_operation_metadata,
+)
 from apps.core.langsmith import get_langsmith_callback_handler, initialize_langsmith
 from apps.core.posthog import get_posthog_client
 from apps.factoids.models import Factoid
@@ -556,6 +560,13 @@ def _build_callbacks(
     braintrust_callback = get_braintrust_callback_handler()
     if braintrust_callback:
         callbacks.append(braintrust_callback)
+
+    # Log operation metadata for trace filtering
+    log_operation_metadata(
+        "factoid_chat",
+        service="chat_agent",
+        factoid_id=str(factoid.id),
+    )
 
     # Initialize LangSmith (this will set up global tracing automatically)
     initialize_langsmith()
