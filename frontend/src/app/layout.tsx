@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Suspense } from "react";
 
 import {
@@ -21,6 +22,21 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        {/* Google tag (gtag.js) */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=AW-981356332"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'AW-981356332');
+          `}
+        </Script>
+      </head>
       <body className="min-h-screen bg-[color:var(--background)] text-[color:var(--foreground)] transition-colors duration-300">
         <Suspense fallback={<></>}>
           <ThemeProvider>
