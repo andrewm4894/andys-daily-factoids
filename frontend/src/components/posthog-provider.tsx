@@ -4,6 +4,18 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, type ReactElement, type ReactNode } from "react";
 import { posthog } from "@/lib/posthog";
 
+// Declare gtag function for TypeScript
+declare global {
+  interface Window {
+    gtag: (
+      command: string,
+      action: string,
+      parameters?: Record<string, unknown>
+    ) => void;
+    dataLayer: unknown[];
+  }
+}
+
 export function PostHogPageView(): ReactElement | null {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -14,9 +26,20 @@ export function PostHogPageView(): ReactElement | null {
       if (searchParams.toString()) {
         url = url + `?${searchParams.toString()}`;
       }
+
+      // Track page view with PostHog
       posthog.capture("$pageview", {
         $current_url: url,
       });
+
+      // Fire Google Ads conversion event for page view
+      if (typeof window.gtag === "function") {
+        window.gtag("event", "conversion", {
+          send_to: "AW-981356332/GOyBCKrVmaIbEKye-dMD",
+          value: 1.0,
+          currency: "EUR",
+        });
+      }
     }
   }, [pathname, searchParams]);
 
