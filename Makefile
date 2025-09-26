@@ -109,27 +109,12 @@ precommit-run: ## Run pre-commit hooks on all files
 precommit-update: ## Update pre-commit hooks to latest versions
 	pre-commit autoupdate
 
-# Braintrust Evaluation Commands
+# Quality Evaluation Commands
 eval-install: ## Install eval dependencies (braintrust and autoevals)
 	cd backend && uv pip install braintrust autoevals
 
-eval: eval-install ## Run all Braintrust evaluations
-	cd backend && uv run python evals/run_evals.py --eval-type all
+eval-daily: eval-install ## Run daily automated evaluation (20 most recent factoids, hybrid approach)
+	cd backend && uv run python evals/eval.py --daily --hybrid --sample-size 20
 
-eval-structure: eval-install ## Test factoid structure parsing only
-	cd backend && uv run python evals/run_evals.py --eval-type structure
-
-eval-truthfulness: eval-install ## Test factoid truthfulness with LLM judge
-	cd backend && uv run python evals/run_evals.py --eval-type truthfulness
-
-eval-daily: eval-install ## Run daily eval on small random sample (5 topics)
-	cd backend && uv run python evals/run_evals.py --daily --sample-size 5
-
-eval-create-dataset: eval-install ## Create Braintrust dataset from production factoids
-	cd backend && uv run python evals/create_production_dataset.py --sample-size 50
-
-eval-production: eval-install ## Run evals on production dataset
-	cd backend && uv run python evals/run_evals.py --use-production-data --sample-size 10
-
-eval-test-scorers: eval-install ## Test custom scorer functions
-	cd backend && uv run python evals/test_scorers.py
+eval-manual: eval-install ## Manual evaluation of larger sample (100 factoids, hybrid approach)
+	cd backend && uv run python evals/eval.py --hybrid --sample-size 100
