@@ -30,7 +30,7 @@ Key traits:
 - **Django-powered core**: the API, persistence, and generation workflows live in Django REST Framework and the `apps/` service modules.
 - **OpenRouter + PostHog instrumentation**: OpenRouter produces the factoids while PostHog traces every generation for analytics.
 - **Governed usage**: client hashing, rate limiting, and a `CostGuard` keep anonymous usage bounded even when Redis is unavailable (in-memory fallback).
-- **Always-fresh content**: a Render cron job reuses the management command to seed new factoids hourly with the same validation pipeline the UI uses.
+- **Always-fresh content**: a Render cron job reuses the management command to seed new factoids every 30 minutes with the same validation pipeline the UI uses.
 
 ## Frontend Architecture (`frontend/`)
 
@@ -96,7 +96,7 @@ Votes append `VoteAggregate` rows so analytics can reason about raw events even 
 Render provisions a 30-minute cron job (`render.yaml`) that executes:
 
 ```
-uv run python manage.py generate_factoid --client hourly-cron --profile anonymous
+uv run python manage.py generate_factoid --client 30min-cron --profile anonymous
 ```
 
 The management command (`apps/factoids/management/commands/generate_factoid.py`) reuses the same service layer to ensure scheduled content obeys rate limits, cost budgets, and logging conventions. Additional helper commands (e.g., `seed_factoids`) exist for local bootstrapping.

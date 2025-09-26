@@ -9,7 +9,7 @@ Andy’s Daily Factoids now runs as a Render-hosted stack: a Django API feeds a 
 
 ## Features
 
-- Pull fresh factoids on demand (now hourly by default).
+- Pull fresh factoids on demand (now every 30 minutes by default).
 - Vote 🤯 or 😒 and see the live tally for each factoid.
 - Shuffle through the catalogue without waiting for generation.
 - One-click copy + Google search for the curious.
