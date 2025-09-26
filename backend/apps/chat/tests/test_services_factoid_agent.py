@@ -366,7 +366,22 @@ class TestFactoidAgent:
         sample_factoid,
         agent_config,
     ):
-        mock_tool = MagicMock()
+        # Create a proper mock tool that behaves like a real BaseTool
+        from langchain_core.tools import BaseTool
+        from pydantic import BaseModel
+        
+        class MockSearchInput(BaseModel):
+            query: str
+            
+        class MockTool(BaseTool):
+            name: str = "web_search"
+            description: str = "Search the web"
+            args_schema: type[BaseModel] = MockSearchInput
+            
+            def _run(self, query: str) -> str:
+                return "mock search results"
+        
+        mock_tool = MockTool()
         mock_build_search.return_value = mock_tool
         mock_model_instance = MagicMock()
         mock_bound_model = MagicMock()
@@ -542,8 +557,15 @@ class TestHistoryToMessages:
 
     @pytest.mark.django_db()
     def test_converts_user_messages(self):
+        # Create a chat session first
+        chat_session = chat_models.ChatSession.objects.create(
+            model_key="gpt-4",
+            client_hash="test-client"
+        )
         chat_message = chat_models.ChatMessage.objects.create(
-            role=chat_models.ChatMessageRole.USER, content={"text": "Hello there"}
+            session=chat_session,
+            role=chat_models.ChatMessageRole.USER, 
+            content={"text": "Hello there"}
         )
 
         messages = history_to_messages([chat_message])
@@ -554,7 +576,13 @@ class TestHistoryToMessages:
 
     @pytest.mark.django_db()
     def test_converts_assistant_messages(self):
+        # Create a chat session first
+        chat_session = chat_models.ChatSession.objects.create(
+            model_key="gpt-4",
+            client_hash="test-client"
+        )
         chat_message = chat_models.ChatMessage.objects.create(
+            session=chat_session,
             role=chat_models.ChatMessageRole.ASSISTANT,
             content={
                 "content": "Hello back",
@@ -572,7 +600,13 @@ class TestHistoryToMessages:
 
     @pytest.mark.django_db()
     def test_converts_tool_messages(self):
+        # Create a chat session first
+        chat_session = chat_models.ChatSession.objects.create(
+            model_key="gpt-4",
+            client_hash="test-client"
+        )
         chat_message = chat_models.ChatMessage.objects.create(
+            session=chat_session,
             role=chat_models.ChatMessageRole.TOOL,
             content={"content": "Search results here", "tool_call_id": "call_123"},
         )
@@ -586,8 +620,14 @@ class TestHistoryToMessages:
 
     @pytest.mark.django_db()
     def test_skips_invalid_messages(self):
+        # Create a chat session first
+        chat_session = chat_models.ChatSession.objects.create(
+            model_key="gpt-4",
+            client_hash="test-client"
+        )
         # Create a message with an unknown role
         chat_message = chat_models.ChatMessage.objects.create(
+            session=chat_session,
             role="INVALID_ROLE",  # This will be saved as string
             content={"text": "This should be skipped"},
         )

@@ -11,7 +11,7 @@ graph LR
     subgraph Render
         Frontend[Next.js App\nfrontend/]
         Backend[Django API\nbackend/]
-        Cron[Hourly Cron Job]
+        Cron[30-Minute Cron Job]
     end
 
     User[Browser User] -->|HTTPS| Frontend
@@ -30,7 +30,7 @@ Key traits:
 - **Django-powered core**: the API, persistence, and generation workflows live in Django REST Framework and the `apps/` service modules.
 - **OpenRouter + PostHog instrumentation**: OpenRouter produces the factoids while PostHog traces every generation for analytics.
 - **Governed usage**: client hashing, rate limiting, and a `CostGuard` keep anonymous usage bounded even when Redis is unavailable (in-memory fallback).
-- **Always-fresh content**: a Render cron job reuses the management command to seed new factoids hourly with the same validation pipeline the UI uses.
+- **Always-fresh content**: a Render cron job reuses the management command to seed new factoids every 30 minutes with the same validation pipeline the UI uses.
 
 ## Frontend Architecture (`frontend/`)
 
@@ -93,10 +93,10 @@ Votes append `VoteAggregate` rows so analytics can reason about raw events even 
 
 ## Scheduled generation & background workflows
 
-Render provisions an hourly cron job (`render.yaml`) that executes:
+Render provisions a 30-minute cron job (`render.yaml`) that executes:
 
 ```
-uv run python manage.py generate_factoid --client hourly-cron --profile anonymous
+uv run python manage.py generate_factoid --client 30min-cron --profile anonymous
 ```
 
 The management command (`apps/factoids/management/commands/generate_factoid.py`) reuses the same service layer to ensure scheduled content obeys rate limits, cost budgets, and logging conventions. Additional helper commands (e.g., `seed_factoids`) exist for local bootstrapping.
@@ -106,7 +106,7 @@ The management command (`apps/factoids/management/commands/generate_factoid.py`)
 - **Render services**: `render.yaml` defines three services:
   - `factoids-backend` (Python): installs `uv`, syncs dependencies, runs migrations and `collectstatic`, then starts Gunicorn with the production settings module.
   - `factoids-frontend` (Node): installs dependencies, builds the Next app, and serves via `next start`.
-  - `hourly-factoid` (cron): installs backend deps and calls the management command every hour.
+  - `factoid-generator` (cron): installs backend deps and calls the management command every 30 minutes.
 - **Health check**: Render hits `/api/factoids/` on the backend service; failure to respond 200 surfaces as unhealthy.
 - **Logging & observability**: Django logs to stdout (captured by Render) while PostHog provides richer tracing of generation runs. If Redis is configured, rate-limit failures are also logged.
 - **Static hosting**: Gunicorn + WhiteNoise serve static assets collected during the build.
