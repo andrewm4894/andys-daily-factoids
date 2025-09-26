@@ -57,10 +57,10 @@ services:
         value: "1"
 
   - type: cron
-    name: hourly-factoid
+    name: factoid-generator
     runtime: python
     plan: starter
-    schedule: "0 * * * *"
+    schedule: "*/30 * * * *"
     buildCommand: |
       pip install uv
       cd backend
