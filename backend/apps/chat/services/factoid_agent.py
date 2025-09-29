@@ -39,6 +39,38 @@ except ImportError:  # pragma: no cover - optional dependency
 logger = logging.getLogger(__name__)
 
 
+class DebugPostHogCallback(CallbackHandler):
+    """Debug wrapper around PostHog callback to log when methods are called."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        logger.info("DebugPostHogCallback initialized")
+
+    def on_llm_start(self, *args, **kwargs):
+        logger.info("DebugPostHogCallback.on_llm_start called")
+        return super().on_llm_start(*args, **kwargs)
+
+    def on_llm_end(self, *args, **kwargs):
+        logger.info("DebugPostHogCallback.on_llm_end called")
+        return super().on_llm_end(*args, **kwargs)
+
+    def on_chain_start(self, *args, **kwargs):
+        logger.info("DebugPostHogCallback.on_chain_start called")
+        return super().on_chain_start(*args, **kwargs)
+
+    def on_chain_end(self, *args, **kwargs):
+        logger.info("DebugPostHogCallback.on_chain_end called")
+        return super().on_chain_end(*args, **kwargs)
+
+    def on_tool_start(self, *args, **kwargs):
+        logger.info("DebugPostHogCallback.on_tool_start called")
+        return super().on_tool_start(*args, **kwargs)
+
+    def on_tool_end(self, *args, **kwargs):
+        logger.info("DebugPostHogCallback.on_tool_end called")
+        return super().on_tool_end(*args, **kwargs)
+
+
 class AgentState(TypedDict):
     """State container for the LangGraph agent."""
 
@@ -546,7 +578,7 @@ def _build_callbacks(
         if extra_properties:
             properties.update(extra_properties)
 
-        posthog_callback = CallbackHandler(
+        posthog_callback = DebugPostHogCallback(
             client=client,
             distinct_id=distinct_id,
             trace_id=trace_id,
