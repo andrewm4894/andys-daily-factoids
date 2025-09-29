@@ -15,14 +15,14 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "factoids_project.settings.local
 # Enable LangSmith tracing for this test
 os.environ["LANGSMITH_TRACING"] = "True"
 
-import django
+import django  # noqa: E402
 
 django.setup()
 
-from apps.core.langsmith import get_langsmith_callback_handler, initialize_langsmith
-from django.conf import settings
-from langchain_core.messages import HumanMessage
-from langchain_openai import ChatOpenAI
+from apps.core.langsmith import get_langsmith_callback_handler, initialize_langsmith  # noqa: E402
+from django.conf import settings  # noqa: E402
+from langchain_core.messages import HumanMessage  # noqa: E402
+from langchain_openai import ChatOpenAI  # noqa: E402
 
 
 def test_langsmith_tracing():

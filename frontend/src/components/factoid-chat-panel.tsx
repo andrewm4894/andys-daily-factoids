@@ -144,7 +144,7 @@ export function FactoidChatPanel({
     return () => {
       cancelled = true;
     };
-  }, [factoid.id, session]);
+  }, [factoid.id, session, selectedModel]);
 
   const handleSend = useCallback(
     async (event?: FormEvent) => {
@@ -197,7 +197,7 @@ export function FactoidChatPanel({
 
       setInputValue("");
     },
-    [factoid.id, inputValue, isSending, session]
+    [factoid.id, inputValue, isSending, session, selectedModel]
   );
 
   const handleCheckoutRedirect = useCallback(() => {

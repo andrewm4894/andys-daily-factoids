@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from django.conf import settings
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
+from langchain_core.tools import BaseTool
 
 from apps.chat import models as chat_models
 from apps.chat.services.factoid_agent import (
@@ -366,7 +367,15 @@ class TestFactoidAgent:
         sample_factoid,
         agent_config,
     ):
-        mock_tool = MagicMock()
+        # Create a proper mock tool that inherits from BaseTool
+        class MockSearchTool(BaseTool):
+            name: str = "web_search"
+            description: str = "Search the web"
+
+            def _run(self, *args, **kwargs):
+                return "Mock search results"
+
+        mock_tool = MockSearchTool()
         mock_build_search.return_value = mock_tool
         mock_model_instance = MagicMock()
         mock_bound_model = MagicMock()
@@ -452,14 +461,22 @@ class TestRunFactoidAgent:
     @patch("apps.chat.services.factoid_agent.FactoidAgent")
     @patch("apps.chat.services.factoid_agent.get_posthog_client")
     @patch("apps.chat.services.factoid_agent._build_callbacks")
+    @patch("apps.chat.services.factoid_agent._random_tool_supporting_model")
     def test_uses_default_model_when_none_provided(
-        self, mock_build_callbacks, mock_get_posthog, mock_agent_class, sample_factoid, chat_session
+        self,
+        mock_random_model,
+        mock_build_callbacks,
+        mock_get_posthog,
+        mock_agent_class,
+        sample_factoid,
+        chat_session,
     ):
         mock_agent_instance = MagicMock()
         mock_agent_instance.run.return_value = [AIMessage(content="Response")]
         mock_agent_class.return_value = mock_agent_instance
         mock_get_posthog.return_value = None
         mock_build_callbacks.return_value = []
+        mock_random_model.return_value = None  # Force fallback to settings
 
         with patch.object(settings, "FACTOID_AGENT_DEFAULT_MODEL", "test-default-model"):
             run_factoid_agent(
@@ -541,9 +558,11 @@ class TestHistoryToMessages:
     """Tests for the history_to_messages function."""
 
     @pytest.mark.django_db()
-    def test_converts_user_messages(self):
+    def test_converts_user_messages(self, chat_session):
         chat_message = chat_models.ChatMessage.objects.create(
-            role=chat_models.ChatMessageRole.USER, content={"text": "Hello there"}
+            session=chat_session,
+            role=chat_models.ChatMessageRole.USER,
+            content={"text": "Hello there"},
         )
 
         messages = history_to_messages([chat_message])
@@ -553,8 +572,9 @@ class TestHistoryToMessages:
         assert messages[0].content == "Hello there"
 
     @pytest.mark.django_db()
-    def test_converts_assistant_messages(self):
+    def test_converts_assistant_messages(self, chat_session):
         chat_message = chat_models.ChatMessage.objects.create(
+            session=chat_session,
             role=chat_models.ChatMessageRole.ASSISTANT,
             content={
                 "content": "Hello back",
@@ -571,8 +591,9 @@ class TestHistoryToMessages:
         assert messages[0].additional_kwargs == {"model": "gpt-4"}
 
     @pytest.mark.django_db()
-    def test_converts_tool_messages(self):
+    def test_converts_tool_messages(self, chat_session):
         chat_message = chat_models.ChatMessage.objects.create(
+            session=chat_session,
             role=chat_models.ChatMessageRole.TOOL,
             content={"content": "Search results here", "tool_call_id": "call_123"},
         )
@@ -585,9 +606,10 @@ class TestHistoryToMessages:
         assert messages[0].tool_call_id == "call_123"
 
     @pytest.mark.django_db()
-    def test_skips_invalid_messages(self):
+    def test_skips_invalid_messages(self, chat_session):
         # Create a message with an unknown role
         chat_message = chat_models.ChatMessage.objects.create(
+            session=chat_session,
             role="INVALID_ROLE",  # This will be saved as string
             content={"text": "This should be skipped"},
         )

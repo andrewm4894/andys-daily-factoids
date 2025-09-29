@@ -12,14 +12,17 @@ sys.path.insert(0, str(backend_dir))
 # Set up Django environment
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "factoids_project.settings.local")
 
-import django
+import django  # noqa: E402
 
 django.setup()
 
-from apps.core.braintrust import get_braintrust_callback_handler, initialize_braintrust
-from django.conf import settings
-from langchain_core.messages import HumanMessage
-from langchain_openai import ChatOpenAI
+from apps.core.braintrust import (  # noqa: E402
+    get_braintrust_callback_handler,
+    initialize_braintrust,
+)
+from django.conf import settings  # noqa: E402
+from langchain_core.messages import HumanMessage  # noqa: E402
+from langchain_openai import ChatOpenAI  # noqa: E402
 
 
 async def main():
