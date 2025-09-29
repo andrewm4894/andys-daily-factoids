@@ -59,17 +59,17 @@ services:
         value: "1"
 
   - type: cron
-    name: hourly-factoid
+    name: factoid-generator
     runtime: python
     plan: starter
-    schedule: "0 * * * *"
+    schedule: "*/30 * * * *"
     buildCommand: |
       pip install uv
       cd backend
       uv sync --extra dev --frozen
     startCommand: |
       cd backend
-      uv run python manage.py generate_factoid --client hourly-cron --profile anonymous
+      uv run python manage.py generate_factoid --client 30min-cron --profile anonymous
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.9"

@@ -8,6 +8,7 @@ import pytest
 from django.conf import settings
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_core.tools import BaseTool
+from pydantic import BaseModel
 
 from apps.chat import models as chat_models
 from apps.chat.services.factoid_agent import (
@@ -367,15 +368,20 @@ class TestFactoidAgent:
         sample_factoid,
         agent_config,
     ):
-        # Create a proper mock tool that inherits from BaseTool
-        class MockSearchTool(BaseTool):
+        # Create a proper mock tool that behaves like a real BaseTool
+
+        class MockSearchInput(BaseModel):
+            query: str
+
+        class MockTool(BaseTool):
             name: str = "web_search"
             description: str = "Search the web"
+            args_schema: type[BaseModel] = MockSearchInput
 
-            def _run(self, *args, **kwargs):
-                return "Mock search results"
+            def _run(self, query: str) -> str:
+                return "mock search results"
 
-        mock_tool = MockSearchTool()
+        mock_tool = MockTool()
         mock_build_search.return_value = mock_tool
         mock_model_instance = MagicMock()
         mock_bound_model = MagicMock()
@@ -558,7 +564,11 @@ class TestHistoryToMessages:
     """Tests for the history_to_messages function."""
 
     @pytest.mark.django_db()
-    def test_converts_user_messages(self, chat_session):
+    def test_converts_user_messages(self):
+        # Create a chat session first
+        chat_session = chat_models.ChatSession.objects.create(
+            model_key="gpt-4", client_hash="test-client"
+        )
         chat_message = chat_models.ChatMessage.objects.create(
             session=chat_session,
             role=chat_models.ChatMessageRole.USER,
@@ -572,7 +582,11 @@ class TestHistoryToMessages:
         assert messages[0].content == "Hello there"
 
     @pytest.mark.django_db()
-    def test_converts_assistant_messages(self, chat_session):
+    def test_converts_assistant_messages(self):
+        # Create a chat session first
+        chat_session = chat_models.ChatSession.objects.create(
+            model_key="gpt-4", client_hash="test-client"
+        )
         chat_message = chat_models.ChatMessage.objects.create(
             session=chat_session,
             role=chat_models.ChatMessageRole.ASSISTANT,
@@ -591,7 +605,11 @@ class TestHistoryToMessages:
         assert messages[0].additional_kwargs == {"model": "gpt-4"}
 
     @pytest.mark.django_db()
-    def test_converts_tool_messages(self, chat_session):
+    def test_converts_tool_messages(self):
+        # Create a chat session first
+        chat_session = chat_models.ChatSession.objects.create(
+            model_key="gpt-4", client_hash="test-client"
+        )
         chat_message = chat_models.ChatMessage.objects.create(
             session=chat_session,
             role=chat_models.ChatMessageRole.TOOL,
@@ -606,7 +624,11 @@ class TestHistoryToMessages:
         assert messages[0].tool_call_id == "call_123"
 
     @pytest.mark.django_db()
-    def test_skips_invalid_messages(self, chat_session):
+    def test_skips_invalid_messages(self):
+        # Create a chat session first
+        chat_session = chat_models.ChatSession.objects.create(
+            model_key="gpt-4", client_hash="test-client"
+        )
         # Create a message with an unknown role
         chat_message = chat_models.ChatMessage.objects.create(
             session=chat_session,

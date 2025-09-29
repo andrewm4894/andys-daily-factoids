@@ -9,7 +9,7 @@ Andy’s Daily Factoids now runs as a Render-hosted stack: a Django API feeds a 
 
 ## Features
 
-- Pull fresh factoids on demand (now hourly by default).
+- Pull fresh factoids on demand (now every 30 minutes by default).
 - Vote 🤯 or 😒 and see the live tally for each factoid.
 - Shuffle through the catalogue without waiting for generation.
 - One-click copy + Google search for the curious.
@@ -20,7 +20,7 @@ Andy’s Daily Factoids now runs as a Render-hosted stack: a Django API feeds a 
 
 ## How It Works
 
-- **Render services**: `render.yaml` provisions three services – `factoids-backend` (Django + Gunicorn), `factoids-frontend` (Next.js), and `hourly-factoid` (cron job that runs the same generation pipeline).
+- **Render services**: `render.yaml` provisions three services – `factoids-backend` (Django + Gunicorn), `factoids-frontend` (Next.js), and `factoid-generator` (cron job that runs the same generation pipeline every 30 minutes).
 - **Backend**: Django REST Framework exposes the API under `/api/factoids/`, persists to Postgres via `dj-database-url`, and optionally rate-limits through Redis.
 - **Frontend**: Next.js 15 App Router fetches factoids server-side and streams generation status to the browser with Server-Sent Events.
 - **Generation**: `apps/factoids/services/generator.py` orchestrates model selection, prompt construction, OpenRouter calls, and PostHog LangChain callbacks.
