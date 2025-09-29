@@ -535,7 +535,9 @@ def _build_callbacks(
     callbacks = []
 
     # PostHog callback
+    logger.info(f"PostHog client status: {client is not None}")
     if client:
+        logger.info(f"PostHog client disabled: {getattr(client, 'disabled', 'unknown')}")
         properties = {
             "factoid_id": str(factoid.id),
             "factoid_subject": factoid.subject,
@@ -552,6 +554,9 @@ def _build_callbacks(
             groups={"factoid": str(factoid.id)},
         )
         callbacks.append(posthog_callback)
+        logger.info(f"PostHog callback added to callbacks list. Total callbacks: {len(callbacks)}")
+    else:
+        logger.warning("PostHog client is None - no PostHog callback will be added")
 
     # Initialize Braintrust (this will set up global handler automatically)
     initialize_braintrust()
