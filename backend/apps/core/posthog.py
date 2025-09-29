@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 from threading import Lock
 from typing import Optional
 
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 try:
     from posthog import Posthog
@@ -71,8 +74,34 @@ def configure_posthog(*, force: bool = False) -> Optional[Posthog]:
             timeout=10.0,  # 10 second timeout for network requests
         )
 
-        if getattr(settings, "POSTHOG_DEBUG", False):
-            client.debug = True
+        # Temporarily force debug mode to see what PostHog is doing
+        client.debug = True
+        logger.info("PostHog debug mode enabled")
+
+        # Add instrumentation to see what PostHog methods are actually called
+        original_capture = client.capture
+        original_identify = client.identify
+        original_alias = client.alias
+
+        def instrumented_capture(*args, **kwargs):
+            logger.info("🎯 PRODUCTION PostHog.capture called!")
+            logger.info(f"   args: {args}")
+            logger.info(f"   kwargs: {kwargs}")
+            result = original_capture(*args, **kwargs)
+            logger.info(f"   capture returned: {result}")
+            return result
+
+        def instrumented_identify(*args, **kwargs):
+            logger.info(f"PostHog.identify called with args={args}, kwargs={kwargs}")
+            return original_identify(*args, **kwargs)
+
+        def instrumented_alias(*args, **kwargs):
+            logger.info(f"PostHog.alias called with args={args}, kwargs={kwargs}")
+            return original_alias(*args, **kwargs)
+
+        client.capture = instrumented_capture
+        client.identify = instrumented_identify
+        client.alias = instrumented_alias
 
         if getattr(settings, "POSTHOG_DISABLED", False):
             client.disabled = True
