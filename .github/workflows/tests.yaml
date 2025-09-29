@@ -65,6 +65,9 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
 
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -107,7 +110,7 @@ jobs:
     - name: Run backend smoke tests
       run: |
         cd backend
-        uv run python scripts/smoke_generate_factoid.py
+        uv run python scripts/test_generate_factoid.py --topic "test topic"
 
   test-integration:
     runs-on: ubuntu-latest
