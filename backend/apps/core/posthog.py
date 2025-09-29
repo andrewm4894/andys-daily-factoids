@@ -64,12 +64,19 @@ def configure_posthog(*, force: bool = False) -> Optional[Posthog]:
             return None
 
         host = getattr(settings, "POSTHOG_HOST", "https://us.i.posthog.com")
+
+        # Use synchronous mode in production to avoid consumer thread issues
+        # In production environments like Render/Gunicorn, the consumer thread
+        # can be terminated before events are sent, causing event loss
+        use_sync_mode = getattr(settings, "POSTHOG_SYNC_MODE", not settings.DEBUG)
+
         client = Posthog(
             api_key,
             host=host,
             enable_exception_autocapture=True,
-            flush_at=1,  # Flush after every single event
-            flush_interval=2.0,  # Flush every 2 seconds (reasonable for LLM responses)
+            sync_mode=use_sync_mode,  # Synchronous in production, async in development
+            flush_at=1,  # Flush after every single event (for async mode)
+            flush_interval=2.0,  # Flush every 2 seconds (for async mode)
             max_retries=2,  # Retry failed requests
             timeout=10.0,  # 10 second timeout for network requests
         )
@@ -77,6 +84,7 @@ def configure_posthog(*, force: bool = False) -> Optional[Posthog]:
         # Temporarily force debug mode to see what PostHog is doing
         client.debug = True
         logger.info("PostHog debug mode enabled")
+        logger.info(f"PostHog sync_mode: {use_sync_mode} (production: {not settings.DEBUG})")
 
         # Add instrumentation to see what PostHog methods are actually called
         original_capture = client.capture
