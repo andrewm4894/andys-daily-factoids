@@ -65,8 +65,10 @@ def configure_posthog(*, force: bool = False) -> Optional[Posthog]:
             api_key,
             host=host,
             enable_exception_autocapture=True,
-            flush_at=1,  # Flush after every event
-            flush_interval=0.5,  # Flush every 0.5 seconds instead of default 10 seconds
+            flush_at=1,  # Flush after every single event
+            flush_interval=2.0,  # Flush every 2 seconds (reasonable for LLM responses)
+            max_retries=2,  # Retry failed requests
+            timeout=10.0,  # 10 second timeout for network requests
         )
 
         if getattr(settings, "POSTHOG_DEBUG", False):
