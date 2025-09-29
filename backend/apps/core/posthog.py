@@ -65,6 +65,8 @@ def configure_posthog(*, force: bool = False) -> Optional[Posthog]:
             api_key,
             host=host,
             enable_exception_autocapture=True,
+            flush_at=1,  # Flush after every event
+            flush_interval=0.5,  # Flush every 0.5 seconds instead of default 10 seconds
         )
 
         if getattr(settings, "POSTHOG_DEBUG", False):
