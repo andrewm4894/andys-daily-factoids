@@ -48,27 +48,67 @@ class DebugPostHogCallback(CallbackHandler):
 
     def on_llm_start(self, *args, **kwargs):
         logger.info("DebugPostHogCallback.on_llm_start called")
-        return super().on_llm_start(*args, **kwargs)
+        try:
+            result = super().on_llm_start(*args, **kwargs)
+            logger.info("PostHog on_llm_start completed successfully")
+            return result
+        except Exception as e:
+            logger.error(f"PostHog on_llm_start failed: {e}")
+            raise
 
     def on_llm_end(self, *args, **kwargs):
         logger.info("DebugPostHogCallback.on_llm_end called")
-        return super().on_llm_end(*args, **kwargs)
+        try:
+            result = super().on_llm_end(*args, **kwargs)
+            logger.info("PostHog on_llm_end completed successfully")
+            return result
+        except Exception as e:
+            logger.error(f"PostHog on_llm_end failed: {e}")
+            raise
 
     def on_chain_start(self, *args, **kwargs):
         logger.info("DebugPostHogCallback.on_chain_start called")
-        return super().on_chain_start(*args, **kwargs)
+        try:
+            result = super().on_chain_start(*args, **kwargs)
+            logger.info("PostHog on_chain_start completed successfully")
+            return result
+        except Exception as e:
+            logger.error(f"PostHog on_chain_start failed: {e}")
+            raise
 
     def on_chain_end(self, *args, **kwargs):
         logger.info("DebugPostHogCallback.on_chain_end called")
-        return super().on_chain_end(*args, **kwargs)
+        try:
+            result = super().on_chain_end(*args, **kwargs)
+            logger.info("PostHog on_chain_end completed successfully")
+            # Log PostHog client queue status after important events
+            if hasattr(self, "_client") and self._client:
+                queue_size = getattr(self._client.queue, "qsize", lambda: "unknown")()
+                logger.info(f"PostHog client queue size after chain_end: {queue_size}")
+            return result
+        except Exception as e:
+            logger.error(f"PostHog on_chain_end failed: {e}")
+            raise
 
     def on_tool_start(self, *args, **kwargs):
         logger.info("DebugPostHogCallback.on_tool_start called")
-        return super().on_tool_start(*args, **kwargs)
+        try:
+            result = super().on_tool_start(*args, **kwargs)
+            logger.info("PostHog on_tool_start completed successfully")
+            return result
+        except Exception as e:
+            logger.error(f"PostHog on_tool_start failed: {e}")
+            raise
 
     def on_tool_end(self, *args, **kwargs):
         logger.info("DebugPostHogCallback.on_tool_end called")
-        return super().on_tool_end(*args, **kwargs)
+        try:
+            result = super().on_tool_end(*args, **kwargs)
+            logger.info("PostHog on_tool_end completed successfully")
+            return result
+        except Exception as e:
+            logger.error(f"PostHog on_tool_end failed: {e}")
+            raise
 
 
 class AgentState(TypedDict):
