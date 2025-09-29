@@ -309,13 +309,13 @@ class FactoidAgent:
         *,
         callbacks: Sequence[CallbackHandler] | None,
     ) -> list[BaseMessage]:
-        invoke_config: dict[str, Any] = {}
+        invoke_config: dict[str, Any] = {"configurable": {"recursion_limit": 6}}
         if callbacks:
             invoke_config["callbacks"] = list(callbacks)
 
         result = self._graph.invoke(
             {"messages": list(history)},
-            config={"configurable": {"recursion_limit": 6}, **invoke_config},
+            config=invoke_config,
         )
         return result["messages"]
 
