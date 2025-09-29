@@ -17,7 +17,13 @@ from apps.core.braintrust import (
 )
 from apps.core.langsmith import get_langsmith_callback_handler, initialize_langsmith
 from apps.core.posthog import get_posthog_client
-from apps.core.services import CostGuard, RateLimitConfig, RateLimitExceeded, get_rate_limiter
+from apps.core.services import (
+    CostGuard,
+    RateLimitConfig,
+    RateLimitExceeded,
+    get_cost_guard,
+    get_rate_limiter,
+)
 from apps.factoids import models
 from apps.factoids.prompts import build_factoid_generation_prompt
 from apps.factoids.services.openrouter import (
@@ -67,7 +73,7 @@ def generate_factoid(
     except RateLimitExceeded as exc:
         raise RateLimitExceededError(exc.retry_after) from exc
 
-    guard = cost_guard or CostGuard({"anonymous": 1.0, "api_key": 5.0})
+    guard = cost_guard or get_cost_guard({"anonymous": 1.0, "api_key": 5.0})
     decision = guard.evaluate(profile, expected_cost=0.1)
     if not decision.allowed:
         raise CostBudgetExceededError(decision.remaining_budget)
