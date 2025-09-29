@@ -34,7 +34,10 @@ class AppSettings(BaseSettings):
     cors_allowed_origins: list[str] = Field(default_factory=list)
     database_url: str | None = None
     db_conn_max_age: int = 60
-    openrouter_api_key: str | None = None
+    openrouter_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("OPENROUTER_API_KEY", "DJANGO_OPENROUTER_API_KEY"),
+    )
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     factoid_agent_default_model: str = Field(
         default="openai/gpt-5-mini",

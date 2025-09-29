@@ -12,16 +12,16 @@ sys.path.insert(0, str(backend_dir))
 # Set up Django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "factoids_project.settings.local")
 
-import django
+import django  # noqa: E402
 
 django.setup()
 
-from apps.core.langsmith import (
+from apps.core.langsmith import (  # noqa: E402
     get_langsmith_callback_handler,
     get_langsmith_client,
     initialize_langsmith,
 )
-from django.conf import settings
+from django.conf import settings  # noqa: E402
 
 
 def test_langsmith_configuration():

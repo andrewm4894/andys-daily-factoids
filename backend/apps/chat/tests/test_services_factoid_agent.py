@@ -7,6 +7,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from django.conf import settings
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
+from langchain_core.tools import BaseTool
+from pydantic import BaseModel
 
 from apps.chat import models as chat_models
 from apps.chat.services.factoid_agent import (
@@ -367,20 +369,18 @@ class TestFactoidAgent:
         agent_config,
     ):
         # Create a proper mock tool that behaves like a real BaseTool
-        from langchain_core.tools import BaseTool
-        from pydantic import BaseModel
-        
+
         class MockSearchInput(BaseModel):
             query: str
-            
+
         class MockTool(BaseTool):
             name: str = "web_search"
             description: str = "Search the web"
             args_schema: type[BaseModel] = MockSearchInput
-            
+
             def _run(self, query: str) -> str:
                 return "mock search results"
-        
+
         mock_tool = MockTool()
         mock_build_search.return_value = mock_tool
         mock_model_instance = MagicMock()
@@ -467,14 +467,22 @@ class TestRunFactoidAgent:
     @patch("apps.chat.services.factoid_agent.FactoidAgent")
     @patch("apps.chat.services.factoid_agent.get_posthog_client")
     @patch("apps.chat.services.factoid_agent._build_callbacks")
+    @patch("apps.chat.services.factoid_agent._random_tool_supporting_model")
     def test_uses_default_model_when_none_provided(
-        self, mock_build_callbacks, mock_get_posthog, mock_agent_class, sample_factoid, chat_session
+        self,
+        mock_random_model,
+        mock_build_callbacks,
+        mock_get_posthog,
+        mock_agent_class,
+        sample_factoid,
+        chat_session,
     ):
         mock_agent_instance = MagicMock()
         mock_agent_instance.run.return_value = [AIMessage(content="Response")]
         mock_agent_class.return_value = mock_agent_instance
         mock_get_posthog.return_value = None
         mock_build_callbacks.return_value = []
+        mock_random_model.return_value = None  # Force fallback to settings
 
         with patch.object(settings, "FACTOID_AGENT_DEFAULT_MODEL", "test-default-model"):
             run_factoid_agent(
@@ -559,13 +567,12 @@ class TestHistoryToMessages:
     def test_converts_user_messages(self):
         # Create a chat session first
         chat_session = chat_models.ChatSession.objects.create(
-            model_key="gpt-4",
-            client_hash="test-client"
+            model_key="gpt-4", client_hash="test-client"
         )
         chat_message = chat_models.ChatMessage.objects.create(
             session=chat_session,
-            role=chat_models.ChatMessageRole.USER, 
-            content={"text": "Hello there"}
+            role=chat_models.ChatMessageRole.USER,
+            content={"text": "Hello there"},
         )
 
         messages = history_to_messages([chat_message])
@@ -578,8 +585,7 @@ class TestHistoryToMessages:
     def test_converts_assistant_messages(self):
         # Create a chat session first
         chat_session = chat_models.ChatSession.objects.create(
-            model_key="gpt-4",
-            client_hash="test-client"
+            model_key="gpt-4", client_hash="test-client"
         )
         chat_message = chat_models.ChatMessage.objects.create(
             session=chat_session,
@@ -602,8 +608,7 @@ class TestHistoryToMessages:
     def test_converts_tool_messages(self):
         # Create a chat session first
         chat_session = chat_models.ChatSession.objects.create(
-            model_key="gpt-4",
-            client_hash="test-client"
+            model_key="gpt-4", client_hash="test-client"
         )
         chat_message = chat_models.ChatMessage.objects.create(
             session=chat_session,
@@ -622,8 +627,7 @@ class TestHistoryToMessages:
     def test_skips_invalid_messages(self):
         # Create a chat session first
         chat_session = chat_models.ChatSession.objects.create(
-            model_key="gpt-4",
-            client_hash="test-client"
+            model_key="gpt-4", client_hash="test-client"
         )
         # Create a message with an unknown role
         chat_message = chat_models.ChatMessage.objects.create(

@@ -74,14 +74,15 @@ export function GenerateFactoidForm({
 
   const startCheckoutFlow = async ({
     retryAfter,
-  }: { retryAfter?: number } = {}) => {
+    reason = "limit_exceeded",
+  }: { retryAfter?: number; reason?: string } = {}) => {
     if (isCheckoutRedirecting || typeof window === "undefined") {
       return;
     }
 
     setIsCheckoutRedirecting(true);
     posthog.capture("stripe_checkout_initiated", {
-      reason: "rate_limit",
+      reason,
       retry_after: retryAfter ?? null,
       topic: topic || "random",
       model: modelKey || "automatic",
@@ -107,7 +108,7 @@ export function GenerateFactoidForm({
       const session = await createCheckoutSession({
         success_url: successUrl,
         cancel_url: cancelUrl,
-        source: "rate_limit",
+        source: reason === "rate_limit" ? "rate_limit" : "budget_exceeded",
         metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
       });
 
@@ -146,7 +147,7 @@ export function GenerateFactoidForm({
       }
 
       posthog.capture("stripe_checkout_failed", {
-        reason: "rate_limit",
+        reason,
         error: detail,
         topic: topic || "random",
         model: modelKey || "automatic",
@@ -160,7 +161,11 @@ export function GenerateFactoidForm({
     }
   };
 
-  const handleRateLimitExceeded = (detail?: string, retryAfter?: number) => {
+  const handleLimitExceeded = (
+    detail?: string,
+    retryAfter?: number,
+    errorCode?: string
+  ) => {
     clearStatusReset();
     const message =
       detail && detail.trim()
@@ -168,12 +173,15 @@ export function GenerateFactoidForm({
         : "You have reached the free factoid limit. Redirecting to checkout...";
     setStatus("error");
     onGenerationError?.(message);
-    posthog.capture("factoid_rate_limit_exceeded", {
+    posthog.capture("factoid_limit_exceeded", {
       retry_after: retryAfter ?? null,
       topic: topic || "random",
       model: modelKey || "automatic",
+      error_code: errorCode,
     });
-    void startCheckoutFlow({ retryAfter });
+    const reason =
+      errorCode === "rate_limit" ? "rate_limit" : "budget_exceeded";
+    void startCheckoutFlow({ retryAfter, reason });
   };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -277,7 +285,7 @@ export function GenerateFactoidForm({
                 retryAfter = candidate;
               }
             }
-            handleRateLimitExceeded(err.message, retryAfter);
+            handleLimitExceeded(err.message, retryAfter, "rate_limit");
             return;
           }
 
@@ -365,8 +373,8 @@ export function GenerateFactoidForm({
       eventSource.close();
       eventSourceRef.current = null;
 
-      if (code === "rate_limit") {
-        handleRateLimitExceeded(detail, retryAfter);
+      if (code === "rate_limit" || code === "budget_exceeded") {
+        handleLimitExceeded(detail, retryAfter, code);
         return;
       }
 

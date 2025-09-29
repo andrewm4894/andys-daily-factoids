@@ -1,4 +1,4 @@
-.PHONY: help install install-frontend install-backend install-precommit local local-backend local-frontend migrate-backend seed-backend run factoid test test-backend test-frontend test-rate-limit lint lint-backend lint-frontend precommit precommit-install precommit-run precommit-update smoke-backend-api test-generate-factoid test-braintrust test-braintrust-simple
+.PHONY: help install install-frontend install-backend install-precommit local local-backend local-frontend migrate-backend seed-backend run factoid test test-backend test-frontend test-rate-limit lint lint-backend lint-frontend precommit precommit-install precommit-run precommit-update smoke-backend-api test-generate-factoid test-braintrust test-braintrust-simple eval eval-structure eval-truthfulness eval-daily eval-install
 
 help: ## Show available make targets
 	@awk -F ':.*## ' 'BEGIN {print "Available targets:"} /^[a-zA-Z0-9_-]+:.*##/ {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -108,3 +108,13 @@ precommit-run: ## Run pre-commit hooks on all files
 
 precommit-update: ## Update pre-commit hooks to latest versions
 	pre-commit autoupdate
+
+# Quality Evaluation Commands
+eval-install: ## Install eval dependencies (braintrust and autoevals)
+	cd backend && uv pip install braintrust autoevals
+
+eval-daily: eval-install ## Run daily automated evaluation (20 most recent factoids, hybrid approach)
+	cd backend && uv run python evals/eval.py --daily --hybrid --sample-size 20
+
+eval-manual: eval-install ## Manual evaluation of larger sample (100 factoids, hybrid approach)
+	cd backend && uv run python evals/eval.py --hybrid --sample-size 100

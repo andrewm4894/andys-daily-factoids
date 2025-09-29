@@ -240,7 +240,7 @@ def analyze_tool_usage(examples_list, expected_tool_usage):
     results = []
 
     for i, (name, func, expected) in enumerate(examples_list):
-        print(f"\n[{i+1}/{len(examples_list)}] {name}:")
+        print(f"\n[{i + 1}/{len(examples_list)}] {name}:")
         print("=" * (len(name) + 10))
         print(f"Expected web_search usage: {expected}")
 
