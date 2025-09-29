@@ -261,6 +261,22 @@ def _run_agent_and_persist(
     # Note: PostHog events are sent asynchronously by the background consumer thread
     # Explicit flush was causing request timeouts, so we rely on auto-flush
 
+    # Try to trigger PostHog flush without blocking
+    import threading
+
+    from apps.core.posthog import get_posthog_client
+
+    def _async_flush():
+        try:
+            posthog_client = get_posthog_client()
+            if posthog_client:
+                posthog_client.flush()
+        except Exception:
+            pass  # Silent fail to avoid affecting the response
+
+    # Start flush in background thread to avoid blocking the response
+    threading.Thread(target=_async_flush, daemon=True).start()
+
     new_messages = updated_messages[previous_len:]
     saved: list[chat_models.ChatMessage] = []
     for message in new_messages:
