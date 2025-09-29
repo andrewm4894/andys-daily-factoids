@@ -16,21 +16,60 @@ load_env_file = backend_dir / ".env"
 if load_env_file.exists():
     load_dotenv(load_env_file)
 
-# Setup Django
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "factoids_project.settings.local")
-import django  # noqa: E402
-
-django.setup()
-
 import json  # noqa: E402
 from typing import Any, Dict  # noqa: E402
 
 import click  # noqa: E402
-from apps.factoids.models import Factoid  # noqa: E402
-from braintrust import Eval, init  # noqa: E402
+import django  # noqa: E402
 
-from evals.braintrust_traces import get_traces_for_structure_eval  # noqa: E402
-from evals.scorers import factoid_truthfulness, json_is_valid  # noqa: E402
+# Global variables to hold imports after Django setup
+_django_setup_complete = False
+Factoid = None
+Eval = None
+init = None
+get_traces_for_structure_eval = None
+factoid_truthfulness = None
+json_is_valid = None
+
+
+def setup_django(production: bool = False) -> None:
+    """Setup Django with appropriate settings module."""
+    global \
+        _django_setup_complete, \
+        Factoid, \
+        Eval, \
+        init, \
+        get_traces_for_structure_eval, \
+        factoid_truthfulness, \
+        json_is_valid
+
+    if _django_setup_complete:
+        return
+
+    if production:
+        os.environ["DJANGO_SETTINGS_MODULE"] = "factoids_project.settings.production"
+    else:
+        os.environ.setdefault("DJANGO_SETTINGS_MODULE", "factoids_project.settings.local")
+
+    django.setup()
+
+    # Import Django-dependent modules after setup
+    from apps.factoids.models import Factoid as _Factoid  # noqa: E402
+    from braintrust import Eval as _Eval  # noqa: E402
+    from braintrust import init as _init
+
+    from evals.braintrust_traces import get_traces_for_structure_eval as _get_traces  # noqa: E402
+    from evals.scorers import factoid_truthfulness as _factoid_truthfulness  # noqa: E402
+    from evals.scorers import json_is_valid as _json_is_valid
+
+    # Assign to global variables
+    Factoid = _Factoid
+    Eval = _Eval
+    init = _init
+    get_traces_for_structure_eval = _get_traces
+    factoid_truthfulness = _factoid_truthfulness
+    json_is_valid = _json_is_valid
+    _django_setup_complete = True
 
 
 class FactoidEvalTask:
@@ -192,10 +231,8 @@ def user_feedback_scorer(
 def run_evaluation(sample_size, experiment_name, skip_truthfulness, daily, production, hybrid):
     """Run factoid quality evaluation with flexible parameters."""
 
-    # Update Django settings if production mode
-    if production:
-        os.environ["DJANGO_SETTINGS_MODULE"] = "factoids_project.settings.production"
-        django.setup()
+    # Setup Django with appropriate settings
+    setup_django(production=production)
 
     # Generate experiment name if not provided
     if not experiment_name:

@@ -30,7 +30,7 @@ def main():
         from click.testing import CliRunner
 
         runner = CliRunner()
-        result = runner.invoke(run_evaluation, ["--daily", "--production", "--sample-size", "20"])
+        result = runner.invoke(run_evaluation, ["--daily", "--sample-size", "20"])
 
         if result.exit_code == 0:
             print("✅ Daily evaluation cron job completed successfully")

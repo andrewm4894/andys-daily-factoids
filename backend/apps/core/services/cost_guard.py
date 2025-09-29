@@ -72,8 +72,11 @@ class RedisCostGuard(CostGuard):
             for profile in profile_budgets:
                 try:
                     usage = self.redis_client.get(f"{self.key_prefix}{profile}")
-                    if usage:
-                        self.profile_usage[profile] = float(usage)
+                    if usage is not None:
+                        # Redis returns bytes, decode and convert to float
+                        # Decode bytes to string if needed, then convert to float
+                        decoded_usage = usage.decode() if isinstance(usage, bytes) else usage
+                        self.profile_usage[profile] = float(decoded_usage)
                 except Exception:
                     # If Redis fails, we'll fall back to in-memory
                     pass
@@ -83,8 +86,11 @@ class RedisCostGuard(CostGuard):
         if self.redis_client:
             try:
                 usage = self.redis_client.get(f"{self.key_prefix}{profile}")
-                if usage:
-                    self.profile_usage[profile] = float(usage)
+                if usage is not None:
+                    # Redis returns bytes, decode and convert to float
+                    self.profile_usage[profile] = float(
+                        usage.decode() if isinstance(usage, bytes) else usage
+                    )
             except Exception:
                 # Fall back to cached value if Redis fails
                 pass
@@ -113,8 +119,11 @@ class RedisCostGuard(CostGuard):
         if self.redis_client:
             try:
                 usage = self.redis_client.get(f"{self.key_prefix}{profile}")
-                if usage:
-                    self.profile_usage[profile] = float(usage)
+                if usage is not None:
+                    # Redis returns bytes, decode and convert to float
+                    self.profile_usage[profile] = float(
+                        usage.decode() if isinstance(usage, bytes) else usage
+                    )
             except Exception:
                 # Fall back to cached value if Redis fails
                 pass
