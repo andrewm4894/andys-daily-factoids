@@ -99,10 +99,11 @@ class RedisCostGuard(CostGuard):
         if self.redis_client:
             try:
                 key = f"{self.key_prefix}{profile}"
-                # Use INCRBYFLOAT for atomic increment
-                self.redis_client.incrbyfloat(key, actual_cost)
-                # Set TTL on the key
-                self.redis_client.expire(key, self.ttl_seconds)
+                # Use a pipeline to atomically increment and set TTL
+                pipe = self.redis_client.pipeline()
+                pipe.incrbyfloat(key, actual_cost)
+                pipe.expire(key, self.ttl_seconds)
+                pipe.execute()
             except Exception:
                 # If Redis fails, we still have in-memory tracking
                 pass
