@@ -72,7 +72,19 @@ make eval-manual           # Manual evaluation of larger sample (100 factoids)
 make eval-debug            # Fast evaluation without truthfulness (50 factoids)
 ```
 
-### Backend Commands
+### Running a Single Test
+
+Backend tests use pytest:
+```bash
+cd backend
+uv run pytest apps/factoids/tests/test_models.py           # Single file
+uv run pytest apps/factoids/tests/test_models.py::TestFactoidModel  # Single class
+uv run pytest apps/factoids/tests/test_models.py::TestFactoidModel::test_creation  # Single test
+uv run pytest -k "test_rate_limit"                         # All tests matching pattern
+uv run pytest -v                                           # Verbose output
+```
+
+### Backend Commands (Direct)
 
 ```bash
 cd backend
@@ -84,7 +96,7 @@ uv run pytest             # Run tests
 uv run ruff check .        # Lint code
 ```
 
-### Frontend Commands
+### Frontend Commands (Direct)
 
 ```bash
 cd frontend
@@ -98,31 +110,60 @@ npm run format             # Format with Prettier
 npm run format:check       # Check Prettier formatting
 ```
 
-## Key Files and Patterns
+## Architecture Patterns
 
-### Backend Structure
-- `factoids_project/settings/`: Environment-aware Django settings (base, local, production)
-- `apps/factoids/api.py`: REST endpoints including streaming generation
-- `apps/factoids/services/generator.py`: Core factoid generation workflow
-- `apps/factoids/models.py`: Database models for factoids, votes, feedback
-- `apps/core/services/rate_limits.py`: Rate limiting with Redis fallback
+### Backend: Service Layer Design
+The backend follows a clear separation of concerns:
+- **API layer** (`apps/factoids/api.py`): DRF ViewSets handle HTTP concerns (auth, serialization, rate limits)
+- **Service layer** (`apps/factoids/services/`): Business logic isolated from HTTP details
+  - `generator.py`: Core generation workflow with observability hooks (PostHog, Braintrust, LangSmith)
+  - `openrouter.py`: LangChain integration for model calls
+- **Models** (`apps/factoids/models.py`): Data persistence with UUID primary keys
+- **Core services** (`apps/core/services/`): Shared infrastructure
+  - `rate_limits.py`: Redis-backed rate limiting with in-memory fallback
+  - `cost_guard.py`: Per-profile budget enforcement
+  - `api_keys.py`: API key management for authenticated access
 
-### Frontend Structure
-- `src/app/page.tsx`: Main server component that fetches factoids
-- `src/lib/api.ts`: Centralized API client with no-cache policy
-- `src/components/generate-factoid-form.tsx`: Interactive generation with SSE streaming
-- `src/app/globals.css`: Global styles and color tokens
+### Generation Flow Architecture
+```
+1. API receives request → client_hash derived from IP + UA
+2. Rate limiter check (Redis or in-memory fallback)
+3. Cost guard validation (profile budget enforcement)
+4. Prompt construction from recent factoids (variety heuristic)
+5. LangChain → OpenRouter call with callbacks for:
+   - PostHog: $ai_generation events with metadata
+   - Braintrust: Structured tracing for evals
+   - LangSmith: Optional debugging traces
+6. Persist Factoid + GenerationRequest models
+7. Return JSON or stream SSE events (status/factoid/error)
+```
 
-### Generation Flow
-1. Rate limit check via `apps.core.services.rate_limits`
-2. Cost guard validation (budget enforcement)
-3. Prompt building with recent factoids for variety
-4. OpenRouter API call through LangChain with PostHog callbacks
-5. Database persistence and streaming response
+### Frontend: Server Components + Streaming
+- `src/app/page.tsx`: RSC fetches initial data server-side (no ISR, always fresh)
+- `src/lib/api.ts`: Centralized fetch wrapper with no-cache policy
+- `src/components/generate-factoid-form.tsx`: Client component using EventSource for SSE
+- Streaming fallback: Falls back to sync POST if EventSource unavailable
+
+### Key Backend Files
+- `factoids_project/settings/`: Layered config (base, local, production) via pydantic-settings
+- `apps/factoids/api.py`: DRF ViewSets for REST + SSE endpoints
+- `apps/factoids/services/generator.py`: Core generation orchestration
+- `apps/factoids/prompts.py`: Prompt templates and construction logic
+- `apps/core/services/rate_limits.py`: Distributed rate limiting
+- `apps/chat/services/factoid_agent.py`: Conversational agent with tool use
+
+### Observability Integration
+The codebase integrates three observability platforms via callback handlers:
+- **PostHog**: Client/server analytics, `$ai_generation` events, user tracking
+- **Braintrust**: LLM evaluation traces, structured experiment tracking
+- **LangSmith**: Optional LangChain debugging traces
+
+All three are optional and controlled via environment variables. See `apps/core/posthog.py`, `apps/core/braintrust.py`, `apps/core/langsmith.py`.
 
 ### Environment Variables
 Backend requires: `OPENROUTER_API_KEY`, `DATABASE_URL`, `DJANGO_SECRET_KEY`
-Optional: `REDIS_URL`, `POSTHOG_PROJECT_API_KEY`, `POSTHOG_HOST`
+Optional observability: `POSTHOG_PROJECT_API_KEY`, `BRAINTRUST_API_KEY`, `LANGSMITH_API_KEY`
+Optional infrastructure: `REDIS_URL` (rate limiting), `STRIPE_SECRET_KEY` (payments)
 Frontend requires: `NEXT_PUBLIC_FACTOIDS_API_BASE` (defaults to localhost:8000)
 
 ## Testing Strategy
@@ -134,11 +175,32 @@ Frontend requires: `NEXT_PUBLIC_FACTOIDS_API_BASE` (defaults to localhost:8000)
 
 ## Code Conventions
 
-- Backend: Django patterns with DRF, ruff formatting (line length 100)
-- Frontend: Next.js 15 App Router, TypeScript, Tailwind CSS
-- API: RESTful endpoints under `/api/factoids/` with streaming support via SSE
-- Models: UUIDs for primary keys, structured JSON fields for metadata
-- Services: Clear separation between API, business logic, and data access layers
+- **Backend**: Django patterns with DRF, ruff formatting (line length 100), type hints required
+- **Frontend**: Next.js 15 App Router, TypeScript, Tailwind CSS, ESLint + Prettier
+- **API design**: RESTful under `/api/factoids/`, SSE streaming for generation progress
+- **Models**: UUID primary keys, JSONField for metadata, `created_at`/`updated_at` timestamps
+- **Services**: Three-layer architecture (API → Service → Model), business logic stays in services
+- **Error handling**: Custom exceptions for rate limits/budget (see `generator.py`)
+- **Testing**: pytest for backend, request/response mocking with Django test client
+
+## Important Development Notes
+
+### Rate Limiting Behavior
+- Uses Redis if `REDIS_URL` set, otherwise in-memory fallback (resets on restart)
+- Client identity derived from IP + User-Agent (see `client_hash` in `api.py`)
+- Limits configured per profile in `settings.RATE_LIMITS` dict
+- Anonymous users default to strict limits; API keys get higher quotas
+
+### Cost Guard System
+- Per-profile daily budgets enforced before generation (default $1/day for anonymous)
+- Tracks spend in `GenerationRequest.cost` field from OpenRouter responses
+- Budget resets daily, checked in `generator.generate_factoid()`
+- Can be overridden per-request or disabled for testing
+
+### Prompt Engineering
+- `build_factoid_generation_prompt()` in `apps/factoids/prompts.py` samples recent factoids
+- Includes variety heuristic to avoid repetition (currently 10 recent factoids as negative examples)
+- Structured output via Pydantic schema ensures consistent JSON responses
 
 ## Local Development Setup
 

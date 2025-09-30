@@ -21,6 +21,8 @@ graph LR
     Backend -.optional.-> Redis[(Redis Rate Limiter)]
     Backend --> OpenRouter[(OpenRouter API)]
     Backend --> PostHog[(PostHog Analytics)]
+    Backend -.optional.-> Braintrust[(Braintrust Evals)]
+    Backend -.optional.-> LangSmith[(LangSmith Traces)]
     Cron -->|manage.py generate_factoid| Backend
 ```
 
@@ -28,8 +30,9 @@ Key traits:
 
 - **Render-native split**: frontend and backend are deployed as separate Render services (`render.yaml` owns build/start commands), enabling independent scaling and rollout.
 - **Django-powered core**: the API, persistence, and generation workflows live in Django REST Framework and the `apps/` service modules.
-- **OpenRouter + PostHog instrumentation**: OpenRouter produces the factoids while PostHog traces every generation for analytics.
+- **OpenRouter + multi-platform observability**: OpenRouter produces the factoids while PostHog, Braintrust, and LangSmith provide optional tracing for analytics, evals, and debugging.
 - **Governed usage**: client hashing, rate limiting, and a `CostGuard` keep anonymous usage bounded even when Redis is unavailable (in-memory fallback).
+- **Payments integration**: Stripe checkout allows users to purchase additional generation credits when free limits are exhausted.
 - **Always-fresh content**: a Render cron job reuses the management command to seed new factoids every 30 minutes with the same validation pipeline the UI uses.
 
 ## Frontend Architecture (`frontend/`)
@@ -74,18 +77,25 @@ Each request is associated with a deterministic `client_hash` derived from IP + 
 1. Acquire a rate-limit token via `apps.core.services.rate_limits`.
 2. Consult `CostGuard` (per-profile budget, defaults to $1/day for anonymous traffic).
 3. Build a prompt from the most recent factoids (`build_factoid_generation_prompt`) to encourage variety.
-4. Invoke OpenRouter through LangChain (`generate_factoid_completion`) with optional PostHog LangChain callbacks for tracing.
+4. Invoke OpenRouter through LangChain (`generate_factoid_completion`) with optional observability callbacks:
+   - **PostHog**: `$ai_generation` events for analytics
+   - **Braintrust**: Structured traces for evaluation pipelines
+   - **LangSmith**: Debugging traces for LangChain workflows
 5. Persist the resulting `Factoid`, link it to a `GenerationRequest`, and record spend against the cost guard.
 6. Stream structured SSE events or return JSON to the caller.
 
-Exceptions surface as `429` (rate limit), `402` (budget exhausted), or `502` (downstream failure). PostHog receives success/failure events tagged with topic, profile, and request source.
+Exceptions surface as `429` (rate limit), `402` (budget exhausted), or `502` (downstream failure). All configured observability platforms receive success/failure events tagged with topic, profile, and request source.
 
 ### Persistence & supporting services
 
 - **Database**: PostgreSQL via `DATABASE_URL` (Render managed). Django models cover factoids, generation requests, votes, feedback, and model cache state (`apps/factoids/models.py`).
 - **Redis (optional)**: If `REDIS_URL` is present, rate limiting uses Redis sorted sets; otherwise an in-process fallback keeps the service usable locally or in environments without Redis.
 - **Static/media**: Static assets collect into `backend/staticfiles/`. Media uploads (e.g., future attachments) land in `backend/media/`.
-- **Other apps**: `apps.core` houses shared services like rate limiting; `apps.payments`, `apps.analytics`, and `apps.chat` provide additional feature implementations (Stripe checkout, evaluation pipelines, conversational UX).
+- **Other apps**:
+  - `apps.core` houses shared services (rate limiting, cost guard, observability integrations for PostHog/Braintrust/LangSmith)
+  - `apps.payments` provides Stripe checkout for purchasing additional generation credits
+  - `apps.analytics` contains evaluation pipelines and quality metrics
+  - `apps.chat` implements conversational UX with LangGraph agent workflows
 
 ### Voting & feedback pipeline
 
@@ -108,7 +118,11 @@ The management command (`apps/factoids/management/commands/generate_factoid.py`)
   - `factoids-frontend` (Node): installs dependencies, builds the Next app, and serves via `next start`.
   - `factoid-generator` (cron): installs backend deps and calls the management command every 30 minutes.
 - **Health check**: Render hits `/api/factoids/` on the backend service; failure to respond 200 surfaces as unhealthy.
-- **Logging & observability**: Django logs to stdout (captured by Render) while PostHog provides richer tracing of generation runs. If Redis is configured, rate-limit failures are also logged.
+- **Logging & observability**: Django logs to stdout (captured by Render). Multiple optional observability platforms:
+  - **PostHog**: Client/server analytics, `$ai_generation` events
+  - **Braintrust**: LLM evaluation traces, experiment tracking
+  - **LangSmith**: LangChain debugging and workflow traces
+  - All are optional and enabled via environment variables. See `apps/core/posthog.py`, `apps/core/braintrust.py`, `apps/core/langsmith.py`.
 - **Static hosting**: Gunicorn + WhiteNoise serve static assets collected during the build.
 - **Config management**: Secrets (database, OpenRouter, Redis, Django secret) are set as Render environment variables. Non-secret defaults (CORS, PostHog host) are committed in `render.yaml`.
 
@@ -134,16 +148,16 @@ sequenceDiagram
     participant API as Django API
     participant DB as Postgres
     participant OR as OpenRouter
-    participant PH as PostHog
+    participant OBS as Observability Platforms
 
     User->>UI: Click "Generate"
     UI->>API: POST /api/factoids/generate or SSE subscribe
     API->>API: Check rate limits & cost guard
     API->>DB: Load recent factoids for prompt context
-    API->>OR: Prompt selected OpenRouter model
+    API->>OR: Prompt selected OpenRouter model (with callbacks)
     OR-->>API: Structured factoid payload
     API->>DB: Persist Factoid + GenerationRequest
-    API->>PH: Capture generation telemetry
+    API->>OBS: Capture telemetry (PostHog/Braintrust/LangSmith)
     API-->>UI: 201 JSON or `factoid` SSE event
     UI-->>User: Toast + refreshed factoid list
 ```
@@ -155,7 +169,8 @@ sequenceDiagram
 | Django settings | `DJANGO_SETTINGS_MODULE`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_SECRET_KEY`, `DJANGO_CORS_ALLOWED_ORIGINS` |
 | Database & cache | `DATABASE_URL`, `REDIS_URL` (optional) |
 | OpenRouter | `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL` (optional override) |
-| PostHog analytics | `POSTHOG_PROJECT_API_KEY`, `POSTHOG_HOST` |
+| Observability | `POSTHOG_PROJECT_API_KEY`, `BRAINTRUST_API_KEY`, `LANGSMITH_API_KEY` (all optional) |
+| Payments | `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID` (optional) |
 | Frontend → Backend | `NEXT_PUBLIC_FACTOIDS_API_BASE` (Render defaults to backend service URL) |
 | Frontend analytics | `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`, `NEXT_TELEMETRY_DISABLED=1` |
 | Render runtime | `PYTHON_VERSION` (backend & cron), Node version dictated by `package.json` / Render defaults |
