@@ -293,7 +293,7 @@ class FactoidAgent:
             if isinstance(config, dict)
             else getattr(config, "callbacks", None)
         )
-        invoke_config: dict[str, Any] = {}
+        invoke_config: dict[str, Any] = {"run_name": "factoid_chat"}
         if callbacks:
             invoke_config["callbacks"] = callbacks
 
@@ -309,7 +309,10 @@ class FactoidAgent:
         *,
         callbacks: Sequence[CallbackHandler] | None,
     ) -> list[BaseMessage]:
-        invoke_config: dict[str, Any] = {"configurable": {"recursion_limit": 6}}
+        invoke_config: dict[str, Any] = {
+            "configurable": {"recursion_limit": 6},
+            "run_name": "factoid_chat",
+        }
         if callbacks:
             invoke_config["callbacks"] = list(callbacks)
 

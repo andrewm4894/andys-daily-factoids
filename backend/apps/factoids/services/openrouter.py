@@ -101,11 +101,18 @@ def generate_factoid_completion(
     if supports_tools is None:
         supports_tools = model_supports_tools(model, api_key=api_key, base_url=base_url)
     runnable = _bind_factoid_tool(chat) if supports_tools else chat
+
+    # Configure with callbacks and metadata for trace naming
+    invoke_config = {
+        "callbacks": callbacks,
+        "run_name": "factoid_generation",
+    }
+
     try:
-        message = runnable.invoke(messages, config={"callbacks": callbacks})
+        message = runnable.invoke(messages, config=invoke_config)
     except Exception:
         if runnable is not chat:
-            message = chat.invoke(messages, config={"callbacks": callbacks})
+            message = chat.invoke(messages, config=invoke_config)
         else:
             raise
     raw = message.model_dump()
