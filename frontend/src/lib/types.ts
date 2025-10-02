@@ -9,6 +9,7 @@ export interface Factoid {
   votes_down: number;
   generation_metadata?: Record<string, unknown>;
   cost_usd?: number | null;
+  generation_request_id?: string | null;
 }
 
 export interface RateLimitStatus {

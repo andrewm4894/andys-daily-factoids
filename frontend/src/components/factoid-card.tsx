@@ -8,6 +8,7 @@ import type { Factoid } from "@/lib/types";
 import { submitFeedback, submitVote } from "@/lib/api";
 import { useTheme } from "@/components/theme-provider";
 import { FactoidChatPanel } from "@/components/factoid-chat-panel";
+import { posthog } from "@/lib/posthog";
 
 interface FactoidCardProps {
   factoid: Factoid;
@@ -231,6 +232,19 @@ export function FactoidCard({
         feedbackTextareaRef.current?.focus();
       }, 0);
       setIsSubmitting(true);
+
+      // Capture AI feedback event to PostHog using quality metric
+      if (
+        factoid.generation_request_id &&
+        typeof posthog?.captureTraceMetric === "function"
+      ) {
+        posthog.captureTraceMetric(
+          factoid.generation_request_id,
+          "quality",
+          vote === "up" ? "good" : "bad"
+        );
+      }
+
       await submitVote(factoid.id, vote);
       router.refresh();
     } catch (error) {
@@ -243,6 +257,19 @@ export function FactoidCard({
   const handleFeedbackSubmit = async () => {
     try {
       setIsSubmitting(true);
+
+      // Capture text feedback to PostHog if provided
+      if (
+        feedbackText &&
+        factoid.generation_request_id &&
+        typeof posthog?.captureTraceFeedback === "function"
+      ) {
+        posthog.captureTraceFeedback(
+          factoid.generation_request_id,
+          feedbackText
+        );
+      }
+
       await submitFeedback({
         factoid: factoid.id,
         vote: feedbackVote,

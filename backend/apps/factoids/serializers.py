@@ -6,6 +6,8 @@ from . import models
 
 
 class FactoidSerializer(serializers.ModelSerializer):
+    generation_request_id = serializers.SerializerMethodField()
+
     class Meta:
         model = models.Factoid
         fields = [
@@ -19,8 +21,15 @@ class FactoidSerializer(serializers.ModelSerializer):
             "votes_down",
             "generation_metadata",
             "cost_usd",
+            "generation_request_id",
         ]
         read_only_fields = fields
+
+    def get_generation_request_id(self, obj):
+        """Return the generation request ID if available."""
+        if obj.created_by:
+            return str(obj.created_by.id)
+        return None
 
 
 class FactoidFeedbackSerializer(serializers.ModelSerializer):
