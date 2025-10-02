@@ -382,6 +382,41 @@ describe("FactoidCard", () => {
     });
   });
 
+  describe("Ask ChatGPT", () => {
+    it("should open ChatGPT with prompt in new window", () => {
+      const mockOpen = jest.fn();
+      window.open = mockOpen;
+
+      render(<FactoidCard factoid={defaultFactoid} initiallyExpanded={true} />);
+
+      const chatGPTButton = screen.getByLabelText(
+        "Ask ChatGPT if this factoid is true"
+      );
+      fireEvent.click(chatGPTButton);
+
+      const expectedPrompt = encodeURIComponent(
+        `Is this factoid true?\n${defaultFactoid.text}`
+      );
+      expect(mockOpen).toHaveBeenCalledWith(
+        `https://chat.openai.com/?q=${expectedPrompt}`,
+        "_blank",
+        "noopener,noreferrer"
+      );
+    });
+
+    it("should have proper button text and icon", () => {
+      render(<FactoidCard factoid={defaultFactoid} initiallyExpanded={true} />);
+
+      const chatGPTButton = screen.getByText("Ask ChatGPT");
+      expect(chatGPTButton).toBeInTheDocument();
+
+      // Check that the button has the correct aria-label
+      expect(
+        screen.getByLabelText("Ask ChatGPT if this factoid is true")
+      ).toBeInTheDocument();
+    });
+  });
+
   describe("Chat Panel", () => {
     it("should open chat panel when chat button clicked", async () => {
       render(<FactoidCard factoid={defaultFactoid} initiallyExpanded={true} />);
