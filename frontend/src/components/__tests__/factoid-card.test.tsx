@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from "../../test-utils";
 import { FactoidCard } from "../factoid-card";
 import { createMockFactoid } from "../../test-utils";
 import * as api from "../../lib/api";
+import { posthog } from "../../lib/posthog";
 
 // Mock the API functions
 jest.mock("../../lib/api", () => ({
@@ -13,6 +14,14 @@ jest.mock("../../lib/api", () => ({
 // Mock theme provider
 jest.mock("../theme-provider", () => ({
   useTheme: () => ({ theme: "light" }),
+}));
+
+// Mock PostHog
+jest.mock("../../lib/posthog", () => ({
+  posthog: {
+    captureTraceMetric: jest.fn(),
+    captureTraceFeedback: jest.fn(),
+  },
 }));
 
 // Mock the chat panel component to simplify testing
@@ -30,6 +39,8 @@ const mockSubmitVote = api.submitVote as jest.MockedFunction<
 const mockSubmitFeedback = api.submitFeedback as jest.MockedFunction<
   typeof api.submitFeedback
 >;
+
+const mockPosthog = posthog as jest.Mocked<typeof posthog>;
 
 describe("FactoidCard", () => {
   const defaultFactoid = createMockFactoid({
@@ -487,6 +498,149 @@ describe("FactoidCard", () => {
 
       expect(screen.getByText("Short text.")).toBeInTheDocument();
       expect(screen.queryByText(/Short text\.…/)).not.toBeInTheDocument();
+    });
+  });
+
+  describe("PostHog AI Feedback", () => {
+    const factoidWithGenerationId = createMockFactoid({
+      text: "Test factoid",
+      generation_request_id: "test-generation-123",
+      votes_up: 5,
+      votes_down: 1,
+    });
+
+    it("should capture quality metric when voting up", async () => {
+      render(
+        <FactoidCard
+          factoid={factoidWithGenerationId}
+          initiallyExpanded={true}
+        />
+      );
+
+      const upvoteButton = screen.getByText("Mind blown (5)");
+      fireEvent.click(upvoteButton);
+
+      await waitFor(() => {
+        expect(mockPosthog.captureTraceMetric).toHaveBeenCalledWith(
+          "test-generation-123",
+          "quality",
+          "good"
+        );
+      });
+    });
+
+    it("should capture quality metric when voting down", async () => {
+      render(
+        <FactoidCard
+          factoid={factoidWithGenerationId}
+          initiallyExpanded={true}
+        />
+      );
+
+      const downvoteButton = screen.getByText("Meh (1)");
+      fireEvent.click(downvoteButton);
+
+      await waitFor(() => {
+        expect(mockPosthog.captureTraceMetric).toHaveBeenCalledWith(
+          "test-generation-123",
+          "quality",
+          "bad"
+        );
+      });
+    });
+
+    it("should capture text feedback when submitting feedback", async () => {
+      render(
+        <FactoidCard
+          factoid={factoidWithGenerationId}
+          initiallyExpanded={true}
+        />
+      );
+
+      // First vote to open feedback form
+      const upvoteButton = screen.getByText("Mind blown (5)");
+      fireEvent.click(upvoteButton);
+
+      await waitFor(() => {
+        expect(
+          screen.getByPlaceholderText("Optional feedback...")
+        ).toBeInTheDocument();
+      });
+
+      // Add feedback text
+      const feedbackTextarea = screen.getByPlaceholderText(
+        "Optional feedback..."
+      );
+      fireEvent.change(feedbackTextarea, {
+        target: { value: "This is great feedback!" },
+      });
+
+      // Submit feedback
+      const submitButton = screen.getByText("Submit feedback");
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(mockPosthog.captureTraceFeedback).toHaveBeenCalledWith(
+          "test-generation-123",
+          "This is great feedback!"
+        );
+      });
+    });
+
+    it("should not capture PostHog events when generation_request_id is missing", async () => {
+      const factoidWithoutGenerationId = createMockFactoid({
+        text: "Test factoid",
+        generation_request_id: null,
+        votes_up: 5,
+        votes_down: 1,
+      });
+
+      render(
+        <FactoidCard
+          factoid={factoidWithoutGenerationId}
+          initiallyExpanded={true}
+        />
+      );
+
+      const upvoteButton = screen.getByText("Mind blown (5)");
+      fireEvent.click(upvoteButton);
+
+      await waitFor(() => {
+        expect(mockSubmitVote).toHaveBeenCalled();
+      });
+
+      // Should not call PostHog methods
+      expect(mockPosthog.captureTraceMetric).not.toHaveBeenCalled();
+    });
+
+    it("should not capture text feedback when no text is provided", async () => {
+      render(
+        <FactoidCard
+          factoid={factoidWithGenerationId}
+          initiallyExpanded={true}
+        />
+      );
+
+      // Vote to open feedback form
+      const upvoteButton = screen.getByText("Mind blown (5)");
+      fireEvent.click(upvoteButton);
+
+      await waitFor(() => {
+        expect(
+          screen.getByPlaceholderText("Optional feedback...")
+        ).toBeInTheDocument();
+      });
+
+      // Submit feedback without text
+      const submitButton = screen.getByText("Submit feedback");
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(mockSubmitFeedback).toHaveBeenCalled();
+      });
+
+      // Should not call captureTraceFeedback since no text was provided
+      expect(mockPosthog.captureTraceFeedback).not.toHaveBeenCalled();
     });
   });
 });
