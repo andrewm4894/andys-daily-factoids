@@ -157,6 +157,12 @@ LANGSMITH_API_KEY = settings.langsmith_api_key
 LANGSMITH_PROJECT = settings.langsmith_project
 LANGSMITH_TRACING = settings.langsmith_tracing
 
+# Datadog configuration
+DATADOG_API_KEY = settings.datadog_api_key
+DATADOG_SITE = settings.datadog_site
+DATADOG_LLMOBS_ENABLED = settings.datadog_llmobs_enabled
+DATADOG_LLMOBS_ML_APP = settings.datadog_llmobs_ml_app
+
 STRIPE_SECRET_KEY = settings.stripe_secret_key
 STRIPE_PUBLISHABLE_KEY = settings.stripe_publishable_key
 STRIPE_PRICE_ID = settings.stripe_price_id

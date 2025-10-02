@@ -96,6 +96,26 @@ class AppSettings(BaseSettings):
         default=False,
         validation_alias=AliasChoices("LANGSMITH_TRACING", "DJANGO_LANGSMITH_TRACING"),
     )
+    datadog_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("DD_API_KEY", "DATADOG_API_KEY", "DJANGO_DATADOG_API_KEY"),
+    )
+    datadog_site: str = Field(
+        default="datadoghq.com",
+        validation_alias=AliasChoices("DD_SITE", "DATADOG_SITE", "DJANGO_DATADOG_SITE"),
+    )
+    datadog_llmobs_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "DD_LLMOBS_ENABLED", "DATADOG_LLMOBS_ENABLED", "DJANGO_DATADOG_LLMOBS_ENABLED"
+        ),
+    )
+    datadog_llmobs_ml_app: str = Field(
+        default="andys-daily-factoids",
+        validation_alias=AliasChoices(
+            "DD_LLMOBS_ML_APP", "DATADOG_LLMOBS_ML_APP", "DJANGO_DATADOG_LLMOBS_ML_APP"
+        ),
+    )
     stripe_secret_key: str | None = Field(
         default=None,
         validation_alias=AliasChoices("STRIPE_SECRET_KEY", "DJANGO_STRIPE_SECRET_KEY"),
@@ -315,6 +335,30 @@ def get_settings(env_file: str | os.PathLike[str] | None = None) -> AppSettings:
                         or os.getenv("LANGSMITH_TRACING")
                         or "false"
                     ).lower() == "true"
+
+                    self.datadog_api_key = (
+                        os.getenv("DJANGO_DATADOG_API_KEY")
+                        or os.getenv("DD_API_KEY")
+                        or os.getenv("DATADOG_API_KEY")
+                    )
+                    self.datadog_site = (
+                        os.getenv("DJANGO_DATADOG_SITE")
+                        or os.getenv("DD_SITE")
+                        or os.getenv("DATADOG_SITE")
+                        or "datadoghq.com"
+                    )
+                    self.datadog_llmobs_enabled = (
+                        os.getenv("DJANGO_DATADOG_LLMOBS_ENABLED")
+                        or os.getenv("DD_LLMOBS_ENABLED")
+                        or os.getenv("DATADOG_LLMOBS_ENABLED")
+                        or "false"
+                    ).lower() == "true"
+                    self.datadog_llmobs_ml_app = (
+                        os.getenv("DJANGO_DATADOG_LLMOBS_ML_APP")
+                        or os.getenv("DD_LLMOBS_ML_APP")
+                        or os.getenv("DATADOG_LLMOBS_ML_APP")
+                        or "andys-daily-factoids"
+                    )
 
                     self.stripe_secret_key = os.getenv("DJANGO_STRIPE_SECRET_KEY") or os.getenv(
                         "STRIPE_SECRET_KEY"
