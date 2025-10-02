@@ -15,6 +15,7 @@ from apps.core.braintrust import (
     initialize_braintrust,
     log_operation_metadata,
 )
+from apps.core.datadog import get_datadog_callback_handler, initialize_datadog
 from apps.core.langsmith import get_langsmith_callback_handler, initialize_langsmith
 from apps.core.posthog import get_posthog_client
 from apps.core.services import (
@@ -222,6 +223,14 @@ def _build_callbacks(
     langsmith_callback = get_langsmith_callback_handler()
     if langsmith_callback:
         callbacks.append(langsmith_callback)
+
+    # Initialize Datadog LLM observability
+    initialize_datadog()
+
+    # Optionally add a specific Datadog callback for this generation
+    datadog_callback = get_datadog_callback_handler()
+    if datadog_callback:
+        callbacks.append(datadog_callback)
 
     return callbacks
 

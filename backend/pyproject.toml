@@ -27,6 +27,7 @@ dependencies = [
     "braintrust>=0.0.130",
     "braintrust-langchain>=0.0.4",
     "langsmith>=0.1.149",
+    "ddtrace>=2.14.0",
 ]
 
 [project.optional-dependencies]

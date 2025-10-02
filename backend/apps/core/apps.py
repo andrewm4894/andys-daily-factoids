@@ -30,6 +30,15 @@ def _bootstrap_langsmith() -> None:
     initialize_langsmith()
 
 
+def _bootstrap_datadog() -> None:
+    try:
+        from .datadog import initialize_datadog
+    except ImportError:  # pragma: no cover - Datadog not installed
+        return
+
+    initialize_datadog()
+
+
 class CoreConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "apps.core"
@@ -39,3 +48,4 @@ class CoreConfig(AppConfig):
         _bootstrap_posthog()
         _bootstrap_braintrust()
         _bootstrap_langsmith()
+        _bootstrap_datadog()
