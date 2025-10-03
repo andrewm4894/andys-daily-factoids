@@ -390,7 +390,7 @@ describe("FactoidCard", () => {
       render(<FactoidCard factoid={defaultFactoid} initiallyExpanded={true} />);
 
       const chatGPTButton = screen.getByLabelText(
-        "Ask ChatGPT if this factoid is true"
+        "Ask ChatJipity if this factoid is true"
       );
       fireEvent.click(chatGPTButton);
 
@@ -407,12 +407,12 @@ describe("FactoidCard", () => {
     it("should have proper button text and icon", () => {
       render(<FactoidCard factoid={defaultFactoid} initiallyExpanded={true} />);
 
-      const chatGPTButton = screen.getByText("Ask ChatGPT");
+      const chatGPTButton = screen.getByText("Ask ChatJipity");
       expect(chatGPTButton).toBeInTheDocument();
 
       // Check that the button has the correct aria-label
       expect(
-        screen.getByLabelText("Ask ChatGPT if this factoid is true")
+        screen.getByLabelText("Ask ChatJipity if this factoid is true")
       ).toBeInTheDocument();
     });
   });
