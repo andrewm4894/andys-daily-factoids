@@ -382,7 +382,7 @@ describe("FactoidCard", () => {
     });
   });
 
-  describe("Ask ChatGPT", () => {
+  describe("Ask ChatGippity", () => {
     it("should open ChatGPT with prompt in new window", () => {
       const mockOpen = jest.fn();
       window.open = mockOpen;
@@ -390,7 +390,7 @@ describe("FactoidCard", () => {
       render(<FactoidCard factoid={defaultFactoid} initiallyExpanded={true} />);
 
       const chatGPTButton = screen.getByLabelText(
-        "Ask ChatJipity if this factoid is true"
+        "Ask ChatGippity if this factoid is true"
       );
       fireEvent.click(chatGPTButton);
 
@@ -407,12 +407,12 @@ describe("FactoidCard", () => {
     it("should have proper button text and icon", () => {
       render(<FactoidCard factoid={defaultFactoid} initiallyExpanded={true} />);
 
-      const chatGPTButton = screen.getByText("Ask ChatJipity");
+      const chatGPTButton = screen.getByText("Ask ChatGippity");
       expect(chatGPTButton).toBeInTheDocument();
 
       // Check that the button has the correct aria-label
       expect(
-        screen.getByLabelText("Ask ChatJipity if this factoid is true")
+        screen.getByLabelText("Ask ChatGippity if this factoid is true")
       ).toBeInTheDocument();
     });
   });
