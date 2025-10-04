@@ -9,7 +9,7 @@ from django.conf import settings
 
 try:
     from langfuse import Langfuse
-    from langfuse.callback import CallbackHandler
+    from langfuse.langchain import CallbackHandler
 except ImportError:  # pragma: no cover - optional dependency
     Langfuse = None  # type: ignore[assignment]
     CallbackHandler = None  # type: ignore[assignment]
