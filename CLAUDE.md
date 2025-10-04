@@ -69,7 +69,12 @@ make precommit-update      # Update pre-commit hooks to latest versions
 # Quality evaluation
 make eval-daily            # Run daily quality evaluation (20 recent factoids)
 make eval-manual           # Manual evaluation of larger sample (100 factoids)
-make eval-debug            # Fast evaluation without truthfulness (50 factoids)
+
+# Observability testing
+make test-braintrust       # Test Braintrust integration setup
+make test-braintrust-simple # Test simple LangChain call with Braintrust tracing
+make test-langfuse         # Test Langfuse integration with full factoid generation
+make test-langfuse-simple  # Test simple LangChain call with Langfuse tracing
 ```
 
 ### Running a Single Test
@@ -134,6 +139,7 @@ The backend follows a clear separation of concerns:
    - PostHog: $ai_generation events with metadata
    - Braintrust: Structured tracing for evals
    - LangSmith: Optional debugging traces
+   - Langfuse: Optional session tracking and prompt management
 6. Persist Factoid + GenerationRequest models
 7. Return JSON or stream SSE events (status/factoid/error)
 ```
@@ -153,16 +159,17 @@ The backend follows a clear separation of concerns:
 - `apps/chat/services/factoid_agent.py`: Conversational agent with tool use
 
 ### Observability Integration
-The codebase integrates three observability platforms via callback handlers:
+The codebase integrates four observability platforms via callback handlers:
 - **PostHog**: Client/server analytics, `$ai_generation` events, user tracking
 - **Braintrust**: LLM evaluation traces, structured experiment tracking
 - **LangSmith**: Optional LangChain debugging traces
+- **Langfuse**: Open-source LLM observability, session tracking, prompt management
 
-All three are optional and controlled via environment variables. See `apps/core/posthog.py`, `apps/core/braintrust.py`, `apps/core/langsmith.py`.
+All four are optional and controlled via environment variables. See `apps/core/posthog.py`, `apps/core/braintrust.py`, `apps/core/langsmith.py`, `apps/core/langfuse.py`. For comprehensive observability documentation, see `LLM_OBSERVABILITY.md`.
 
 ### Environment Variables
 Backend requires: `OPENROUTER_API_KEY`, `DATABASE_URL`, `DJANGO_SECRET_KEY`
-Optional observability: `POSTHOG_PROJECT_API_KEY`, `BRAINTRUST_API_KEY`, `LANGSMITH_API_KEY`
+Optional observability: `POSTHOG_PROJECT_API_KEY`, `BRAINTRUST_API_KEY`, `LANGSMITH_API_KEY`, `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`
 Optional infrastructure: `REDIS_URL` (rate limiting), `STRIPE_SECRET_KEY` (payments)
 Frontend requires: `NEXT_PUBLIC_FACTOIDS_API_BASE` (defaults to localhost:8000)
 
