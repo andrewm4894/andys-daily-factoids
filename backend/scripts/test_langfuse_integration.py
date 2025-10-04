@@ -58,7 +58,7 @@ def main():
             posthog_distinct_id="test-langfuse",
         )
 
-        print(f"✅ Factoid generated successfully!")
+        print("✅ Factoid generated successfully!")
         print(f"   Emoji: {factoid.emoji}")
         print(f"   Subject: {factoid.subject}")
         print(f"   Text: {factoid.text[:100]}...")
