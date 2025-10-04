@@ -11,205 +11,293 @@ Andy's Daily Factoids integrates multiple observability platforms to demonstrate
 ### 1. PostHog
 
 **Purpose**: Product analytics and AI generation tracking
-**Implementation**: Custom callback handler with event capture
+**Implementation**: Uses `posthog.ai.langchain.CallbackHandler` (native PostHog LangChain integration)
 **Location**: `backend/apps/core/posthog.py`
 
 #### Features
-- Tracks `$ai_generation` events with comprehensive metadata
-- Captures user interactions and feature usage
-- Provides cost tracking and model performance metrics
-- Supports both anonymous and authenticated user tracking
+- Automatic `$ai_generation` event tracking via LangChain callbacks
+- Exception autocapture with Django integration
+- Synchronous mode in production to prevent event loss
+- Group tracking by user profile
 
 #### Implementation Details
+
+**Client Configuration** (`apps/core/posthog.py:47-99`):
 ```python
-# Custom callback handler
-class PosthogCallbackHandler(BaseCallbackHandler):
-    - on_llm_start: Captures generation initialization
-    - on_llm_end: Records completion with tokens and cost
-    - on_llm_error: Logs generation failures
+def configure_posthog() -> Optional[Posthog]:
+    client = Posthog(
+        api_key,
+        host=host,
+        enable_exception_autocapture=True,
+        sync_mode=use_sync_mode,  # True in production, False in dev
+        flush_at=1,
+        flush_interval=2.0,
+        max_retries=2,
+        timeout=10.0,
+    )
 ```
 
-#### Event Structure
-```json
-{
-  "event": "$ai_generation",
-  "properties": {
-    "model": "anthropic/claude-3.5-sonnet",
-    "prompt_tokens": 1234,
-    "completion_tokens": 567,
-    "total_tokens": 1801,
-    "cost": 0.0234,
-    "duration": 2.34,
-    "status": "success"
-  }
-}
+**Callback Integration** (`apps/factoids/services/generator.py:198-205`):
+```python
+from posthog.ai.langchain import CallbackHandler
+
+posthog_callback = CallbackHandler(
+    client=posthog_client,
+    distinct_id=distinct_id,
+    trace_id=trace_id,
+    properties=properties,
+    groups={"profile": profile} if profile else None,
+)
 ```
 
 #### Configuration
-- **API Key**: `POSTHOG_PROJECT_API_KEY`
-- **Host**: `POSTHOG_HOST` (defaults to PostHog Cloud)
-- **Client Hash**: Derived from IP + User-Agent for anonymous tracking
+- **API Key**: `POSTHOG_PROJECT_API_KEY` (`factoids_project/settings/config.py:67-70`)
+- **Host**: `POSTHOG_HOST` (defaults to `https://us.i.posthog.com`)
+- **Debug**: `POSTHOG_DEBUG` (boolean, default `False`)
+- **Disabled**: `POSTHOG_DISABLED` (boolean, allows disabling without removing API key)
+- **Client Hash**: Derived from IP + User-Agent in `apps/factoids/api.py` for anonymous tracking
 
 ### 2. Braintrust
 
 **Purpose**: LLM evaluation and experiment tracking
-**Implementation**: Native LangChain integration
+**Implementation**: Uses `braintrust_langchain.BraintrustCallbackHandler` with global handler
 **Location**: `backend/apps/core/braintrust.py`
 
 #### Features
-- Structured tracing for LLM calls
-- Experiment tracking and A/B testing support
-- Model performance benchmarking
-- Dataset management for evaluations
+- Automatic LangChain tracing via global handler
+- Project-level trace organization
+- Operation metadata logging for filtering
+- Manual callback handler creation for specific chains
 
 #### Implementation Details
-```python
-from braintrust.langchain import BraintrustTracer
 
-# Integration with LangChain
-callbacks = [BraintrustTracer(
-    project=settings.BRAINTRUST_PROJECT_NAME,
-    tags=["production", "factoid_generation"]
-)]
+**Initialization** (`apps/core/braintrust.py:22-50`):
+```python
+from braintrust import init_logger
+from braintrust_langchain import BraintrustCallbackHandler, set_global_handler
+
+def initialize_braintrust() -> bool:
+    init_logger(
+        project="andys-daily-factoids",
+        api_key=api_key,
+    )
+
+    # Global handler automatically traces all LangChain calls
+    handler = BraintrustCallbackHandler()
+    set_global_handler(handler)
 ```
 
-#### Trace Structure
-- Hierarchical spans for request lifecycle
-- Input/output capture at each stage
-- Metadata including prompts, model parameters, and responses
-- Cost and latency metrics
+**Callback Integration** (`apps/factoids/services/generator.py:207-218`):
+```python
+# Initialize Braintrust (sets up global handler automatically)
+initialize_braintrust()
+
+# Optionally add a specific callback for this generation
+braintrust_callback = get_braintrust_callback_handler()
+if braintrust_callback:
+    callbacks.append(braintrust_callback)
+
+# Log operation metadata for trace filtering
+log_operation_metadata(
+    "factoid_generation",
+    service="generator",
+    topic=topic,
+    request_source=str(request_source)
+)
+```
 
 #### Configuration
-- **API Key**: `BRAINTRUST_API_KEY`
-- **Project**: `BRAINTRUST_PROJECT_NAME` (default: "factoids")
-- **Auto-logging**: Enabled by default for all LangChain calls
+- **API Key**: `BRAINTRUST_API_KEY` (`factoids_project/settings/config.py:83-86`)
+- **Project**: Hardcoded to `"andys-daily-factoids"` in `apps/core/braintrust.py:38`
+- **Auto-logging**: Global handler automatically traces all LangChain calls once initialized
 
 ### 3. LangSmith
 
 **Purpose**: LangChain-specific debugging and monitoring
-**Implementation**: Native LangChain integration
+**Implementation**: Environment variable-based auto-tracing + optional callback handler
 **Location**: `backend/apps/core/langsmith.py`
 
 #### Features
-- Deep integration with LangChain components
-- Run tree visualization
-- Prompt versioning and management
-- Detailed token usage analysis
+- Automatic LangChain tracing via environment variables
+- Optional explicit callback handlers
+- OpenAI client wrapping for non-LangChain calls
+- Configurable project-level organization
 
 #### Implementation Details
-```python
-from langsmith import Client
-from langsmith.run_helpers import traceable
 
-# Automatic tracing via environment variables
-os.environ["LANGCHAIN_TRACING_V2"] = "true"
-os.environ["LANGCHAIN_API_KEY"] = settings.LANGSMITH_API_KEY
+**Initialization** (`apps/core/langsmith.py:58-77`):
+```python
+def initialize_langsmith() -> None:
+    # Set environment variables for automatic LangSmith tracing
+    os.environ["LANGCHAIN_TRACING_V2"] = "true"
+    os.environ["LANGCHAIN_API_KEY"] = api_key
+    os.environ["LANGCHAIN_PROJECT"] = project_name
 ```
 
-#### Trace Information
-- Complete call chains with intermediate steps
-- Tool usage in agent interactions
-- Retry logic and error handling
-- Streaming token tracking
+**Callback Handler** (`apps/core/langsmith.py:40-55`):
+```python
+from langsmith.callbacks import LangChainTracer
+
+def get_langsmith_callback_handler() -> LangChainTracer | None:
+    return LangChainTracer(project_name=project_name)
+```
+
+**Integration** (`apps/factoids/services/generator.py:220-226`):
+```python
+# Initialize LangSmith (sets up global tracing via env vars)
+initialize_langsmith()
+
+# Optionally add a specific callback for this generation
+langsmith_callback = get_langsmith_callback_handler()
+if langsmith_callback:
+    callbacks.append(langsmith_callback)
+```
 
 #### Configuration
-- **API Key**: `LANGSMITH_API_KEY`
-- **Project**: `LANGCHAIN_PROJECT` (default: "factoids")
-- **Tracing**: `LANGCHAIN_TRACING_V2=true`
-- **Endpoint**: `LANGCHAIN_ENDPOINT` (optional)
+- **API Key**: `LANGSMITH_API_KEY` (`factoids_project/settings/config.py:87-90`)
+- **Project**: `LANGSMITH_PROJECT` (default: `"andys-daily-factoids"`)
+- **Tracing**: `LANGSMITH_TRACING` (boolean, default `False` - must be explicitly enabled)
+- **Note**: Tracing is controlled via `LANGSMITH_TRACING` setting, not `LANGCHAIN_TRACING_V2`
 
 ### 4. Langfuse
 
 **Purpose**: Open-source LLM observability
-**Implementation**: Custom callback handler via langfuse-langchain package
+**Implementation**: Uses `langfuse.langchain.CallbackHandler` with cached client
 **Location**: `backend/apps/core/langfuse.py`
 
 #### Features
-- Session tracking and user journey analysis
-- Prompt management and versioning
-- Cost tracking and optimization insights
+- Client initialization with caching
+- Callback handler for LangChain integration
 - Self-hostable alternative to commercial solutions
+- Cloud or self-hosted deployment options
 
 #### Implementation Details
-```python
-from langfuse.callback import CallbackHandler as LangfuseCallbackHandler
 
-# Integration with LangChain
-callbacks = [LangfuseCallbackHandler(
-    public_key=settings.LANGFUSE_PUBLIC_KEY,
-    secret_key=settings.LANGFUSE_SECRET_KEY,
-    host=settings.LANGFUSE_HOST,
-    session_id=request.client_hash,
-    user_id=request.client_hash,
-    tags=["production", "factoid_generation"]
-)]
+**Client Initialization** (`apps/core/langfuse.py:23-53`):
+```python
+from langfuse import Langfuse
+
+@lru_cache()
+def get_langfuse_client() -> Langfuse | None:
+    _client = Langfuse(
+        public_key=public_key,
+        secret_key=secret_key,
+        host=host,
+    )
+    return _client
+```
+
+**Callback Handler** (`apps/core/langfuse.py:56-70`):
+```python
+from langfuse.langchain import CallbackHandler
+
+def get_langfuse_callback_handler() -> CallbackHandler | None:
+    # Ensures client is initialized first
+    client = get_langfuse_client()
+    if not client:
+        return None
+
+    return CallbackHandler()
+```
+
+**Integration** (`apps/factoids/services/generator.py:236-242`):
+```python
+# Initialize Langfuse tracing
+initialize_langfuse()
+
+# Optionally add a specific callback for this generation
+langfuse_callback = get_langfuse_callback_handler()
+if langfuse_callback:
+    callbacks.append(langfuse_callback)
 ```
 
 #### Configuration
-- **Public Key**: `LANGFUSE_PUBLIC_KEY`
-- **Secret Key**: `LANGFUSE_SECRET_KEY`
-- **Host**: `LANGFUSE_HOST` (defaults to Langfuse Cloud)
-- **Enabled**: Automatically enabled when keys are present
+- **Public Key**: `LANGFUSE_PUBLIC_KEY` (`factoids_project/settings/config.py:119-122`)
+- **Secret Key**: `LANGFUSE_SECRET_KEY` (`factoids_project/settings/config.py:123-126`)
+- **Host**: `LANGFUSE_HOST` (default: `https://cloud.langfuse.com`)
+- **Enabled**: Automatically enabled when both keys are present
 
 ## Implementation Patterns
 
-### Callback Handler Architecture
-
-All observability integrations follow a consistent callback pattern:
-
-```python
-class ObservabilityCallbackHandler(BaseCallbackHandler):
-    def on_llm_start(self, serialized, prompts, **kwargs):
-        # Track generation start
-        pass
-
-    def on_llm_end(self, response, **kwargs):
-        # Record completion metrics
-        pass
-
-    def on_llm_error(self, error, **kwargs):
-        # Log failures
-        pass
-```
-
 ### Unified Integration Point
 
-All handlers are registered in the service layer:
+All handlers are registered in the `_build_callbacks` function (`apps/factoids/services/generator.py:175-244`):
 
 ```python
-# backend/apps/factoids/services/generator.py
-callbacks = []
+def _build_callbacks(
+    posthog_client: Posthog | None,
+    *,
+    distinct_id: str,
+    trace_id: str,
+    topic: str,
+    profile: str,
+    request_source: models.RequestSource,
+    extra_properties: Optional[dict[str, Any]] = None,
+) -> list[Any]:
+    callbacks = []
 
-if settings.POSTHOG_PROJECT_API_KEY:
-    callbacks.append(PosthogCallbackHandler(...))
+    # PostHog callback (explicit)
+    if posthog_client:
+        posthog_callback = CallbackHandler(
+            client=posthog_client,
+            distinct_id=distinct_id,
+            trace_id=trace_id,
+            properties=properties,
+            groups={"profile": profile} if profile else None,
+        )
+        callbacks.append(posthog_callback)
 
-if settings.BRAINTRUST_API_KEY:
-    callbacks.append(BraintrustTracer(...))
+    # Braintrust (global handler + optional explicit callback)
+    initialize_braintrust()
+    braintrust_callback = get_braintrust_callback_handler()
+    if braintrust_callback:
+        callbacks.append(braintrust_callback)
 
-if settings.LANGFUSE_PUBLIC_KEY and settings.LANGFUSE_SECRET_KEY:
-    callbacks.append(LangfuseCallbackHandler(...))
+    # LangSmith (environment variables + optional explicit callback)
+    initialize_langsmith()
+    langsmith_callback = get_langsmith_callback_handler()
+    if langsmith_callback:
+        callbacks.append(langsmith_callback)
 
-if settings.LANGSMITH_API_KEY:
-    # LangSmith auto-configures via env vars
-    pass
+    # Datadog (if configured)
+    initialize_datadog()
+    datadog_callback = get_datadog_callback_handler()
+    if datadog_callback:
+        callbacks.append(datadog_callback)
 
-# Use with LangChain
-llm.invoke(prompt, config={"callbacks": callbacks})
+    # Langfuse (client initialization + callback)
+    initialize_langfuse()
+    langfuse_callback = get_langfuse_callback_handler()
+    if langfuse_callback:
+        callbacks.append(langfuse_callback)
+
+    return callbacks
 ```
 
 ### Metadata Enrichment
 
-Each platform receives enriched metadata:
+PostHog receives enriched metadata (`apps/factoids/services/generator.py:189-196`):
 
 ```python
-metadata = {
-    "client_hash": request.client_hash,
-    "profile": request.user_profile,
-    "request_id": str(uuid.uuid4()),
-    "environment": settings.ENVIRONMENT,
-    "version": settings.VERSION,
-    "feature_flags": get_feature_flags(request)
+properties = {
+    "topic": topic,
+    "profile": profile,
+    "request_source": str(request_source),
+    "generation_request_id": trace_id,
 }
+if extra_properties:
+    properties.update(extra_properties)
+```
+
+Braintrust receives operation metadata for filtering (`apps/factoids/services/generator.py:216-218`):
+
+```python
+log_operation_metadata(
+    "factoid_generation",
+    service="generator",
+    topic=topic,
+    request_source=str(request_source)
+)
 ```
 
 ## Use Cases by Platform
@@ -240,164 +328,221 @@ metadata = {
 
 ## Evaluation Framework
 
-The project includes a comprehensive evaluation system:
+The project uses Braintrust for evaluation tracking. Evaluation scripts are located in `backend/evals/` and `backend/scripts/`:
 
-```python
-# backend/scripts/eval_factoids.py
-class FactoidEvaluator:
-    - evaluate_quality: 1-5 scale rating
-    - evaluate_truthfulness: Fact-checking via web search
-    - evaluate_interestingness: Engagement scoring
-    - evaluate_uniqueness: Deduplication analysis
-```
+- **Daily Evaluation**: `backend/scripts/daily_eval_cron.py` - Automated daily quality checks
+- **Manual Evaluation**: Run via `make eval-daily` or `make eval-manual` (see `Makefile:119-126`)
 
-### Metrics Tracked
-- **Quality Score**: Overall factoid quality (1-5)
-- **Truthfulness**: Verified via external sources
-- **Uniqueness**: Similarity to recent factoids
-- **Generation Time**: End-to-end latency
-- **Cost**: Per-factoid generation cost
-- **Error Rate**: Failed generation percentage
+Evaluation dependencies are installed separately via `make eval-install` which installs `braintrust` and `autoevals` packages.
 
 ## Best Practices
 
 ### 1. Graceful Degradation
-All observability integrations are optional:
+All observability integrations are optional and handled gracefully:
+
+**Import-time safety** (all integration modules use try/except for imports):
 ```python
+# Example from apps/core/posthog.py:13-22
 try:
-    if settings.POSTHOG_PROJECT_API_KEY:
-        setup_posthog()
-except Exception as e:
-    logger.warning(f"PostHog setup failed: {e}")
-    # Continue without PostHog
+    from posthog import Posthog
+except ImportError:
+    Posthog = None  # type: ignore
+```
+
+**Runtime checks** (functions return None if not configured):
+```python
+# Example from apps/core/braintrust.py:22-28
+def initialize_braintrust() -> bool:
+    if not init_logger or not BraintrustCallbackHandler:
+        logger.info("Braintrust not available - install with 'pip install braintrust'")
+        return False
+
+    api_key = getattr(settings, "BRAINTRUST_API_KEY", None)
+    if not api_key:
+        logger.info("Braintrust API key not configured")
+        return False
 ```
 
 ### 2. Minimal Performance Impact
-- Async event capture where possible
-- Batch uploads for high-volume events
-- Sampling for expensive operations
-- Local caching to reduce API calls
+
+**PostHog synchronous mode** (`apps/core/posthog.py:71-77`):
+```python
+# Synchronous in production to avoid consumer thread issues
+use_sync_mode = getattr(settings, "POSTHOG_SYNC_MODE", not settings.DEBUG)
+
+client = Posthog(
+    api_key,
+    host=host,
+    sync_mode=use_sync_mode,  # True in production, False in dev
+    flush_at=1,
+    flush_interval=2.0,
+)
+```
+
+**Langfuse client caching** (`apps/core/langfuse.py:23`):
+```python
+@lru_cache()
+def get_langfuse_client() -> Langfuse | None:
+    # Client is initialized once and reused
+```
 
 ### 3. Privacy Considerations
-- Hash user identifiers
-- Exclude PII from events
-- Respect opt-out preferences
-- Comply with data retention policies
+- Client hashing: User identity derived from IP + User-Agent (`apps/factoids/api.py`)
+- No PII stored: PostHog `distinct_id` uses hashed client identifier
+- Profile grouping: Users grouped by profile type (anonymous, api_key) not individuals
 
 ### 4. Cost Management
-- Monitor API usage for each platform
-- Set up alerts for unusual activity
-- Use sampling for high-volume endpoints
-- Leverage free tiers effectively
+- All platforms optional: No cost incurred unless API keys configured
+- LangSmith tracing: Must be explicitly enabled via `LANGSMITH_TRACING=true`
+- PostHog can be disabled: Set `POSTHOG_DISABLED=true` to disable without removing API key
 
 ## Environment Configuration
 
-### Required for Basic Operation
+All observability platforms are **optional**. The application works without any observability configured.
+
+### Configuration Settings
+
+Settings are defined in `factoids_project/settings/config.py` and mapped to Django settings in `factoids_project/settings/base.py`.
+
+**PostHog** (`config.py:67-82`, `base.py:148-151`):
 ```bash
-# At least one observability platform recommended
 POSTHOG_PROJECT_API_KEY=phx_xxxxx
-# OR
-BRAINTRUST_API_KEY=bt_xxxxx
-# OR
-LANGSMITH_API_KEY=ls_xxxxx
+POSTHOG_HOST=https://us.i.posthog.com  # default
+POSTHOG_DEBUG=false                     # default
+POSTHOG_DISABLED=false                  # default
 ```
 
-### Full Observability Stack
+**Braintrust** (`config.py:83-86`, `base.py:153`):
 ```bash
-# PostHog Configuration
-POSTHOG_PROJECT_API_KEY=phx_xxxxx
-POSTHOG_HOST=https://app.posthog.com  # or self-hosted URL
-
-# Braintrust Configuration
 BRAINTRUST_API_KEY=bt_xxxxx
-BRAINTRUST_PROJECT_NAME=factoids
+# Project name is hardcoded to "andys-daily-factoids" in apps/core/braintrust.py:38
+```
 
-# LangSmith Configuration
+**LangSmith** (`config.py:87-98`, `base.py:156-158`):
+```bash
 LANGSMITH_API_KEY=ls_xxxxx
-LANGCHAIN_TRACING_V2=true
-LANGCHAIN_PROJECT=factoids
-LANGCHAIN_ENDPOINT=https://api.smith.langchain.com  # optional
+LANGSMITH_PROJECT=andys-daily-factoids  # default
+LANGSMITH_TRACING=true                  # must be explicitly enabled, default is false
+# Note: LANGCHAIN_TRACING_V2 is set internally by initialize_langsmith()
+```
 
-# Langfuse Configuration
+**Langfuse** (`config.py:119-130`, `base.py:167-169`):
+```bash
 LANGFUSE_PUBLIC_KEY=pk_xxxxx
 LANGFUSE_SECRET_KEY=sk_xxxxx
-LANGFUSE_HOST=https://cloud.langfuse.com  # or self-hosted
+LANGFUSE_HOST=https://cloud.langfuse.com  # default
 ```
 
 ## Testing Observability
 
-### Manual Testing
+### Manual Testing Commands
+
+Available via Makefile (see `Makefile:83-96`):
+
 ```bash
-# Generate factoid with all platforms enabled
+# Generate factoid via Django service layer (includes PostHog when configured)
 make test-generate-factoid
 
-# Check specific platform
-curl http://localhost:8000/api/factoids/debug/observability/
+# Test Braintrust integration setup and configuration
+make test-braintrust
+
+# Test simple LangChain call with Braintrust tracing
+make test-braintrust-simple
+
+# Test Langfuse integration with full factoid generation
+make test-langfuse
+
+# Test simple LangChain call with Langfuse tracing
+make test-langfuse-simple
+
+# Quick API sanity check
+make smoke-backend-api
 ```
 
-### Integration Tests
-```python
-# backend/apps/factoids/tests/test_observability.py
-def test_posthog_events_captured():
-    with mock.patch('posthog.capture') as mock_capture:
-        generate_factoid()
-        assert mock_capture.called
-        assert mock_capture.call_args[0][1] == "$ai_generation"
+### Test Scripts
 
-def test_braintrust_trace_created():
-    # Verify trace appears in Braintrust project
-    pass
+**Braintrust** (`backend/scripts/test_braintrust_integration.py`):
+- Verifies API key configuration
+- Tests `initialize_braintrust()` function
+- Creates callback handler
+- Reports next steps with dashboard URL
 
-def test_langsmith_run_logged():
-    # Confirm run visible in LangSmith UI
-    pass
+**Langfuse** (`backend/scripts/test_langfuse_integration.py` and `test_langfuse_simple.py`):
+- Tests full factoid generation with Langfuse tracing
+- Tests simple LangChain calls with callback handler
 
-def test_langfuse_trace_created():
-    # Verify trace appears in Langfuse dashboard
-    pass
-```
+**LangSmith** (`backend/scripts/test_langsmith_integration.py` and `test_langsmith_simple.py`):
+- Tests integration configuration
+- Validates environment variable setup
 
 ## Debugging Guide
 
 ### PostHog Not Capturing Events
-1. Verify API key is correct
-2. Check network connectivity to PostHog
-3. Enable debug mode: `posthog.debug = True`
-4. Review logs for capture errors
+1. **Check configuration**: Verify `POSTHOG_PROJECT_API_KEY` is set in settings
+2. **Check disabled flag**: Ensure `POSTHOG_DISABLED` is not `true`
+3. **Check import**: Verify `posthog` package is installed (`pip install posthog`)
+4. **Check sync mode**: In production, sync_mode is `True` by default (see `apps/core/posthog.py:71`)
+5. **Check logs**: Look for "PostHog configured" message in Django logs
 
 ### Braintrust Traces Missing
-1. Confirm API key has write permissions
-2. Verify project name matches
-3. Check for LangChain version compatibility
-4. Review callback registration
+1. **Check API key**: Verify `BRAINTRUST_API_KEY` is set
+2. **Check packages**: Ensure both `braintrust` and `braintrust-langchain` are installed
+3. **Run test**: Use `make test-braintrust` to verify setup
+4. **Check initialization**: Look for "Braintrust initialized successfully" in logs (`apps/core/braintrust.py:46`)
+5. **Dashboard**: Check https://www.braintrust.dev/ for "andys-daily-factoids" project
 
 ### LangSmith Not Tracing
-1. Ensure environment variables are set
-2. Verify LANGCHAIN_TRACING_V2 is "true" (string)
-3. Check API key permissions
-4. Test with simple LangChain script
+1. **Check API key**: Verify `LANGSMITH_API_KEY` is set
+2. **Enable tracing**: Set `LANGSMITH_TRACING=true` (it's `False` by default!)
+3. **Check environment**: After initialization, verify `LANGCHAIN_TRACING_V2` env var is set
+4. **Check initialization**: Look for "LangSmith tracing initialized" log (`apps/core/langsmith.py:77`)
+5. **Run test**: Use `make test-langsmith-simple` to verify
 
 ### Langfuse Not Recording
-1. Check both public and secret keys are set
-2. Verify host URL is correct
-3. Review network connectivity
-4. Check callback registration in generator.py
+1. **Check keys**: Verify both `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` are set
+2. **Check package**: Ensure `langfuse` is installed (`pip install langfuse`)
+3. **Check client**: Look for "Langfuse client initialized successfully" log (`apps/core/langfuse.py:49`)
+4. **Run test**: Use `make test-langfuse-simple` to verify
+5. **Check host**: Default is `https://cloud.langfuse.com`, verify if using self-hosted
 
 ## Contributing
 
 To add a new observability platform:
 
-1. Create handler in `backend/apps/core/{platform}.py`
-2. Implement BaseCallbackHandler interface
-3. Add configuration to settings
-4. Register in `generator.py`
-5. Add tests in `test_observability.py`
-6. Update this documentation
+1. **Create integration module** in `backend/apps/core/{platform}.py`
+   - Use try/except for optional imports (see existing integrations)
+   - Implement client initialization with caching if appropriate
+   - Create callback handler getter function
+   - Create initialization function
+
+2. **Add configuration** to `backend/factoids_project/settings/config.py`
+   - Add settings fields to `AppSettings` class with proper validation aliases
+   - Include defaults and optional flags
+
+3. **Map to Django settings** in `backend/factoids_project/settings/base.py`
+   - Add settings mappings (e.g., `PLATFORM_API_KEY = settings.platform_api_key`)
+
+4. **Register in generator** (`backend/apps/factoids/services/generator.py`)
+   - Import initialization and callback functions
+   - Add to `_build_callbacks` function following existing pattern
+   - Call initialization and conditionally append callback
+
+5. **Create test script** in `backend/scripts/test_{platform}_integration.py`
+   - Verify API key configuration
+   - Test initialization
+   - Test callback handler creation
+   - Provide next steps guidance
+
+6. **Add Makefile target** for easy testing
+
+7. **Update this documentation** with code references and line numbers
 
 ## Resources
 
-- [PostHog AI Docs](https://posthog.com/docs/product-analytics/llm-analytics)
+- [PostHog AI Analytics](https://posthog.com/docs/ai-engineering)
+- [PostHog LangChain Integration](https://posthog.com/docs/ai-engineering/langchain-integration)
 - [Braintrust Documentation](https://www.braintrust.dev/docs)
+- [Braintrust LangChain Integration](https://www.braintrust.dev/docs/integrations/langchain)
 - [LangSmith Guide](https://docs.smith.langchain.com/)
 - [Langfuse Documentation](https://langfuse.com/docs)
-- [LangChain Callbacks](https://python.langchain.com/docs/modules/callbacks/)
+- [Langfuse LangChain Integration](https://langfuse.com/docs/integrations/langchain/tracing)
