@@ -14,22 +14,35 @@ from apps.core.langfuse import (
 class TestLangfuseIntegration(TestCase):
     """Test Langfuse observability integration."""
 
+    @patch.dict("os.environ", {}, clear=True)
+    @patch("apps.core.langfuse.Langfuse", None)
+    @patch("apps.core.langfuse.CallbackHandler", None)
     def test_get_langfuse_client_without_keys(self):
         """Test that client returns None when API keys are not configured."""
         with override_settings(LANGFUSE_PUBLIC_KEY=None, LANGFUSE_SECRET_KEY=None):
-            # Clear cache to get fresh initialization
+            # Clear cache and reset global client to get fresh initialization
             get_langfuse_client.cache_clear()
+            import apps.core.langfuse
+
+            apps.core.langfuse._client = None
             client = get_langfuse_client()
             self.assertIsNone(client)
 
+    @patch.dict("os.environ", {}, clear=True)
+    @patch("apps.core.langfuse.Langfuse", None)
+    @patch("apps.core.langfuse.CallbackHandler", None)
     def test_get_langfuse_callback_handler_without_client(self):
         """Test that callback handler returns None when client is not available."""
         with override_settings(LANGFUSE_PUBLIC_KEY=None, LANGFUSE_SECRET_KEY=None):
-            # Clear cache to get fresh initialization
+            # Clear cache and reset global client to get fresh initialization
             get_langfuse_client.cache_clear()
+            import apps.core.langfuse
+
+            apps.core.langfuse._client = None
             handler = get_langfuse_callback_handler()
             self.assertIsNone(handler)
 
+    @patch.dict("os.environ", {}, clear=True)
     @patch("apps.core.langfuse.Langfuse")
     @patch("apps.core.langfuse.CallbackHandler")
     def test_get_langfuse_client_with_keys(self, mock_callback_handler, mock_langfuse):
@@ -42,8 +55,11 @@ class TestLangfuseIntegration(TestCase):
             LANGFUSE_SECRET_KEY="sk-test",
             LANGFUSE_HOST="https://cloud.langfuse.com",
         ):
-            # Clear cache to get fresh initialization
+            # Clear cache and reset global client to get fresh initialization
             get_langfuse_client.cache_clear()
+            import apps.core.langfuse
+
+            apps.core.langfuse._client = None
             client = get_langfuse_client()
             self.assertIsNotNone(client)
             self.assertEqual(client, mock_client)
@@ -93,7 +109,7 @@ class TestLangfuseIntegration(TestCase):
         """Test that Langfuse integration modules can be imported."""
         try:
             import langfuse  # noqa: F401
-            from langfuse.callback import CallbackHandler  # noqa: F401
+            from langfuse.langchain import CallbackHandler  # noqa: F401
 
             # If we get here, the imports succeeded
             self.assertTrue(True)

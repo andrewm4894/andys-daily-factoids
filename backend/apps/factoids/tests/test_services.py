@@ -221,11 +221,19 @@ def test_model_supports_tools_returns_false_when_fetch_fails(mock_fetch):
 @patch("apps.factoids.services.generator.CallbackHandler")
 @patch("apps.factoids.services.generator.initialize_braintrust")
 @patch("apps.factoids.services.generator.initialize_langsmith")
+@patch("apps.factoids.services.generator.initialize_datadog")
+@patch("apps.factoids.services.generator.initialize_langfuse")
 @patch("apps.factoids.services.generator.get_braintrust_callback_handler")
 @patch("apps.factoids.services.generator.get_langsmith_callback_handler")
+@patch("apps.factoids.services.generator.get_datadog_callback_handler")
+@patch("apps.factoids.services.generator.get_langfuse_callback_handler")
 def test_build_callbacks_uses_distinct_id_and_properties(
+    mock_langfuse_handler,
+    mock_datadog_handler,
     mock_langsmith_handler,
     mock_braintrust_handler,
+    mock_init_langfuse,
+    mock_init_datadog,
     mock_init_langsmith,
     mock_init_braintrust,
     mock_handler,
@@ -234,6 +242,8 @@ def test_build_callbacks_uses_distinct_id_and_properties(
     mock_handler.return_value = MagicMock()
     mock_braintrust_handler.return_value = None
     mock_langsmith_handler.return_value = None
+    mock_datadog_handler.return_value = None
+    mock_langfuse_handler.return_value = None
 
     callbacks = _build_callbacks(
         posthog_client,
