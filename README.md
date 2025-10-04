@@ -90,7 +90,7 @@ Every pull request to `main` automatically gets its own isolated preview deploym
 - **Unique URLs** like `factoids-backend-pr-{number}.onrender.com`
 - **Isolated databases** for safe testing
 - **Automatic service linking** between frontend and backend
-- **7-day expiration** after PR closure
+- **2-day expiration** after PR closure
 
 See `PREVIEW_ENVIRONMENTS.md` for detailed documentation on using preview environments for testing and review.
 

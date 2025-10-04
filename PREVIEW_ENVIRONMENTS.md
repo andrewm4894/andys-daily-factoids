@@ -76,8 +76,8 @@ This allows preview frontends to communicate with preview backends without manua
 
 - **Created**: Automatically when a PR is opened or updated
 - **Updated**: On every push to the PR branch
-- **Expires**: 7 days after the PR is merged or closed (configurable)
-- **Stopped**: When the PR is closed/merged (but data persists for 7 days)
+- **Expires**: 2 days after the PR is merged or closed (configurable)
+- **Stopped**: When the PR is closed/merged (but data persists for 2 days)
 
 ## Using Preview Environments
 
@@ -143,12 +143,12 @@ Preview deployments share the same PostHog instance as production, but you can d
 
 ### Database Costs
 - Each preview creates a new PostgreSQL database
-- Databases persist for 7 days after PR closure
+- Databases persist for 2 days after PR closure
 - Consider cleanup strategy if you have many concurrent PRs
 
 ### Optimization Tips
 - Close PRs promptly when no longer needed
-- Set `previewsExpireAfterDays: 7` (already configured)
+- Set `previewsExpireAfterDays: 2` (already configured for cost savings)
 - Cron jobs are disabled to save compute credits
 - Consider disabling previews for draft PRs if desired
 
@@ -201,7 +201,7 @@ Preview deployments share the same PostHog instance as production, but you can d
 Change how long previews persist after PR closure:
 
 ```yaml
-previewsExpireAfterDays: 14  # Keep for 2 weeks instead of 7 days
+previewsExpireAfterDays: 7  # Keep for 7 days instead of 2 days
 ```
 
 ### Disable Previews for a Service

@@ -4,7 +4,7 @@ services:
     runtime: python
     plan: starter
     previewsEnabled: true
-    previewsExpireAfterDays: 7
+    previewsExpireAfterDays: 2
     buildCommand: |
       pip install uv
       cd backend
@@ -46,7 +46,7 @@ services:
     runtime: node
     plan: starter
     previewsEnabled: true
-    previewsExpireAfterDays: 7
+    previewsExpireAfterDays: 2
     buildCommand: |
       cd frontend
       npm install
