@@ -35,7 +35,10 @@ ALLOWED_HOSTS = [
 
 # Parse CORS origins
 cors_env = os.getenv("DJANGO_CORS_ALLOWED_ORIGINS", "")
-cors_origins_list = [origin.strip() for origin in cors_env.split(",") if origin.strip()] if cors_env else []
+if cors_env:
+    cors_origins_list = [origin.strip() for origin in cors_env.split(",") if origin.strip()]
+else:
+    cors_origins_list = []
 
 # Handle wildcard patterns for CORS (for preview environments)
 # Convert '.onrender.com' to a regex pattern
@@ -47,7 +50,8 @@ for origin in cors_origins_list:
         # Convert .onrender.com to regex that matches any subdomain
         domain = origin[1:]  # Remove leading dot
         # Match https://anything.domain or https://anything-else.domain
-        pattern = rf"https://[a-zA-Z0-9\-]+\.{domain.replace('.', r'\.')}"
+        escaped_domain = domain.replace('.', r'\.')
+        pattern = rf"https://[a-zA-Z0-9\-]+\.{escaped_domain}"
         CORS_ALLOWED_ORIGIN_REGEXES.append(pattern)
     else:
         CORS_ALLOWED_ORIGINS.append(origin)
