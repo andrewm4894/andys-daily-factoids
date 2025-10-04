@@ -1,4 +1,4 @@
-.PHONY: help install install-frontend install-backend install-precommit local local-backend local-frontend migrate-backend seed-backend run factoid test test-backend test-frontend test-rate-limit lint lint-backend lint-frontend precommit precommit-install precommit-run precommit-update smoke-backend-api test-generate-factoid test-braintrust test-braintrust-simple eval eval-structure eval-truthfulness eval-daily eval-install
+.PHONY: help install install-frontend install-backend install-precommit local local-backend local-frontend migrate-backend seed-backend run factoid test test-backend test-frontend test-rate-limit lint lint-backend lint-frontend precommit precommit-install precommit-run precommit-update smoke-backend-api test-generate-factoid test-braintrust test-braintrust-simple test-langfuse test-langfuse-simple eval eval-structure eval-truthfulness eval-daily eval-install
 
 help: ## Show available make targets
 	@awk -F ':.*## ' 'BEGIN {print "Available targets:"} /^[a-zA-Z0-9_-]+:.*##/ {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -88,6 +88,12 @@ test-braintrust: ## Test Braintrust integration setup and configuration
 
 test-braintrust-simple: ## Test simple LangChain call with Braintrust tracing
 	cd backend && uv run python scripts/test_braintrust_simple.py
+
+test-langfuse: ## Test Langfuse integration with full factoid generation
+	cd backend && uv run python scripts/test_langfuse_integration.py
+
+test-langfuse-simple: ## Test simple LangChain call with Langfuse tracing
+	cd backend && uv run python scripts/test_langfuse_simple.py
 
 lint-frontend: ## Lint frontend files
 	@echo "Linting frontend files..."

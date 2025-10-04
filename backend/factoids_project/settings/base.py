@@ -163,6 +163,11 @@ DATADOG_SITE = settings.datadog_site
 DATADOG_LLMOBS_ENABLED = settings.datadog_llmobs_enabled
 DATADOG_LLMOBS_ML_APP = settings.datadog_llmobs_ml_app
 
+# Langfuse configuration
+LANGFUSE_PUBLIC_KEY = settings.langfuse_public_key
+LANGFUSE_SECRET_KEY = settings.langfuse_secret_key
+LANGFUSE_HOST = settings.langfuse_host
+
 STRIPE_SECRET_KEY = settings.stripe_secret_key
 STRIPE_PUBLISHABLE_KEY = settings.stripe_publishable_key
 STRIPE_PRICE_ID = settings.stripe_price_id

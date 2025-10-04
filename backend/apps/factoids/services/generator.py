@@ -16,6 +16,7 @@ from apps.core.braintrust import (
     log_operation_metadata,
 )
 from apps.core.datadog import get_datadog_callback_handler, initialize_datadog
+from apps.core.langfuse import get_langfuse_callback_handler, initialize_langfuse
 from apps.core.langsmith import get_langsmith_callback_handler, initialize_langsmith
 from apps.core.posthog import get_posthog_client
 from apps.core.services import (
@@ -231,6 +232,14 @@ def _build_callbacks(
     datadog_callback = get_datadog_callback_handler()
     if datadog_callback:
         callbacks.append(datadog_callback)
+
+    # Initialize Langfuse tracing
+    initialize_langfuse()
+
+    # Optionally add a specific Langfuse callback for this generation
+    langfuse_callback = get_langfuse_callback_handler()
+    if langfuse_callback:
+        callbacks.append(langfuse_callback)
 
     return callbacks
 
