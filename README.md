@@ -86,3 +86,5 @@ Render auto-deploys from `main` via `render.yaml`:
 ---
 
 For architecture details, deployment workflows, and operational guidance, see `ARCHITECTURE.md`.
+
+For comprehensive LLM observability integration details (PostHog, Braintrust, LangSmith, Langfuse), see `LLM_OBSERVABILITY.md`.
