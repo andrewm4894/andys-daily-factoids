@@ -83,6 +83,17 @@ Render auto-deploys from `main` via `render.yaml`:
 - **Frontend**: Next.js production build
 - **Cron**: Shared codebase ensures consistent generation behavior
 
+### Preview Environments
+
+Every pull request to `main` automatically gets its own isolated preview deployment:
+- **Automatic deployment** of both backend and frontend
+- **Unique URLs** like `factoids-backend-pr-{number}.onrender.com`
+- **Isolated databases** for safe testing
+- **Automatic service linking** between frontend and backend
+- **2-day expiration** after PR closure
+
+See `PREVIEW_ENVIRONMENTS.md` for detailed documentation on using preview environments for testing and review.
+
 ---
 
 For architecture details, deployment workflows, and operational guidance, see `ARCHITECTURE.md`.

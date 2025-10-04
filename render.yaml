@@ -3,6 +3,8 @@ services:
     name: factoids-backend
     runtime: python
     plan: starter
+    previewsEnabled: true
+    previewsExpireAfterDays: 2
     buildCommand: |
       pip install uv
       cd backend
@@ -18,9 +20,11 @@ services:
       - key: DJANGO_SETTINGS_MODULE
         value: factoids_project.settings.production
       - key: DJANGO_ALLOWED_HOSTS
-        value: "factoids-backend.onrender.com"
+        generateValue: true
+        value: "factoids-backend.onrender.com,.onrender.com"
       - key: DJANGO_CORS_ALLOWED_ORIGINS
-        value: "https://factoids-frontend.onrender.com,https://andys-daily-factoids.com"
+        generateValue: true
+        value: "https://factoids-frontend.onrender.com,https://andys-daily-factoids.com,.onrender.com"
       - key: POSTHOG_PROJECT_API_KEY
         value: "phc_FBwJgNVOyAez7il4IvxxhzPuB4YFFBGtanSfm3InYJ5"
       - key: POSTHOG_HOST
@@ -41,16 +45,23 @@ services:
     name: factoids-frontend
     runtime: node
     plan: starter
+    previewsEnabled: true
+    previewsExpireAfterDays: 2
     buildCommand: |
       cd frontend
       npm install
+      export NEXT_PUBLIC_FACTOIDS_API_BASE="${RENDER_BACKEND_URL}/api/factoids"
       npm run build
     startCommand: |
       cd frontend
+      export NEXT_PUBLIC_FACTOIDS_API_BASE="${RENDER_BACKEND_URL}/api/factoids"
       npm run start -- --port $PORT
     envVars:
-      - key: NEXT_PUBLIC_FACTOIDS_API_BASE
-        value: https://factoids-backend.onrender.com/api/factoids
+      - key: RENDER_BACKEND_URL
+        fromService:
+          type: web
+          name: factoids-backend
+          property: url
       - key: NEXT_PUBLIC_POSTHOG_KEY
         value: "phc_FBwJgNVOyAez7il4IvxxhzPuB4YFFBGtanSfm3InYJ5"
       - key: NEXT_PUBLIC_POSTHOG_HOST
@@ -62,6 +73,7 @@ services:
     name: factoid-generator
     runtime: python
     plan: starter
+    previewsEnabled: false
     schedule: "*/30 * * * *"
     buildCommand: |
       pip install uv
@@ -96,6 +108,7 @@ services:
     name: daily-eval
     runtime: python
     plan: starter
+    previewsEnabled: false
     schedule: "0 12 * * *"
     buildCommand: |
       pip install uv
