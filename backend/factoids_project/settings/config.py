@@ -116,6 +116,18 @@ class AppSettings(BaseSettings):
             "DD_LLMOBS_ML_APP", "DATADOG_LLMOBS_ML_APP", "DJANGO_DATADOG_LLMOBS_ML_APP"
         ),
     )
+    langfuse_public_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("LANGFUSE_PUBLIC_KEY", "DJANGO_LANGFUSE_PUBLIC_KEY"),
+    )
+    langfuse_secret_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("LANGFUSE_SECRET_KEY", "DJANGO_LANGFUSE_SECRET_KEY"),
+    )
+    langfuse_host: str = Field(
+        default="https://cloud.langfuse.com",
+        validation_alias=AliasChoices("LANGFUSE_HOST", "DJANGO_LANGFUSE_HOST"),
+    )
     stripe_secret_key: str | None = Field(
         default=None,
         validation_alias=AliasChoices("STRIPE_SECRET_KEY", "DJANGO_STRIPE_SECRET_KEY"),
@@ -358,6 +370,18 @@ def get_settings(env_file: str | os.PathLike[str] | None = None) -> AppSettings:
                         or os.getenv("DD_LLMOBS_ML_APP")
                         or os.getenv("DATADOG_LLMOBS_ML_APP")
                         or "andys-daily-factoids"
+                    )
+
+                    self.langfuse_public_key = os.getenv(
+                        "DJANGO_LANGFUSE_PUBLIC_KEY"
+                    ) or os.getenv("LANGFUSE_PUBLIC_KEY")
+                    self.langfuse_secret_key = os.getenv(
+                        "DJANGO_LANGFUSE_SECRET_KEY"
+                    ) or os.getenv("LANGFUSE_SECRET_KEY")
+                    self.langfuse_host = (
+                        os.getenv("DJANGO_LANGFUSE_HOST")
+                        or os.getenv("LANGFUSE_HOST")
+                        or "https://cloud.langfuse.com"
                     )
 
                     self.stripe_secret_key = os.getenv("DJANGO_STRIPE_SECRET_KEY") or os.getenv(

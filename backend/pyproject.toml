@@ -28,6 +28,7 @@ dependencies = [
     "braintrust-langchain>=0.0.4",
     "langsmith>=0.1.149",
     "ddtrace>=2.14.0",
+    "langfuse>=2.0.0",
 ]
 
 [project.optional-dependencies]
