@@ -439,6 +439,40 @@ def run_factoid_agent(
     except Exception as exc:
         # Check if it's a rate limit or model-specific error
         error_msg = str(exc).lower()
+
+        # Check if it's a "tools not supported" error
+        if "tools is not supported" in error_msg or ("404" in error_msg and "tool" in error_msg):
+            # Try with a fallback model that definitely supports tools
+            fallback_model = _get_fallback_model()
+            if fallback_model != resolved_model:
+                logger.warning(
+                    f"Model {resolved_model} does not support tools, retrying with {fallback_model}"
+                )
+                try:
+                    fallback_agent = FactoidAgent(
+                        factoid=factoid,
+                        config=FactoidAgentConfig(
+                            model_key=fallback_model,
+                            temperature=resolved_temperature,
+                            distinct_id=distinct_id,
+                            trace_id=trace_id,
+                            posthog_properties=_merge_properties(
+                                posthog_properties,
+                                {"factoid_id": str(factoid.id), "fallback_used": True},
+                            ),
+                        ),
+                        posthog_client=posthog_client,
+                    )
+                    return fallback_agent.run(history, callbacks=callbacks)
+                except Exception as fallback_exc:
+                    # If fallback also fails, raise a user-friendly error
+                    logger.error(f"Fallback model {fallback_model} also failed: {fallback_exc}")
+                    raise ValueError(
+                        f"The selected model ({resolved_model}) does not support the chat "
+                        f"agent's features. Please try selecting a different model, or leave it "
+                        f"on 'Random model (recommended)'."
+                    ) from exc
+
         if any(keyword in error_msg for keyword in ["rate limit", "429", "temporarily", "quota"]):
             # Try with a fallback model
             fallback_model = _get_fallback_model()
