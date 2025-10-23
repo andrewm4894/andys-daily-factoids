@@ -57,6 +57,7 @@ class ChatSessionCreateSerializer(serializers.Serializer):
     temperature = serializers.FloatField(required=False, min_value=0.0, max_value=2.0)
     posthog_distinct_id = serializers.CharField(required=False, allow_blank=True)
     posthog_properties = serializers.JSONField(required=False)
+    session_id = serializers.CharField(required=False, allow_blank=True)
 
     def validate_posthog_properties(self, value: Any) -> dict[str, Any]:
         if value in (None, ""):
@@ -69,6 +70,7 @@ class ChatSessionCreateSerializer(serializers.Serializer):
 class ChatMessageCreateSerializer(serializers.Serializer):
     message = serializers.CharField()
     posthog_properties = serializers.JSONField(required=False)
+    session_id = serializers.CharField(required=False, allow_blank=True)
 
     def validate_posthog_properties(self, value: Any) -> dict[str, Any]:
         if value in (None, ""):
@@ -96,6 +98,11 @@ class ChatSessionCreateView(APIView):
         posthog_properties = serializer.validated_data.get("posthog_properties") or {}
         model_key = serializer.validated_data.get("model_key") or None
         temperature = serializer.validated_data.get("temperature")
+
+        # Extract session ID from header or payload
+        session_id = (
+            request.META.get("HTTP_X_SESSION_ID") or serializer.validated_data.get("session_id")
+        )
 
         if message_text:
             try:
@@ -125,6 +132,7 @@ class ChatSessionCreateView(APIView):
                 "posthog_distinct_id": distinct_id,
                 "posthog_properties": posthog_properties,
                 "temperature": temperature,
+                "session_id": session_id,
             },
         )
 
@@ -185,6 +193,13 @@ class ChatMessageCreateView(APIView):
         client_hash = session.client_hash or _client_hash(request)
 
         posthog_distinct_id = session.config.get("posthog_distinct_id") or client_hash
+
+        # Extract session ID from header or payload (update if provided)
+        request_session_id = request.META.get("HTTP_X_SESSION_ID") or serializer.validated_data.get(
+            "session_id"
+        )
+        if request_session_id:
+            session.config["session_id"] = request_session_id
 
         try:
             _rate_limiter.check(_rate_bucket(client_hash), _rate_limit_config)
@@ -248,6 +263,7 @@ def _run_agent_and_persist(
     history_query = session.messages.order_by("created_at")
     history = history_to_messages(history_query)
     previous_len = len(history)
+    session_id = session.config.get("session_id")
     updated_messages = run_factoid_agent(
         factoid=factoid,
         session=session,
@@ -256,6 +272,7 @@ def _run_agent_and_persist(
         temperature=temperature,
         distinct_id=distinct_id,
         posthog_properties=posthog_properties,
+        session_id=session_id,
     )
 
     # Note: PostHog events are sent asynchronously by the background consumer thread

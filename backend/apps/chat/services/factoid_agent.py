@@ -397,6 +397,7 @@ def run_factoid_agent(
     temperature: float | None,
     distinct_id: str,
     posthog_properties: dict[str, Any] | None,
+    session_id: str | None = None,
 ) -> list[BaseMessage]:
     """Execute the factoid agent and return the updated message list."""
 
@@ -412,12 +413,18 @@ def run_factoid_agent(
 
     posthog_client = get_posthog_client()
     trace_id = str(session.id)
+
+    # Add $ai_session_id to properties if session_id is provided
+    merged_properties = _merge_properties(posthog_properties, {"factoid_id": str(factoid.id)})
+    if session_id:
+        merged_properties["$ai_session_id"] = session_id
+
     callbacks = _build_callbacks(
         client=posthog_client,
         distinct_id=distinct_id,
         trace_id=trace_id,
         factoid=factoid,
-        extra_properties=_merge_properties(posthog_properties, {"factoid_id": str(factoid.id)}),
+        extra_properties=merged_properties,
     )
 
     # Try with the selected model first
@@ -429,9 +436,7 @@ def run_factoid_agent(
                 temperature=resolved_temperature,
                 distinct_id=distinct_id,
                 trace_id=trace_id,
-                posthog_properties=_merge_properties(
-                    posthog_properties, {"factoid_id": str(factoid.id)}
-                ),
+                posthog_properties=merged_properties,
             ),
             posthog_client=posthog_client,
         )
@@ -457,8 +462,8 @@ def run_factoid_agent(
                             distinct_id=distinct_id,
                             trace_id=trace_id,
                             posthog_properties=_merge_properties(
-                                posthog_properties,
-                                {"factoid_id": str(factoid.id), "fallback_used": True},
+                                merged_properties,
+                                {"fallback_used": True},
                             ),
                         ),
                         posthog_client=posthog_client,
@@ -485,9 +490,7 @@ def run_factoid_agent(
                             temperature=resolved_temperature,
                             distinct_id=distinct_id,
                             trace_id=trace_id,
-                            posthog_properties=_merge_properties(
-                                posthog_properties, {"factoid_id": str(factoid.id)}
-                            ),
+                            posthog_properties=merged_properties,
                         ),
                         posthog_client=posthog_client,
                     )
