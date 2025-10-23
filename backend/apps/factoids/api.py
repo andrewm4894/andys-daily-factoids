@@ -69,6 +69,7 @@ class FactoidGenerationSerializer(drf_serializers.Serializer):
     temperature = drf_serializers.FloatField(required=False, min_value=0.0, max_value=2.0)
     posthog_distinct_id = drf_serializers.CharField(required=False, allow_blank=True)
     posthog_properties = drf_serializers.JSONField(required=False)
+    session_id = drf_serializers.CharField(required=False, allow_blank=True)
 
 
 def _client_hash(request) -> str:
@@ -93,6 +94,11 @@ class FactoidGenerationView(APIView):
         posthog_distinct_id = serializer.validated_data.get("posthog_distinct_id") or None
         posthog_properties = serializer.validated_data.get("posthog_properties") or None
 
+        # Extract session ID from header or payload
+        session_id = (
+            request.META.get("HTTP_X_SESSION_ID") or serializer.validated_data.get("session_id")
+        )
+
         try:
             factoid = generate_factoid(
                 topic=topic,
@@ -102,6 +108,7 @@ class FactoidGenerationView(APIView):
                 cost_guard=_cost_guard,
                 posthog_distinct_id=posthog_distinct_id,
                 posthog_properties=posthog_properties,
+                session_id=session_id,
             )
         except RateLimitExceededError as exc:
             return Response(

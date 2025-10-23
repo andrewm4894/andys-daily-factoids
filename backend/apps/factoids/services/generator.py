@@ -63,6 +63,7 @@ def generate_factoid(
     cost_guard: Optional[CostGuard] = None,
     posthog_distinct_id: Optional[str] = None,
     posthog_properties: Optional[dict[str, Any]] = None,
+    session_id: Optional[str] = None,
 ) -> models.Factoid:
     rate_limiter = get_rate_limiter()
     limits = settings.RATE_LIMITS.get("factoids", {}).get(profile, {})
@@ -119,6 +120,12 @@ def generate_factoid(
     extra_properties: dict[str, Any] | None = None
     if isinstance(posthog_properties, dict):
         extra_properties = {k: v for k, v in posthog_properties.items()}
+
+    # Add $ai_session_id to properties if session_id is provided
+    if session_id:
+        if extra_properties is None:
+            extra_properties = {}
+        extra_properties["$ai_session_id"] = session_id
 
     callbacks = _build_callbacks(
         posthog_client,

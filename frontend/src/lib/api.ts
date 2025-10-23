@@ -6,6 +6,7 @@ import type {
   PaginatedResponse,
   RateLimitStatus,
 } from "@/lib/types";
+import { getSessionId } from "@/lib/session";
 
 const DEFAULT_FACTOIDS_BASE = "http://localhost:8000/api/factoids";
 const DEFAULT_PAYMENTS_BASE = "http://localhost:8000/api/payments";
@@ -57,10 +58,13 @@ async function apiRequest<T>(
   init?: RequestInit
 ): Promise<T> {
   const url = `${baseUrl}${path}`;
+  const sessionId = getSessionId();
+
   const response = await fetch(url, {
     ...init,
     headers: {
       "Content-Type": "application/json",
+      "X-Session-Id": sessionId,
       ...(init?.headers || {}),
     },
     cache: "no-store",
