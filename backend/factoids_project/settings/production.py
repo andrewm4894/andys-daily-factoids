@@ -26,10 +26,36 @@ X_FRAME_OPTIONS = "DENY"
 hosts_env = os.getenv("DJANGO_ALLOWED_HOSTS", "")
 ALLOWED_HOSTS = [host.strip() for host in hosts_env.split(",") if host.strip()] if hosts_env else []
 
+# Enable wildcard subdomains for Render preview environments
+# Django supports patterns like '.example.com' to match all subdomains
+ALLOWED_HOSTS = [
+    host if not host.startswith('.') else host
+    for host in ALLOWED_HOSTS
+]
+
+# Parse CORS origins
 cors_env = os.getenv("DJANGO_CORS_ALLOWED_ORIGINS", "")
-CORS_ALLOWED_ORIGINS = []
 if cors_env:
-    CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_env.split(",") if origin.strip()]
+    cors_origins_list = [origin.strip() for origin in cors_env.split(",") if origin.strip()]
+else:
+    cors_origins_list = []
+
+# Handle wildcard patterns for CORS (for preview environments)
+# Convert '.onrender.com' to a regex pattern
+CORS_ALLOWED_ORIGIN_REGEXES = []
+CORS_ALLOWED_ORIGINS = []
+
+for origin in cors_origins_list:
+    if origin.startswith('.'):
+        # Convert .onrender.com to regex that matches any subdomain
+        domain = origin[1:]  # Remove leading dot
+        # Match https://anything.domain or https://anything-else.domain
+        escaped_domain = domain.replace('.', r'\.')
+        pattern = rf"https://[a-zA-Z0-9\-]+\.{escaped_domain}"
+        CORS_ALLOWED_ORIGIN_REGEXES.append(pattern)
+    else:
+        CORS_ALLOWED_ORIGINS.append(origin)
+
 CORS_ALLOW_ALL_ORIGINS = False
 
 if not SECRET_KEY or SECRET_KEY == "development-secret-key":  # noqa: F405
