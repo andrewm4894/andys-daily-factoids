@@ -51,6 +51,8 @@ services:
     envVars:
       - key: NEXT_PUBLIC_FACTOIDS_API_BASE
         value: https://factoids-backend.onrender.com/api/factoids
+      - key: NEXT_PUBLIC_CHAT_API_BASE
+        value: https://factoids-backend.onrender.com/api/chat
       - key: NEXT_PUBLIC_POSTHOG_KEY
         value: "phc_FBwJgNVOyAez7il4IvxxhzPuB4YFFBGtanSfm3InYJ5"
       - key: NEXT_PUBLIC_POSTHOG_HOST

@@ -19,7 +19,7 @@ local: ## Run backend and frontend dev servers (alias for `make run`)
 	@$(MAKE) run
 
 local-backend: ## Run Django backend locally using uv
-	cd backend && uv run python manage.py runserver
+	cd backend && [ -f .env ] && export $$(cat .env | grep -v "^#" | xargs); uv run python manage.py runserver $${DJANGO_PORT:-8000}
 
 local-frontend: ## Run Next.js frontend locally
 	cd frontend && npm run dev
@@ -100,7 +100,9 @@ lint-frontend: ## Lint frontend files
 	cd ./frontend && npm run lint
 
 run: ## Run backend and frontend dev servers concurrently
-	@bash -lc 'trap "kill 0" EXIT; (cd backend && uv run python manage.py runserver) & (cd frontend && npm run dev)'
+	@bash -lc 'trap "kill 0" EXIT; \
+		(cd backend && [ -f .env ] && export $$(cat .env | grep -v "^#" | xargs) && uv run python manage.py runserver $${DJANGO_PORT:-8000}) & \
+		(cd frontend && npm run dev)'
 
 precommit: ## Run pre-commit hooks on all files (alias for precommit-run)
 	@$(MAKE) precommit-run

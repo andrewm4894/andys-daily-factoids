@@ -115,6 +115,18 @@ REST_FRAMEWORK = {
 
 CORS_ALLOWED_ORIGINS: list[str] = settings.cors_allowed_origins
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+    "x-session-id",  # Custom header for chat sessions
+]
 
 LOGGING = {
     "version": 1,
