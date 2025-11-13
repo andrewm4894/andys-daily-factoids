@@ -8,7 +8,7 @@ import sys
 
 import httpx
 
-API_BASE = os.getenv("FACTOIDS_API_BASE", "http://127.0.0.1:8000/api/factoids")
+API_BASE = os.getenv("FACTOIDS_API_BASE", "http://127.0.0.1:8080/api/factoids")
 PAYLOAD = {"topic": os.getenv("FACTOID_TOPIC", "space exploration")}
 
 

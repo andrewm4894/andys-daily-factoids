@@ -12,14 +12,12 @@ logger = logging.getLogger(__name__)
 
 try:
     from posthog import Posthog
-    from posthog.exception_integrations.django import (  # type: ignore[attr-defined]
-        DjangoIntegration,
-        IntegrationEnablingError,
-    )
 except ImportError:  # pragma: no cover - safety for optional dependency
     Posthog = None  # type: ignore
-    DjangoIntegration = None  # type: ignore
-    IntegrationEnablingError = Exception  # type: ignore
+
+# Django integration was removed in PostHog v7
+DjangoIntegration = None  # type: ignore
+IntegrationEnablingError = Exception  # type: ignore
 
 
 _client: Optional[Posthog] = None
@@ -50,14 +48,20 @@ def configure_posthog(*, force: bool = False) -> Optional[Posthog]:
     global _client, _configured, _django_integration
 
     if Posthog is None:
+        logger.info("PostHog package not available")
         return None
 
     with _lock:
         if _configured and not force:
+            logger.info(
+                f"PostHog already configured, returning existing client: {_client is not None}"
+            )
             return _client
 
         api_key = getattr(settings, "POSTHOG_PROJECT_API_KEY", None)
+        logger.info(f"PostHog API key present: {api_key is not None}")
         if not api_key:
+            logger.warning("No PostHog API key found - PostHog will be disabled")
             _client = None
             _django_integration = None
             _configured = True
@@ -70,6 +74,8 @@ def configure_posthog(*, force: bool = False) -> Optional[Posthog]:
         # can be terminated before events are sent, causing event loss
         use_sync_mode = getattr(settings, "POSTHOG_SYNC_MODE", not settings.DEBUG)
 
+        debug_mode = getattr(settings, "POSTHOG_DEBUG", False)
+
         client = Posthog(
             api_key,
             host=host,
@@ -79,11 +85,17 @@ def configure_posthog(*, force: bool = False) -> Optional[Posthog]:
             flush_interval=2.0,  # Flush every 2 seconds (for async mode)
             max_retries=2,  # Retry failed requests
             timeout=10.0,  # 10 second timeout for network requests
+            debug=debug_mode,  # Enable debug logging
         )
 
-        logger.info(f"PostHog configured: sync_mode={use_sync_mode}, debug={settings.DEBUG}")
+        logger.info(
+            f"PostHog configured: host={host}, sync_mode={use_sync_mode}, debug={debug_mode}"
+        )
 
-        if getattr(settings, "POSTHOG_DISABLED", False):
+        posthog_disabled = getattr(settings, "POSTHOG_DISABLED", False)
+        logger.info(f"PostHog POSTHOG_DISABLED setting: {posthog_disabled}")
+        if posthog_disabled:
+            logger.warning("PostHog is disabled via POSTHOG_DISABLED setting")
             client.disabled = True
 
         if DjangoIntegration is not None and not getattr(settings, "POSTHOG_DISABLED", False):

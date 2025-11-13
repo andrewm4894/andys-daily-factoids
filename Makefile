@@ -109,10 +109,10 @@ run-reload: ## Run backend (with autoreload) and frontend dev servers - slower s
 		(cd backend && [ -f .env ] && export $$(cat .env | grep -v "^#" | xargs) && uv run python manage.py runserver $${DJANGO_PORT:-8080}) & \
 		(cd frontend && PORT=$${FRONTEND_PORT:-3100} npm run dev)'
 
-run-debug: ## Run backend and frontend with verbose Django startup debugging
-	@bash -lc 'trap "kill 0" EXIT; \
-		(cd backend && [ -f .env ] && export $$(cat .env | grep -v "^#" | xargs) && export DJANGO_DEBUG_STARTUP=true && uv run python manage.py runserver --noreload --verbosity 2 $${DJANGO_PORT:-8080}) & \
-		(cd frontend && PORT=$${FRONTEND_PORT:-3100} npm run dev)'
+run-debug: ## Run backend and frontend with verbose Django startup debugging (logs to /tmp/andys-daily-factoids.log)
+	@bash -lc 'rm -f /tmp/andys-daily-factoids.log; trap "kill 0" EXIT; \
+		(cd backend && [ -f .env ] && export $$(cat .env | grep -v "^#" | xargs) && export DJANGO_DEBUG_STARTUP=true && uv run python manage.py runserver --noreload --verbosity 2 $${DJANGO_PORT:-8080} 2>&1 | tee -a /tmp/andys-daily-factoids.log) & \
+		(cd frontend && PORT=$${FRONTEND_PORT:-3100} npm run dev 2>&1 | tee -a /tmp/andys-daily-factoids.log)'
 
 local-backend: ## Run Django backend locally using uv (no autoreload for fast startup)
 	cd backend && [ -f .env ] && export $$(cat .env | grep -v "^#" | xargs) && uv run python manage.py runserver --noreload $${DJANGO_PORT:-8080}
