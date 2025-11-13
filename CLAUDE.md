@@ -32,8 +32,12 @@ make install-backend        # Django dependencies via uv
 make install-frontend       # Next.js dependencies via npm
 
 # Run development servers
-make run                    # Both backend and frontend concurrently
-make local-backend          # Django dev server only
+make run                    # Both backend (no autoreload) and frontend concurrently - FAST STARTUP
+make run-reload             # Both backend (with autoreload) and frontend - SLOW STARTUP but auto-restarts
+make run-debug              # Both servers with verbose Django debug logging
+make local-backend          # Django dev server only (no autoreload) - FAST STARTUP
+make local-backend-reload   # Django with autoreload enabled - SLOW STARTUP but auto-restarts
+make local-backend-debug    # Django with verbose debug logging
 make local-frontend         # Next.js dev server only
 
 # Database operations
@@ -191,6 +195,16 @@ Frontend requires: `NEXT_PUBLIC_FACTOIDS_API_BASE` (defaults to localhost:8000)
 - **Testing**: pytest for backend, request/response mocking with Django test client
 
 ## Important Development Notes
+
+### Django Autoreload Performance
+Django's autoreload mechanism scans all files in the virtual environment on startup, which can take 30+ seconds with many dependencies. **By default, `make run` and `make local-backend` use `--noreload` for fast startup** (< 3 seconds). You'll need to manually restart the server when you make code changes.
+
+**When to use each mode:**
+- `make run` / `make local-backend` - **Default, fast startup** (no autoreload, manual restart required)
+- `make run-reload` / `make local-backend-reload` - Slow startup but auto-restarts on code changes
+- `make run-debug` / `make local-backend-debug` - Fast startup with verbose logging for debugging
+
+The debug logging infrastructure (enabled with `DJANGO_DEBUG_STARTUP=true`) provides detailed startup traces for troubleshooting.
 
 ### Rate Limiting Behavior
 - Uses Redis if `REDIS_URL` set, otherwise in-memory fallback (resets on restart)

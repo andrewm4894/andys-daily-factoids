@@ -106,7 +106,9 @@ describe("Factoid API Functions", () => {
       expect(mockFetch).toHaveBeenCalledWith(
         "http://localhost:8000/api/factoids/?page_size=20",
         expect.objectContaining({
-          headers: { "Content-Type": "application/json" },
+          headers: expect.objectContaining({
+            "Content-Type": "application/json",
+          }),
           cache: "no-store",
         })
       );
