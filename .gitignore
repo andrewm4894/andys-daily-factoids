@@ -32,3 +32,4 @@ yarn-error.log*
 backend/.venv/
 backend/*.egg-info/
 **/__pycache__/
+backend/db.sqlite3

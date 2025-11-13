@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 import dj_database_url
 
 from .config import BASE_DIR, get_settings
@@ -131,16 +133,70 @@ CORS_ALLOW_HEADERS = [
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "[{levelname}] {asctime} {name} {funcName}:{lineno} - {message}",
+            "style": "{",
+        },
+        "simple": {
+            "format": "[{levelname}] {name} - {message}",
+            "style": "{",
+        },
+    },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
-        }
+            "formatter": "simple",
+        },
+        "debug_console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+    },
+    "loggers": {
+        # Django startup debugging
+        "django": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "django.utils.autoreload": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        # App-specific debugging
+        "apps.core": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "apps.factoids": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "apps.chat": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
     },
     "root": {
         "handlers": ["console"],
         "level": "INFO",
     },
 }
+
+# Debug mode logging - enabled via DJANGO_DEBUG_STARTUP env var
+if os.getenv("DJANGO_DEBUG_STARTUP") == "true":
+    LOGGING["handlers"]["console"]["formatter"] = "verbose"
+    LOGGING["loggers"]["django"]["level"] = "DEBUG"
+    LOGGING["loggers"]["django.utils.autoreload"]["level"] = "DEBUG"
+    LOGGING["loggers"]["apps.core"]["level"] = "DEBUG"
+    LOGGING["loggers"]["apps.factoids"]["level"] = "DEBUG"
+    LOGGING["loggers"]["apps.chat"]["level"] = "DEBUG"
+    LOGGING["root"]["level"] = "DEBUG"
 
 RATE_LIMITS = {
     "factoids": {
