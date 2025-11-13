@@ -8,9 +8,9 @@ import type {
 } from "@/lib/types";
 import { getSessionId } from "@/lib/session";
 
-const DEFAULT_FACTOIDS_BASE = "http://localhost:8000/api/factoids";
-const DEFAULT_PAYMENTS_BASE = "http://localhost:8000/api/payments";
-const DEFAULT_CHAT_BASE = "http://localhost:8000/api/chat";
+const DEFAULT_FACTOIDS_BASE = "http://localhost:8080/api/factoids";
+const DEFAULT_PAYMENTS_BASE = "http://localhost:8080/api/payments";
+const DEFAULT_CHAT_BASE = "http://localhost:8080/api/chat";
 
 function inferPaymentsBase(factoidsBase: string): string {
   const trimmed = factoidsBase.replace(/\/$/, "");
