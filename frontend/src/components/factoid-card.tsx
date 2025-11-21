@@ -298,15 +298,15 @@ export function FactoidCard({
   };
 
   const headlineText = isExpanded ? factoid.text : teaserText;
-  const headerClasses = `flex gap-4${
+  const headerClasses = `flex gap-2 sm:gap-4${
     isExpanded ? " items-start" : " items-center justify-center text-center"
   }`;
-  const headlineContainerClasses = isExpanded ? "flex-1" : "flex-none";
-  const headlineTextClasses = `text-lg text-[color:var(--text-primary)] whitespace-pre-wrap${
+  const headlineContainerClasses = isExpanded ? "flex-1 min-w-0" : "flex-none";
+  const headlineTextClasses = `text-base sm:text-lg text-[color:var(--text-primary)] whitespace-pre-wrap break-words${
     isExpanded ? "" : " text-center"
   }`;
   const baseArticleClasses =
-    "factoid-card group relative overflow-hidden rounded-xl border border-[color:var(--surface-card-border)] p-6 text-[color:var(--text-primary)] shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-[color:var(--surface-card-border-hover)] hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-outline)]";
+    "factoid-card group relative overflow-hidden rounded-xl border border-[color:var(--surface-card-border)] p-4 sm:p-6 text-[color:var(--text-primary)] shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-[color:var(--surface-card-border-hover)] hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-outline)]";
   const articleBackgroundClass = isAlternate
     ? "bg-[color:var(--surface-card-alt)]"
     : "bg-[color:var(--surface-card)]";
@@ -406,7 +406,7 @@ export function FactoidCard({
       />
       <div className="relative z-[1]">
         <div className={headerClasses}>
-          <span className="text-3xl mr-2" aria-hidden>
+          <span className="text-2xl sm:text-3xl flex-shrink-0" aria-hidden>
             {displayEmoji}
           </span>
           <div className={headlineContainerClasses}>
@@ -416,8 +416,8 @@ export function FactoidCard({
 
         {isExpanded && (
           <>
-            <div className="mt-6 flex flex-wrap items-center gap-3 text-sm text-[color:var(--text-muted)]">
-              <div className="flex flex-wrap items-center gap-3">
+            <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3 text-xs sm:text-sm text-[color:var(--text-muted)]">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <button
                   type="button"
                   onClick={(event) => {
@@ -425,11 +425,11 @@ export function FactoidCard({
                     handleVote("up");
                   }}
                   disabled={isSubmitting}
-                  className="inline-flex items-center gap-1 rounded-full border border-emerald-200 px-3 py-1 text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex items-center gap-1 rounded-full border border-emerald-200 px-2 sm:px-3 py-1 text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60 text-xs sm:text-sm"
                   title="My mind is blown!"
                 >
                   <span aria-hidden>🤯</span>
-                  Mind blown ({factoid.votes_up})
+                  <span className="hidden xs:inline">Mind blown </span>({factoid.votes_up})
                 </button>
                 <button
                   type="button"
@@ -438,11 +438,11 @@ export function FactoidCard({
                     handleVote("down");
                   }}
                   disabled={isSubmitting}
-                  className="inline-flex items-center gap-1 rounded-full border border-rose-200 px-3 py-1 text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex items-center gap-1 rounded-full border border-rose-200 px-2 sm:px-3 py-1 text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60 text-xs sm:text-sm"
                   title="Meh"
                 >
                   <span aria-hidden>😒</span>
-                  Meh ({factoid.votes_down})
+                  <span className="hidden xs:inline">Meh </span>({factoid.votes_down})
                 </button>
                 <button
                   type="button"
@@ -450,7 +450,7 @@ export function FactoidCard({
                     event.stopPropagation();
                     handleGoogleSearch();
                   }}
-                  className="inline-flex items-center gap-2 rounded-full border border-sky-200 px-3 py-1 text-sky-700 hover:bg-sky-50"
+                  className="inline-flex items-center gap-1 sm:gap-2 rounded-full border border-sky-200 px-2 sm:px-3 py-1 text-sky-700 hover:bg-sky-50 text-xs sm:text-sm"
                   aria-label="Search this factoid on Google"
                   title="Search up that bad boi"
                 >
@@ -458,7 +458,7 @@ export function FactoidCard({
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       viewBox="0 0 24 24"
-                      className="h-4 w-4"
+                      className="h-3 w-3 sm:h-4 sm:w-4"
                     >
                       <path
                         d="M21.35 11.1h-8.9v2.89h5.12c-.22 1.18-1.34 3.46-5.12 3.46-3.08 0-5.59-2.55-5.59-5.67s2.51-5.67 5.59-5.67c1.75 0 2.92.74 3.59 1.37l2.45-2.36C16.93 3.39 14.84 2.5 12.35 2.5 7.4 2.5 3.35 6.55 3.35 11.5s4.05 9 9 9c5.2 0 8.65-3.65 8.65-8.8 0-.59-.06-1.04-.15-1.6z"
@@ -466,7 +466,8 @@ export function FactoidCard({
                       />
                     </svg>
                   </span>
-                  this ASAP!
+                  <span className="hidden sm:inline">this ASAP!</span>
+                  <span className="sm:hidden">Google</span>
                 </button>
                 <button
                   type="button"
@@ -474,7 +475,7 @@ export function FactoidCard({
                     event.stopPropagation();
                     handleAskChatGPT();
                   }}
-                  className="inline-flex items-center gap-2 rounded-full border border-emerald-200 px-3 py-1 text-emerald-700 hover:bg-emerald-50"
+                  className="inline-flex items-center gap-1 sm:gap-2 rounded-full border border-emerald-200 px-2 sm:px-3 py-1 text-emerald-700 hover:bg-emerald-50 text-xs sm:text-sm"
                   aria-label="Ask ChatGippity if this factoid is true"
                   title="Ask ChatGippity"
                 >
@@ -482,23 +483,24 @@ export function FactoidCard({
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       viewBox="0 0 24 24"
-                      className="h-4 w-4"
+                      className="h-3 w-3 sm:h-4 sm:w-4"
                       fill="currentColor"
                     >
                       <path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.872zm16.597 3.855l-5.833-3.387L15.119 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.407-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08L8.704 5.46a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z" />
                     </svg>
                   </span>
-                  Ask ChatGippity
+                  <span className="hidden sm:inline">Ask ChatGippity</span>
+                  <span className="sm:hidden">ChatGPT</span>
                 </button>
               </div>
-              <div className="ml-auto flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 sm:ml-auto">
                 <button
                   type="button"
                   onClick={(event) => {
                     event.stopPropagation();
                     handleCopyFactoid();
                   }}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--surface-card-border)] text-[color:var(--text-secondary)] hover:bg-[color:var(--surface-muted)]"
+                  className="inline-flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full border border-[color:var(--surface-card-border)] text-[color:var(--text-secondary)] hover:bg-[color:var(--surface-muted)] text-sm sm:text-base"
                   aria-label="Copy factoid text"
                   title="Copy this factoid"
                 >
@@ -515,7 +517,7 @@ export function FactoidCard({
                     event.stopPropagation();
                     handleCopyLink();
                   }}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--surface-card-border)] text-[color:var(--text-secondary)] hover:bg-[color:var(--surface-muted)]"
+                  className="inline-flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full border border-[color:var(--surface-card-border)] text-[color:var(--text-secondary)] hover:bg-[color:var(--surface-muted)] text-sm sm:text-base"
                   aria-label="Copy link to this factoid"
                   title="Copy link"
                 >
@@ -534,7 +536,7 @@ export function FactoidCard({
                     setIsExpanded(true);
                     setShowChat((previous) => !previous);
                   }}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                  className="inline-flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full border border-indigo-200 text-indigo-700 hover:bg-indigo-50 text-sm sm:text-base"
                   aria-label="Chat about this factoid"
                   title="Discuss with our AI overlords"
                 >
@@ -555,7 +557,7 @@ export function FactoidCard({
                         return next;
                       });
                     }}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--surface-card-border)] text-[color:var(--text-secondary)] hover:bg-[color:var(--surface-muted)]"
+                    className="inline-flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full border border-[color:var(--surface-card-border)] text-[color:var(--text-secondary)] hover:bg-[color:var(--surface-muted)] text-sm sm:text-base"
                     aria-label="View factoid details"
                     aria-expanded={showMetadataPopover}
                     title="Factoid details"
@@ -569,7 +571,7 @@ export function FactoidCard({
                     createPortal(
                       <div
                         ref={metadataPopoverRef}
-                        className="z-50 w-64 max-w-xs rounded-md border border-[color:var(--surface-card-border)] bg-[color:var(--surface-card)] p-3 text-xs text-[color:var(--text-secondary)] shadow-lg"
+                        className="z-50 w-[calc(100vw-2rem)] sm:w-64 max-w-xs rounded-md border border-[color:var(--surface-card-border)] bg-[color:var(--surface-card)] p-3 text-xs text-[color:var(--text-secondary)] shadow-lg"
                         role="dialog"
                         aria-label="Factoid details"
                         style={{
@@ -604,11 +606,11 @@ export function FactoidCard({
 
             {showFeedback && (
               <div
-                className="mt-4 space-y-3 rounded-md border border-[color:var(--surface-card-border)] bg-[color:var(--surface-muted)] p-4"
+                className="mt-4 space-y-3 rounded-md border border-[color:var(--surface-card-border)] bg-[color:var(--surface-muted)] p-3 sm:p-4"
                 onClick={(event) => event.stopPropagation()}
               >
                 <textarea
-                  className="w-full rounded-md border border-[color:var(--input-border)] bg-[color:var(--input-bg)] p-2 text-sm text-[color:var(--text-secondary)] focus:border-[color:var(--input-border-focus)] focus:outline-none"
+                  className="w-full rounded-md border border-[color:var(--input-border)] bg-[color:var(--input-bg)] p-2 text-xs sm:text-sm text-[color:var(--text-secondary)] focus:border-[color:var(--input-border-focus)] focus:outline-none"
                   rows={3}
                   placeholder="Optional feedback..."
                   value={feedbackText}
@@ -622,7 +624,7 @@ export function FactoidCard({
                     handleFeedbackSubmit();
                   }}
                   disabled={isSubmitting}
-                  className="rounded-md bg-[color:var(--button-primary-bg)] px-3 py-2 text-sm font-medium text-[color:var(--button-primary-text)] transition-colors hover:bg-[color:var(--button-primary-hover)] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-md bg-[color:var(--button-primary-bg)] px-3 py-2 text-xs sm:text-sm font-medium text-[color:var(--button-primary-text)] transition-colors hover:bg-[color:var(--button-primary-hover)] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Submit feedback
                 </button>
