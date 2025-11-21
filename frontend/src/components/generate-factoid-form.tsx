@@ -424,7 +424,7 @@ export function GenerateFactoidForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="mb-8 space-y-4 rounded-lg border border-[color:var(--surface-panel-border)] bg-[color:var(--surface-panel)] p-6 shadow-sm backdrop-blur-sm"
+      className="mb-8 space-y-4 rounded-lg border border-[color:var(--surface-panel-border)] bg-[color:var(--surface-panel)] p-4 sm:p-6 shadow-sm backdrop-blur-sm"
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3 sm:flex-1">
