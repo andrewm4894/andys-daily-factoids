@@ -59,6 +59,8 @@ export function CheckoutSuccess({ sessionId }: CheckoutSuccessProps) {
   }, [hasSessionId, sessionId]);
 
   useEffect(() => {
+    // Fetch fulfillment data on mount - this is a valid data fetching pattern
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     requestFulfillment();
   }, [requestFulfillment]);
 
