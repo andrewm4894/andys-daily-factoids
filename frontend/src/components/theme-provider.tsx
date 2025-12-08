@@ -65,6 +65,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams();
   const themeQuery = searchParams?.get("theme") ?? null;
 
+  // Initialize theme from URL query, localStorage, or system preference
+  // This is a valid initialization pattern that must run once on mount
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
@@ -102,6 +105,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setThemeState(prefersDark ? "dark" : "light");
     setIsReady(true);
   }, [router, themeQuery]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     if (!isReady || typeof window === "undefined") {

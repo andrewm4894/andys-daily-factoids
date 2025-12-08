@@ -651,14 +651,12 @@ function MarkdownContent({
 }) {
   const components = React.useMemo<Components>(
     () => ({
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       p: ({ node, ...props }) => (
         <p
           {...(props as React.HTMLAttributes<HTMLParagraphElement>)}
           className={compact ? "mb-1 last:mb-0" : "mb-2 last:mb-0"}
         />
       ),
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       ul: ({ node, ...props }) => (
         <ul
           {...(props as React.HTMLAttributes<HTMLUListElement>)}
@@ -669,7 +667,6 @@ function MarkdownContent({
           }
         />
       ),
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       ol: ({ node, ...props }) => (
         <ol
           {...(props as React.HTMLAttributes<HTMLOListElement>)}
@@ -680,14 +677,12 @@ function MarkdownContent({
           }
         />
       ),
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       li: ({ node, ...props }) => (
         <li
           {...(props as React.LiHTMLAttributes<HTMLLIElement>)}
           className="mb-1 last:mb-0"
         />
       ),
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       a: ({ node, ...props }) => (
         <a
           {...(props as React.AnchorHTMLAttributes<HTMLAnchorElement>)}
