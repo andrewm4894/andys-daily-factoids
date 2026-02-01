@@ -249,6 +249,12 @@ export function GenerateFactoidForm({
       }
     }
 
+    // Include PostHog session ID to link AI events to frontend session
+    const sessionId = posthog?.get_session_id?.();
+    if (sessionId) {
+      posthogProperties.$session_id = sessionId;
+    }
+
     const hasPosthogProperties = Object.keys(posthogProperties).length > 0;
 
     const params = new URLSearchParams();

@@ -26,11 +26,24 @@ import {
   isChatRateLimitError,
   sendChatMessage,
 } from "@/lib/api";
+import { posthog } from "@/lib/posthog";
 
 interface FactoidChatPanelProps {
   factoid: Factoid;
   models?: string[];
   onClose?: () => void;
+}
+
+function getPosthogProperties(): Record<string, unknown> {
+  const properties: Record<string, unknown> = {};
+
+  // Include session ID to link AI events to frontend session
+  const sessionId = posthog?.get_session_id?.();
+  if (sessionId) {
+    properties.$session_id = sessionId;
+  }
+
+  return properties;
 }
 
 export function FactoidChatPanel({
@@ -115,9 +128,13 @@ export function FactoidChatPanel({
     setIsInitializing(true);
     setErrorMessage(null);
 
+    const posthogProps = getPosthogProperties();
     createChatSession({
       factoidId: factoid.id,
       ...(selectedModel && { modelKey: selectedModel }),
+      posthogDistinctId: posthog?.get_distinct_id?.() ?? undefined,
+      posthogProperties:
+        Object.keys(posthogProps).length > 0 ? posthogProps : undefined,
     })
       .then((response) => {
         if (cancelled) {
@@ -162,11 +179,18 @@ export function FactoidChatPanel({
       setIsSending(true);
 
       try {
+        const posthogProps = getPosthogProperties();
+        const posthogDistinctId = posthog?.get_distinct_id?.() ?? undefined;
+        const posthogProperties =
+          Object.keys(posthogProps).length > 0 ? posthogProps : undefined;
+
         if (!session) {
           const response = await createChatSession({
             factoidId: factoid.id,
             message: trimmed,
             ...(selectedModel && { modelKey: selectedModel }),
+            posthogDistinctId,
+            posthogProperties,
           });
           setSession(response.session);
           setMessages(response.messages);
@@ -178,6 +202,7 @@ export function FactoidChatPanel({
         const response = await sendChatMessage({
           sessionId: session.id,
           message: trimmed,
+          posthogProperties,
         });
         setMessages(response.messages);
         setRateLimit(response.rate_limit);
