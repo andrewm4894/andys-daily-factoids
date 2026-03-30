@@ -22,7 +22,7 @@ services:
       - key: DJANGO_CORS_ALLOWED_ORIGINS
         value: "https://factoids-frontend.onrender.com,https://andys-daily-factoids.com"
       - key: POSTHOG_PROJECT_API_KEY
-        value: "phc_FBwJgNVOyAez7il4IvxxhzPuB4YFFBGtanSfm3InYJ5"
+        value: "phc_ABOAagCSNfMOUWin6A6Tda0WuhzWLFSXjSgSiq9KKBs"
       - key: POSTHOG_HOST
         value: "https://us.i.posthog.com"
       - key: DATABASE_URL
@@ -54,7 +54,7 @@ services:
       - key: NEXT_PUBLIC_CHAT_API_BASE
         value: https://factoids-backend.onrender.com/api/chat
       - key: NEXT_PUBLIC_POSTHOG_KEY
-        value: "phc_FBwJgNVOyAez7il4IvxxhzPuB4YFFBGtanSfm3InYJ5"
+        value: "phc_ABOAagCSNfMOUWin6A6Tda0WuhzWLFSXjSgSiq9KKBs"
       - key: NEXT_PUBLIC_POSTHOG_HOST
         value: "https://us.i.posthog.com"
       - key: NEXT_TELEMETRY_DISABLED
@@ -80,7 +80,7 @@ services:
       - key: DJANGO_ALLOWED_HOSTS
         value: "factoids-backend.onrender.com"
       - key: POSTHOG_PROJECT_API_KEY
-        value: "phc_FBwJgNVOyAez7il4IvxxhzPuB4YFFBGtanSfm3InYJ5"
+        value: "phc_ABOAagCSNfMOUWin6A6Tda0WuhzWLFSXjSgSiq9KKBs"
       - key: POSTHOG_HOST
         value: "https://us.i.posthog.com"
       - key: DATABASE_URL
@@ -115,7 +115,7 @@ services:
       - key: DJANGO_ALLOWED_HOSTS
         value: "factoids-backend.onrender.com"
       - key: POSTHOG_PROJECT_API_KEY
-        value: "phc_FBwJgNVOyAez7il4IvxxhzPuB4YFFBGtanSfm3InYJ5"
+        value: "phc_ABOAagCSNfMOUWin6A6Tda0WuhzWLFSXjSgSiq9KKBs"
       - key: POSTHOG_HOST
         value: "https://us.i.posthog.com"
       - key: DATABASE_URL
