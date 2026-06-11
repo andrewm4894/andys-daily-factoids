@@ -88,6 +88,8 @@ def main() -> int:
         return 1
     except GenerationFailedError as exc:
         print(f"Generation failed: {exc.detail}", file=sys.stderr)
+        if exc.__cause__:
+            print(f"Cause: {exc.__cause__}", file=sys.stderr)
         return 1
 
     posthog_key = getattr(settings, "POSTHOG_PROJECT_API_KEY", None)

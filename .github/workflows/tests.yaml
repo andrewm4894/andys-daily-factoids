@@ -110,7 +110,7 @@ jobs:
     - name: Run backend smoke tests
       run: |
         cd backend
-        uv run python scripts/test_generate_factoid.py --topic "test topic"
+        uv run python scripts/test_generate_factoid.py --topic "test topic" --model "openai/gpt-4o-mini"
 
   test-integration:
     runs-on: ubuntu-latest
