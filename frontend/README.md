@@ -1,6 +1,6 @@
 # Frontend (Next.js)
 
-This directory hosts the new Next.js + TypeScript frontend for Andy's Daily Factoids. It consumes the Django API served from `http://localhost:8000/api` (configurable via `NEXT_PUBLIC_FACTOIDS_API_BASE`).
+This directory hosts the new Next.js + TypeScript frontend for Andy's Daily Factoids. It consumes the Django API served from `http://localhost:8080/api` (configurable via `NEXT_PUBLIC_FACTOIDS_API_BASE`).
 
 ## Getting started
 

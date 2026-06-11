@@ -38,7 +38,7 @@ Copy `backend/.env.example` to `backend/.env` and configure:
 
 ### Frontend (Next.js)
 Create `frontend/.env.local` if needed:
-- `NEXT_PUBLIC_FACTOIDS_API_BASE` - Backend API URL (defaults to `http://localhost:8000/api/factoids`)
+- `NEXT_PUBLIC_FACTOIDS_API_BASE` - Backend API URL (defaults to `http://localhost:8080/api/factoids`)
 - `NEXT_PUBLIC_POSTHOG_KEY` - Optional client analytics
 
 Render manages production secrets via the dashboard and `render.yaml`.
@@ -50,7 +50,7 @@ Render manages production secrets via the dashboard and `render.yaml`.
 ```bash
 make install           # Install dependencies + pre-commit hooks
 make migrate-backend   # Setup database (SQLite locally)
-make run               # Start both backend (:8000) and frontend (:3000)
+make run               # Start both backend (:8080) and frontend (:3000)
 ```
 
 Common commands:

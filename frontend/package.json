@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@stripe/stripe-js": "^5.5.0",
-    "next": "16.0.8",
+    "next": "16.2.9",
     "posthog-js": "^1.200.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
@@ -41,5 +41,10 @@
     "prettier": "^3.1.0",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "8.5.15"
+    }
   }
 }

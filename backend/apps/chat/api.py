@@ -100,8 +100,8 @@ class ChatSessionCreateView(APIView):
         temperature = serializer.validated_data.get("temperature")
 
         # Extract session ID from header or payload
-        session_id = (
-            request.META.get("HTTP_X_SESSION_ID") or serializer.validated_data.get("session_id")
+        session_id = request.META.get("HTTP_X_SESSION_ID") or serializer.validated_data.get(
+            "session_id"
         )
 
         if message_text:

@@ -42,6 +42,23 @@ const mockSubmitFeedback = api.submitFeedback as jest.MockedFunction<
 
 const mockPosthog = posthog as jest.Mocked<typeof posthog>;
 
+const upvoteButtonName = (votes: number) =>
+  new RegExp(`Mind blown\\s*\\(${votes}\\)`);
+const downvoteButtonName = (votes: number) =>
+  new RegExp(`Meh\\s*\\(${votes}\\)`);
+const getUpvoteButton = (votes: number) =>
+  screen
+    .getAllByRole("button", { name: upvoteButtonName(votes) })
+    .find((button) => button.tagName.toLowerCase() === "button")!;
+const queryUpvoteButton = (votes: number) =>
+  screen
+    .queryAllByRole("button", { name: upvoteButtonName(votes) })
+    .find((button) => button.tagName.toLowerCase() === "button") ?? null;
+const getDownvoteButton = (votes: number) =>
+  screen
+    .getAllByRole("button", { name: downvoteButtonName(votes) })
+    .find((button) => button.tagName.toLowerCase() === "button")!;
+
 describe("FactoidCard", () => {
   const defaultFactoid = createMockFactoid({
     text: "This is a fascinating fact about the universe that will blow your mind and make you think.",
@@ -75,7 +92,7 @@ describe("FactoidCard", () => {
       expect(
         screen.getByText(/This is a fascinating fact.*…/)
       ).toBeInTheDocument();
-      expect(screen.queryByText("Mind blown (10)")).not.toBeInTheDocument();
+      expect(queryUpvoteButton(10)).not.toBeInTheDocument();
     });
 
     it("should show full text and voting buttons when initially expanded", () => {
@@ -86,8 +103,8 @@ describe("FactoidCard", () => {
           /This is a fascinating fact about the universe that will blow your mind and make you think\./
         )
       ).toBeInTheDocument();
-      expect(screen.getByText("Mind blown (10)")).toBeInTheDocument();
-      expect(screen.getByText("Meh (2)")).toBeInTheDocument();
+      expect(getUpvoteButton(10)).toBeInTheDocument();
+      expect(getDownvoteButton(2)).toBeInTheDocument();
     });
 
     it("should display fallback emoji when none provided", () => {
@@ -106,7 +123,7 @@ describe("FactoidCard", () => {
       fireEvent.click(card);
 
       await waitFor(() => {
-        expect(screen.getByText("Mind blown (10)")).toBeInTheDocument();
+        expect(getUpvoteButton(10)).toBeInTheDocument();
       });
     });
 
@@ -120,7 +137,7 @@ describe("FactoidCard", () => {
       fireEvent.click(card);
 
       await waitFor(() => {
-        expect(screen.queryByText("Mind blown (10)")).not.toBeInTheDocument();
+        expect(queryUpvoteButton(10)).not.toBeInTheDocument();
       });
     });
 
@@ -131,7 +148,7 @@ describe("FactoidCard", () => {
       fireEvent.keyDown(card, { key: "Enter" });
 
       await waitFor(() => {
-        expect(screen.getByText("Mind blown (10)")).toBeInTheDocument();
+        expect(getUpvoteButton(10)).toBeInTheDocument();
       });
     });
 
@@ -142,7 +159,7 @@ describe("FactoidCard", () => {
       fireEvent.keyDown(card, { key: " " });
 
       await waitFor(() => {
-        expect(screen.getByText("Mind blown (10)")).toBeInTheDocument();
+        expect(getUpvoteButton(10)).toBeInTheDocument();
       });
     });
 
@@ -152,7 +169,7 @@ describe("FactoidCard", () => {
       const card = screen.getByRole("button");
       fireEvent.keyDown(card, { key: "a" });
 
-      expect(screen.queryByText("Mind blown (10)")).not.toBeInTheDocument();
+      expect(queryUpvoteButton(10)).not.toBeInTheDocument();
     });
   });
 
@@ -160,7 +177,7 @@ describe("FactoidCard", () => {
     it("should submit upvote and show feedback form", async () => {
       render(<FactoidCard factoid={defaultFactoid} initiallyExpanded={true} />);
 
-      const upvoteButton = screen.getByText("Mind blown (10)");
+      const upvoteButton = getUpvoteButton(10);
       fireEvent.click(upvoteButton);
 
       await waitFor(() => {
@@ -176,7 +193,7 @@ describe("FactoidCard", () => {
     it("should submit downvote and show feedback form", async () => {
       render(<FactoidCard factoid={defaultFactoid} initiallyExpanded={true} />);
 
-      const downvoteButton = screen.getByText("Meh (2)");
+      const downvoteButton = getDownvoteButton(2);
       fireEvent.click(downvoteButton);
 
       await waitFor(() => {
@@ -196,11 +213,11 @@ describe("FactoidCard", () => {
 
       render(<FactoidCard factoid={defaultFactoid} initiallyExpanded={true} />);
 
-      const upvoteButton = screen.getByText("Mind blown (10)");
+      const upvoteButton = getUpvoteButton(10);
       fireEvent.click(upvoteButton);
 
       expect(upvoteButton).toBeDisabled();
-      expect(screen.getByText("Meh (2)")).toBeDisabled();
+      expect(getDownvoteButton(2)).toBeDisabled();
     });
 
     it("should handle voting API errors gracefully", async () => {
@@ -209,7 +226,7 @@ describe("FactoidCard", () => {
 
       render(<FactoidCard factoid={defaultFactoid} initiallyExpanded={true} />);
 
-      const upvoteButton = screen.getByText("Mind blown (10)");
+      const upvoteButton = getUpvoteButton(10);
       fireEvent.click(upvoteButton);
 
       await waitFor(() => {
@@ -224,7 +241,7 @@ describe("FactoidCard", () => {
     beforeEach(async () => {
       render(<FactoidCard factoid={defaultFactoid} initiallyExpanded={true} />);
 
-      const upvoteButton = screen.getByText("Mind blown (10)");
+      const upvoteButton = getUpvoteButton(10);
       fireEvent.click(upvoteButton);
 
       await waitFor(() => {
@@ -451,7 +468,7 @@ describe("FactoidCard", () => {
       render(<FactoidCard factoid={defaultFactoid} initiallyExpanded={true} />);
 
       // First open feedback form
-      const upvoteButton = screen.getByText("Mind blown (10)");
+      const upvoteButton = getUpvoteButton(10);
       fireEvent.click(upvoteButton);
 
       await waitFor(() => {
@@ -552,7 +569,7 @@ describe("FactoidCard", () => {
         />
       );
 
-      const upvoteButton = screen.getByText("Mind blown (5)");
+      const upvoteButton = getUpvoteButton(5);
       fireEvent.click(upvoteButton);
 
       await waitFor(() => {
@@ -572,7 +589,7 @@ describe("FactoidCard", () => {
         />
       );
 
-      const downvoteButton = screen.getByText("Meh (1)");
+      const downvoteButton = getDownvoteButton(1);
       fireEvent.click(downvoteButton);
 
       await waitFor(() => {
@@ -593,7 +610,7 @@ describe("FactoidCard", () => {
       );
 
       // First vote to open feedback form
-      const upvoteButton = screen.getByText("Mind blown (5)");
+      const upvoteButton = getUpvoteButton(5);
       fireEvent.click(upvoteButton);
 
       await waitFor(() => {
@@ -637,7 +654,7 @@ describe("FactoidCard", () => {
         />
       );
 
-      const upvoteButton = screen.getByText("Mind blown (5)");
+      const upvoteButton = getUpvoteButton(5);
       fireEvent.click(upvoteButton);
 
       await waitFor(() => {
@@ -657,7 +674,7 @@ describe("FactoidCard", () => {
       );
 
       // Vote to open feedback form
-      const upvoteButton = screen.getByText("Mind blown (5)");
+      const upvoteButton = getUpvoteButton(5);
       fireEvent.click(upvoteButton);
 
       await waitFor(() => {

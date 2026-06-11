@@ -67,9 +67,9 @@ const createMockFactoid = (overrides = {}): Factoid => ({
 
 describe("API Configuration", () => {
   it("should have correct default API base URLs", () => {
-    expect(FACTOIDS_API_BASE).toBe("http://localhost:8000/api/factoids");
-    expect(PAYMENTS_API_BASE).toBe("http://localhost:8000/api/payments");
-    expect(CHAT_API_BASE).toBe("http://localhost:8000/api/chat");
+    expect(FACTOIDS_API_BASE).toBe("http://localhost:8080/api/factoids");
+    expect(PAYMENTS_API_BASE).toBe("http://localhost:8080/api/payments");
+    expect(CHAT_API_BASE).toBe("http://localhost:8080/api/chat");
   });
 });
 
@@ -104,7 +104,7 @@ describe("Factoid API Functions", () => {
       const result = await fetchFactoids();
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:8000/api/factoids/?page_size=20",
+        "http://localhost:8080/api/factoids/?page_size=20",
         expect.objectContaining({
           headers: expect.objectContaining({
             "Content-Type": "application/json",
@@ -125,7 +125,7 @@ describe("Factoid API Functions", () => {
       const result = await fetchFactoids(50);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:8000/api/factoids/?page_size=50",
+        "http://localhost:8080/api/factoids/?page_size=50",
         expect.any(Object)
       );
       expect(result).toEqual(mockData.results);
@@ -166,7 +166,7 @@ describe("Factoid API Functions", () => {
       const result = await fetchRandomFactoids();
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:8000/api/factoids/random/?limit=50",
+        "http://localhost:8080/api/factoids/random/?limit=50",
         expect.any(Object)
       );
       expect(result).toEqual(mockData.results);
@@ -180,7 +180,7 @@ describe("Factoid API Functions", () => {
       const result = await fetchRandomFactoids(10);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:8000/api/factoids/random/?limit=10",
+        "http://localhost:8080/api/factoids/random/?limit=10",
         expect.any(Object)
       );
       expect(result).toEqual(mockData.results);
@@ -198,7 +198,7 @@ describe("Factoid API Functions", () => {
       const result = await fetchFactoidById("test-id");
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:8000/api/factoids/test-id/",
+        "http://localhost:8080/api/factoids/test-id/",
         expect.any(Object)
       );
       expect(result).toEqual(mockFactoid);
@@ -246,7 +246,7 @@ describe("Factoid API Functions", () => {
       const result = await generateFactoid();
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:8000/api/factoids/generate/",
+        "http://localhost:8080/api/factoids/generate/",
         expect.objectContaining({
           method: "POST",
           body: JSON.stringify({}),
@@ -265,7 +265,7 @@ describe("Factoid API Functions", () => {
       const result = await generateFactoid("space", "gpt-4");
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:8000/api/factoids/generate/",
+        "http://localhost:8080/api/factoids/generate/",
         expect.objectContaining({
           method: "POST",
           body: JSON.stringify({
@@ -290,7 +290,7 @@ describe("Factoid API Functions", () => {
       });
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:8000/api/factoids/generate/",
+        "http://localhost:8080/api/factoids/generate/",
         expect.objectContaining({
           method: "POST",
           body: JSON.stringify({
@@ -348,7 +348,7 @@ describe("Factoid API Functions", () => {
       const result = await submitVote("test-id", "up");
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:8000/api/factoids/test-id/vote/",
+        "http://localhost:8080/api/factoids/test-id/vote/",
         expect.objectContaining({
           method: "POST",
           body: JSON.stringify({ vote: "up" }),
@@ -367,7 +367,7 @@ describe("Factoid API Functions", () => {
       const result = await submitVote("test-id", "down");
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:8000/api/factoids/test-id/vote/",
+        "http://localhost:8080/api/factoids/test-id/vote/",
         expect.objectContaining({
           method: "POST",
           body: JSON.stringify({ vote: "down" }),
@@ -388,7 +388,7 @@ describe("Factoid API Functions", () => {
       });
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:8000/api/factoids/feedback/",
+        "http://localhost:8080/api/factoids/feedback/",
         expect.objectContaining({
           method: "POST",
           body: JSON.stringify({
@@ -411,7 +411,7 @@ describe("Factoid API Functions", () => {
       });
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:8000/api/factoids/feedback/",
+        "http://localhost:8080/api/factoids/feedback/",
         expect.objectContaining({
           method: "POST",
           body: JSON.stringify({
@@ -445,7 +445,7 @@ describe("Factoid API Functions", () => {
       const result = await fetchRateLimitStatus();
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:8000/api/factoids/limits/",
+        "http://localhost:8080/api/factoids/limits/",
         expect.any(Object)
       );
       expect(result).toEqual(mockStatus);
@@ -463,7 +463,7 @@ describe("Factoid API Functions", () => {
       const result = await fetchModels();
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:8000/api/factoids/models/",
+        "http://localhost:8080/api/factoids/models/",
         expect.any(Object)
       );
       expect(result).toEqual(["gpt-4", "gpt-3.5-turbo", "claude-3"]);
@@ -491,7 +491,7 @@ describe("Payment API Functions", () => {
       const result = await createCheckoutSession();
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:8000/api/payments/checkout/",
+        "http://localhost:8080/api/payments/checkout/",
         expect.objectContaining({
           method: "POST",
           body: JSON.stringify({ source: "rate_limit" }),
@@ -519,7 +519,7 @@ describe("Payment API Functions", () => {
       });
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:8000/api/payments/checkout/",
+        "http://localhost:8080/api/payments/checkout/",
         expect.objectContaining({
           method: "POST",
           body: JSON.stringify({
@@ -545,7 +545,7 @@ describe("Payment API Functions", () => {
       const result = await fulfillCheckoutSession("cs_test");
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:8000/api/payments/checkout/cs_test/fulfill/",
+        "http://localhost:8080/api/payments/checkout/cs_test/fulfill/",
         expect.objectContaining({
           method: "POST",
           body: JSON.stringify({}),
@@ -567,7 +567,7 @@ describe("Payment API Functions", () => {
       });
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:8000/api/payments/checkout/cs_test/fulfill/",
+        "http://localhost:8080/api/payments/checkout/cs_test/fulfill/",
         expect.objectContaining({
           method: "POST",
           body: JSON.stringify({
@@ -589,7 +589,7 @@ describe("Payment API Functions", () => {
       await fulfillCheckoutSession("cs_test/with/slashes");
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:8000/api/payments/checkout/cs_test%2Fwith%2Fslashes/fulfill/",
+        "http://localhost:8080/api/payments/checkout/cs_test%2Fwith%2Fslashes/fulfill/",
         expect.any(Object)
       );
     });
@@ -627,7 +627,7 @@ describe("Chat API Functions", () => {
       });
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:8000/api/chat/sessions/",
+        "http://localhost:8080/api/chat/sessions/",
         expect.objectContaining({
           method: "POST",
           body: JSON.stringify({
@@ -675,7 +675,7 @@ describe("Chat API Functions", () => {
       });
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:8000/api/chat/sessions/",
+        "http://localhost:8080/api/chat/sessions/",
         expect.objectContaining({
           method: "POST",
           body: JSON.stringify({
@@ -726,7 +726,7 @@ describe("Chat API Functions", () => {
       });
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:8000/api/chat/sessions/session-1/messages/",
+        "http://localhost:8080/api/chat/sessions/session-1/messages/",
         expect.objectContaining({
           method: "POST",
           body: JSON.stringify({
@@ -764,7 +764,7 @@ describe("Chat API Functions", () => {
       });
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:8000/api/chat/sessions/session-1/messages/",
+        "http://localhost:8080/api/chat/sessions/session-1/messages/",
         expect.objectContaining({
           method: "POST",
           body: JSON.stringify({
@@ -801,7 +801,7 @@ describe("Chat API Functions", () => {
       });
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:8000/api/chat/sessions/session%2Fwith%2Fslashes/messages/",
+        "http://localhost:8080/api/chat/sessions/session%2Fwith%2Fslashes/messages/",
         expect.any(Object)
       );
     });

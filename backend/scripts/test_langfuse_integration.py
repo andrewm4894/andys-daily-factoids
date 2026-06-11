@@ -48,7 +48,7 @@ def main():
     try:
         # Generate a factoid
         print("\n🔄 Generating factoid...")
-        
+
         factoid = generate_factoid(
             topic="artificial intelligence",
             model_key="openai/gpt-3.5-turbo",
@@ -62,7 +62,7 @@ def main():
         print(f"   Emoji: {factoid.emoji}")
         print(f"   Subject: {factoid.subject}")
         print(f"   Text: {factoid.text[:100]}...")
-        
+
         # Flush the Langfuse client to ensure traces are sent
         if client:
             client.flush()
@@ -79,6 +79,7 @@ def main():
     except Exception as e:
         print(f"❌ Factoid generation failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { GenerateFactoidForm } from "@/components/generate-factoid-form";
 import { FactoidCard } from "@/components/factoid-card";
@@ -26,12 +26,15 @@ function shuffleFactoids(factoids: Factoid[]): Factoid[] {
 
 export function HomeContent({ initialFactoids, models }: HomeContentProps) {
   const [factoids, setFactoids] = useState<Factoid[]>(initialFactoids);
+  const [activeInitialFactoids, setActiveInitialFactoids] =
+    useState(initialFactoids);
   const [isShuffling, setIsShuffling] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
 
-  useEffect(() => {
+  if (activeInitialFactoids !== initialFactoids) {
+    setActiveInitialFactoids(initialFactoids);
     setFactoids(initialFactoids);
-  }, [initialFactoids]);
+  }
 
   const handleShuffle = async () => {
     if (isShuffling) {

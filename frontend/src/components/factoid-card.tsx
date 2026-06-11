@@ -40,7 +40,6 @@ export function FactoidCard({
     "idle"
   );
   const [showMetadataPopover, setShowMetadataPopover] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
   const [metadataPosition, setMetadataPosition] = useState<{
     top: number;
     left: number;
@@ -75,6 +74,7 @@ export function FactoidCard({
       ? `${words.slice(0, maxWords).join(" ")}…`
       : trimmedText;
   const displayEmoji = factoid.emoji || "✨";
+  const canRenderMetadataPopover = typeof document !== "undefined";
 
   const handleCardToggle = () => {
     setIsExpanded((previous) => {
@@ -108,8 +108,6 @@ export function FactoidCard({
   };
 
   useEffect(() => {
-    setIsMounted(true);
-
     return () => {
       if (copyResetRef.current) {
         clearTimeout(copyResetRef.current);
@@ -120,7 +118,6 @@ export function FactoidCard({
       if (feedbackFocusTimeoutRef.current) {
         clearTimeout(feedbackFocusTimeoutRef.current);
       }
-      setShowMetadataPopover(false);
     };
   }, []);
 
@@ -429,7 +426,8 @@ export function FactoidCard({
                   title="My mind is blown!"
                 >
                   <span aria-hidden>🤯</span>
-                  <span className="hidden xs:inline">Mind blown </span>({factoid.votes_up})
+                  <span className="hidden xs:inline">Mind blown </span>(
+                  {factoid.votes_up})
                 </button>
                 <button
                   type="button"
@@ -442,7 +440,8 @@ export function FactoidCard({
                   title="Meh"
                 >
                   <span aria-hidden>😒</span>
-                  <span className="hidden xs:inline">Meh </span>({factoid.votes_down})
+                  <span className="hidden xs:inline">Meh </span>(
+                  {factoid.votes_down})
                 </button>
                 <button
                   type="button"
@@ -565,7 +564,7 @@ export function FactoidCard({
                     <span aria-hidden>ℹ️</span>
                     <span className="sr-only">Details</span>
                   </button>
-                  {isMounted &&
+                  {canRenderMetadataPopover &&
                     showMetadataPopover &&
                     metadataPosition &&
                     createPortal(

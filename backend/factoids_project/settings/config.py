@@ -381,12 +381,12 @@ def get_settings(env_file: str | os.PathLike[str] | None = None) -> AppSettings:
                         or "andys-daily-factoids"
                     )
 
-                    self.langfuse_public_key = os.getenv(
-                        "DJANGO_LANGFUSE_PUBLIC_KEY"
-                    ) or os.getenv("LANGFUSE_PUBLIC_KEY")
-                    self.langfuse_secret_key = os.getenv(
-                        "DJANGO_LANGFUSE_SECRET_KEY"
-                    ) or os.getenv("LANGFUSE_SECRET_KEY")
+                    self.langfuse_public_key = os.getenv("DJANGO_LANGFUSE_PUBLIC_KEY") or os.getenv(
+                        "LANGFUSE_PUBLIC_KEY"
+                    )
+                    self.langfuse_secret_key = os.getenv("DJANGO_LANGFUSE_SECRET_KEY") or os.getenv(
+                        "LANGFUSE_SECRET_KEY"
+                    )
                     self.langfuse_host = (
                         os.getenv("DJANGO_LANGFUSE_HOST")
                         or os.getenv("LANGFUSE_HOST")

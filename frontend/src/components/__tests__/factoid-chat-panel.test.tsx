@@ -11,6 +11,13 @@ import type {
   CheckoutSessionResponse,
 } from "../../lib/types";
 
+jest.mock("../../lib/posthog", () => ({
+  posthog: {
+    get_session_id: jest.fn(),
+    get_distinct_id: jest.fn(),
+  },
+}));
+
 // Mock the API functions
 jest.mock("../../lib/api", () => {
   // Create a proper ApiError class for testing

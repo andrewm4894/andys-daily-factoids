@@ -34,7 +34,7 @@ async def main():
     # Initialize Langfuse
     initialize_langfuse()
     client = get_langfuse_client()
-    
+
     if not client:
         print("❌ Failed to initialize Langfuse")
         print("   Please ensure LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY are set")
@@ -74,12 +74,12 @@ async def main():
         response = model.invoke([message], config={"callbacks": callbacks})
 
         print(f"✅ LLM Response: {response.content}")
-        
+
         # Flush the Langfuse client to ensure traces are sent
         if client:
             client.flush()
             print("✅ Flushed Langfuse traces")
-        
+
         print("\n🎉 Success! Check your Langfuse dashboard for the trace:")
         print(f"   - Visit: {settings.LANGFUSE_HOST}")
         print("   - Project: andys-daily-factoids")
@@ -90,6 +90,7 @@ async def main():
     except Exception as e:
         print(f"❌ LLM call failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 

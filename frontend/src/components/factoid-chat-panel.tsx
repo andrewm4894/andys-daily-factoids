@@ -64,11 +64,14 @@ export function FactoidChatPanel({
   const [isInitializing, setIsInitializing] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [activeFactoidId, setActiveFactoidId] = useState(factoid.id);
+  const initializationKey = `${factoid.id}:${selectedModel}`;
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const hasInitializedRef = useRef(false);
+  const attemptedInitializationKeyRef = useRef<string | null>(null);
   const previousMessageCountRef = useRef(0);
 
-  useEffect(() => {
+  if (activeFactoidId !== factoid.id) {
+    setActiveFactoidId(factoid.id);
     setSession(null);
     setMessages([]);
     setRateLimit(null);
@@ -76,9 +79,7 @@ export function FactoidChatPanel({
     setErrorMessage(null);
     setSelectedModel("");
     setShowModelSelector(false);
-    hasInitializedRef.current = false;
-    previousMessageCountRef.current = 0;
-  }, [factoid.id]);
+  }
 
   const factoidHeader = useMemo(() => {
     if (factoid.subject && factoid.subject.trim()) {
@@ -118,13 +119,16 @@ export function FactoidChatPanel({
 
   useEffect(() => {
     let cancelled = false;
-    if (session || hasInitializedRef.current) {
+    if (
+      session ||
+      attemptedInitializationKeyRef.current === initializationKey
+    ) {
       return () => {
         cancelled = true;
       };
     }
 
-    hasInitializedRef.current = true;
+    attemptedInitializationKeyRef.current = initializationKey;
     setIsInitializing(true);
     setErrorMessage(null);
 
@@ -150,7 +154,6 @@ export function FactoidChatPanel({
           return;
         }
         setErrorMessage(extractErrorMessage(error));
-        hasInitializedRef.current = false;
       })
       .finally(() => {
         if (!cancelled) {
@@ -161,7 +164,7 @@ export function FactoidChatPanel({
     return () => {
       cancelled = true;
     };
-  }, [factoid.id, session, selectedModel]);
+  }, [factoid.id, initializationKey, selectedModel, session]);
 
   const handleSend = useCallback(
     async (event?: FormEvent) => {
@@ -314,7 +317,7 @@ export function FactoidChatPanel({
                             // Reset session to force recreation with new model
                             setSession(null);
                             setMessages([]);
-                            hasInitializedRef.current = false;
+                            attemptedInitializationKeyRef.current = null;
                             setShowModelSelector(false);
                           }}
                           className="text-xs bg-[color:var(--button-primary-bg)] text-[color:var(--button-primary-text)] px-2 py-1 rounded hover:bg-[color:var(--button-primary-hover)] transition-colors"
