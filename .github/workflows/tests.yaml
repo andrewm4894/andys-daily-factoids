@@ -107,7 +107,8 @@ jobs:
         cd backend
         uv run pytest
 
-    - name: Run backend smoke tests
+    - name: Run optional backend smoke test
+      continue-on-error: true
       run: |
         cd backend
         uv run python scripts/test_generate_factoid.py --topic "test topic" --model "openai/gpt-4o-mini"

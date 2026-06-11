@@ -7,7 +7,7 @@ This directory contains GitHub Actions workflows for automated testing, deployme
 ### 1. Test Suite (`tests.yml`)
 Runs the complete test suite including:
 - **Frontend Tests**: Next.js application linting and build validation
-- **Backend Tests**: Django unit tests with pytest, migrations, and smoke tests
+- **Backend Tests**: Django unit tests with pytest, migrations, and an optional OpenRouter smoke test
 - **Integration Tests**: API endpoint validation against Django backend
 - **Legacy Tests**: JavaScript test framework compatibility checks
 
@@ -16,7 +16,7 @@ Runs the complete test suite including:
 - Pull requests to `main` or `develop` branches
 
 **Matrix Strategy:**
-- Frontend: Node.js 18.x and 20.x
+- Frontend: Node.js 20.x
 - Backend: Python 3.10, 3.11, and 3.12
 - Ensures compatibility across Node and Python versions
 
@@ -47,7 +47,7 @@ Automated factoid generation:
 ### Required Secrets
 Add these secrets to your GitHub repository settings:
 
-1. **OPENAI_API_KEY**: For AI-powered factoid generation
+1. **OPENROUTER_API_KEY**: For AI-powered factoid generation. The CI smoke test uses this key when configured, but it is non-blocking because it depends on an external provider.
 2. **POSTHOG_API_KEY**: For analytics tracking
 3. **STRIPE_SECRET_KEY**: For payment processing
 4. **DATABASE_URL**: PostgreSQL connection string for production
