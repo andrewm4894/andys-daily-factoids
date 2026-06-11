@@ -217,6 +217,7 @@ POSTHOG_PROJECT_API_KEY = settings.posthog_project_api_key
 POSTHOG_HOST = settings.posthog_host
 POSTHOG_DEBUG = settings.posthog_debug
 POSTHOG_DISABLED = settings.posthog_disabled
+POSTHOG_PERSONAL_API_KEY = settings.posthog_personal_api_key
 
 BRAINTRUST_API_KEY = settings.braintrust_api_key
 

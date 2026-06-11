@@ -27,7 +27,7 @@ from apps.core.services import (
     get_rate_limiter,
 )
 from apps.factoids import models
-from apps.factoids.prompts import build_factoid_generation_prompt
+from apps.factoids.prompts import build_factoid_generation_managed_prompt
 from apps.factoids.services.openrouter import (
     DEFAULT_FACTOID_MODEL,
     GenerationResult,
@@ -109,22 +109,21 @@ def generate_factoid(
         base_url=settings.OPENROUTER_BASE_URL,
     )
 
-    prompt = build_factoid_generation_prompt(
+    prompt_result = build_factoid_generation_managed_prompt(
         topic=topic if topic else None,
         recent_factoids=recent_factoids,
         num_examples=settings.FACTOID_GENERATION_EXAMPLES_COUNT,
         use_factoid_tool=supports_tools,
     )
+    prompt = prompt_result.content
 
     posthog_client = get_posthog_client()
-    extra_properties: dict[str, Any] | None = None
+    extra_properties: dict[str, Any] | None = prompt_result.trace_properties()
     if isinstance(posthog_properties, dict):
-        extra_properties = {k: v for k, v in posthog_properties.items()}
+        extra_properties.update(posthog_properties)
 
     # Add $ai_session_id to properties if session_id is provided
     if session_id:
-        if extra_properties is None:
-            extra_properties = {}
         extra_properties["$ai_session_id"] = session_id
 
     callbacks = _build_callbacks(

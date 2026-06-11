@@ -19,6 +19,7 @@ from apps.chat.services.factoid_agent import (
     _merge_properties,
     _normalise_search_results,
     build_system_prompt,
+    build_system_prompt_managed_prompt,
     history_to_messages,
     run_factoid_agent,
     serialise_message,
@@ -102,6 +103,17 @@ class TestBuildSystemPrompt:
         assert "Always pass a clear query" in prompt
         assert "NEVER include raw JSON data" in prompt
         assert "Use web_search efficiently" in prompt
+
+    @pytest.mark.django_db()
+    def test_managed_prompt_uses_code_defined_name(self, settings, sample_factoid):
+        settings.POSTHOG_PERSONAL_API_KEY = None
+
+        prompt = build_system_prompt_managed_prompt(sample_factoid)
+
+        assert prompt.name == "factoid-chat-system"
+        assert prompt.source == "code_fallback"
+        assert "Factoid subject: Chemistry" in prompt.content
+        assert prompt.trace_properties()["$ai_prompt_name"] == "factoid-chat-system"
 
 
 class TestWebSearchTool:
@@ -558,6 +570,8 @@ class TestRunFactoidAgent:
         config = mock_agent_class.call_args[1]["config"]
         assert config.posthog_properties["custom"] == "prop"
         assert config.posthog_properties["factoid_id"] == str(sample_factoid.id)
+        assert config.posthog_properties["$ai_prompt_name"] == "factoid-chat-system"
+        assert config.posthog_properties["$ai_prompt_source"] == "code_fallback"
 
 
 class TestHistoryToMessages:

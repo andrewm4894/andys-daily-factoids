@@ -30,6 +30,7 @@ from apps.core.datadog import get_datadog_callback_handler, initialize_datadog
 from apps.core.langfuse import get_langfuse_callback_handler, initialize_langfuse
 from apps.core.langsmith import get_langsmith_callback_handler, initialize_langsmith
 from apps.core.posthog import get_posthog_client
+from apps.core.prompt_management import ManagedPrompt, get_managed_prompt
 from apps.factoids.models import Factoid
 from apps.factoids.services.openrouter import fetch_openrouter_models, model_supports_tools
 
@@ -39,6 +40,41 @@ except ImportError:  # pragma: no cover - optional dependency
     TavilySearch = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_FACTOID_CHAT_SYSTEM_PROMPT_NAME = "factoid-chat-system"
+FACTOID_CHAT_SYSTEM_PROMPT_VERSION: int | None = None
+
+FACTOID_CHAT_SYSTEM_PROMPT_FALLBACK = (
+    "You are the Andy's Daily Factoids companion agent. Provide helpful, accurate, "
+    "and curious insights about the featured factoid.\n\n"
+    "Factoid subject: {{subject}}\n"
+    "Factoid emoji: {{emoji}}\n"
+    "Factoid text: {{text}}\n\n"
+    "Available tools:\n"
+    "1. web_search(query: string | None, max_results: int) -> dict\n"
+    "   - Use when you need external references, verification, or current context "
+    "about the factoid.\n"
+    "   - Always pass a clear query; default to the factoid subject/text if the user "
+    "does not specify.\n"
+    '   - Return value includes {"query": ... , "results": [...]} that you can cite '
+    "or summarise.\n"
+    "   - Call this tool whenever the user explicitly asks for sources or verification.\n"
+    "     Perform the search before drafting your final answer.\n\n"
+    "Guidelines:\n"
+    "- Ground answers in the factoid and reputable sources.\n"
+    "- Use web_search to locate citations, links, or when you need to double-check facts.\n"
+    "- If you promise to search, call web_search through the tool interface.\n"
+    "  Never describe the call in plain text—execute it so the tool returns results.\n"
+    "- IMPORTANT: Use web_search efficiently - make one comprehensive search instead of\n"
+    "  multiple separate calls. Combine related queries into a single search when possible.\n"
+    "- CRITICAL: NEVER include raw JSON data, search results, or tool output in your\n"
+    "  response. Tool results appear separately in the UI. Only provide natural\n"
+    "  conversation, analysis, and summaries based on the results.\n"
+    "- FORBIDDEN: Do not copy-paste or quote the JSON response from web_search.\n"
+    "  The tool results are shown separately to users.\n"
+    "- Include disclaimers when information is uncertain or speculative.\n"
+    "- Keep tone friendly, concise, and curious."
+)
 
 
 class DebugPostHogCallback(CallbackHandler):
@@ -245,6 +281,7 @@ class FactoidAgent:
         factoid: Factoid,
         config: FactoidAgentConfig,
         posthog_client: Posthog | None,
+        system_prompt: ManagedPrompt | None = None,
     ) -> None:
         self._factoid = factoid
         self._config = config
@@ -258,7 +295,8 @@ class FactoidAgent:
             model=config.model_key,
             temperature=config.temperature,
         )
-        self._system_message = SystemMessage(content=build_system_prompt(factoid))
+        self._system_prompt = system_prompt or build_system_prompt_managed_prompt(factoid)
+        self._system_message = SystemMessage(content=self._system_prompt.content)
 
         search_tool = _build_search_tool(
             factoid=factoid,
@@ -413,9 +451,16 @@ def run_factoid_agent(
 
     posthog_client = get_posthog_client()
     trace_id = str(session.id)
+    system_prompt = build_system_prompt_managed_prompt(factoid)
 
     # Add $ai_session_id to properties if session_id is provided
-    merged_properties = _merge_properties(posthog_properties, {"factoid_id": str(factoid.id)})
+    merged_properties = _merge_properties(
+        posthog_properties,
+        {
+            "factoid_id": str(factoid.id),
+            **system_prompt.trace_properties(),
+        },
+    )
     if session_id:
         merged_properties["$ai_session_id"] = session_id
 
@@ -439,6 +484,7 @@ def run_factoid_agent(
                 posthog_properties=merged_properties,
             ),
             posthog_client=posthog_client,
+            system_prompt=system_prompt,
         )
         return agent.run(history, callbacks=callbacks)
     except Exception as exc:
@@ -467,6 +513,7 @@ def run_factoid_agent(
                             ),
                         ),
                         posthog_client=posthog_client,
+                        system_prompt=system_prompt,
                     )
                     return fallback_agent.run(history, callbacks=callbacks)
                 except Exception as fallback_exc:
@@ -493,6 +540,7 @@ def run_factoid_agent(
                             posthog_properties=merged_properties,
                         ),
                         posthog_client=posthog_client,
+                        system_prompt=system_prompt,
                     )
                     return fallback_agent.run(history, callbacks=callbacks)
                 except Exception:
@@ -574,40 +622,23 @@ def _chat_message_to_langchain(message: chat_models.ChatMessage) -> BaseMessage 
 
 
 def build_system_prompt(factoid: Factoid) -> str:
+    return build_system_prompt_managed_prompt(factoid).content
+
+
+def build_system_prompt_managed_prompt(factoid: Factoid) -> ManagedPrompt:
     subject = factoid.subject or "Unknown subject"
     emoji = factoid.emoji or "✨"
-    return (
-        "You are the Andy's Daily Factoids companion agent. Provide helpful,"
-        " accurate, and curious insights about the featured factoid."
-        "\n\n"
-        "Factoid subject: {subject}\n"
-        "Factoid emoji: {emoji}\n"
-        "Factoid text: {text}\n\n"
-        "Available tools:\n"
-        "1. web_search(query: string | None, max_results: int) -> dict\n"
-        "   - Use when you need external references, verification, or current context"
-        " about the factoid.\n"
-        "   - Always pass a clear query; default to the factoid subject/text if the"
-        " user does not specify.\n"
-        '   - Return value includes {{"query": ... , "results": [...]}}'
-        " that you can cite or summarise.\n"
-        "   - Call this tool whenever the user explicitly asks for sources or verification.\n"
-        "     Perform the search before drafting your final answer.\n\n"
-        "Guidelines:\n"
-        "- Ground answers in the factoid and reputable sources.\n"
-        "- Use web_search to locate citations, links, or when you need to double-check facts.\n"
-        "- If you promise to search, call web_search through the tool interface.\n"
-        "  Never describe the call in plain text—execute it so the tool returns results.\n"
-        "- IMPORTANT: Use web_search efficiently - make one comprehensive search instead of\n"
-        "  multiple separate calls. Combine related queries into a single search when possible.\n"
-        "- CRITICAL: NEVER include raw JSON data, search results, or tool output in your\n"
-        "  response. Tool results appear separately in the UI. Only provide natural\n"
-        "  conversation, analysis, and summaries based on the results.\n"
-        "- FORBIDDEN: Do not copy-paste or quote the JSON response from web_search.\n"
-        "  The tool results are shown separately to users.\n"
-        "- Include disclaimers when information is uncertain or speculative.\n"
-        "- Keep tone friendly, concise, and curious."
-    ).format(subject=subject, emoji=emoji, text=factoid.text)
+
+    return get_managed_prompt(
+        name=DEFAULT_FACTOID_CHAT_SYSTEM_PROMPT_NAME,
+        version=FACTOID_CHAT_SYSTEM_PROMPT_VERSION,
+        fallback=FACTOID_CHAT_SYSTEM_PROMPT_FALLBACK,
+        variables={
+            "subject": subject,
+            "emoji": emoji,
+            "text": factoid.text,
+        },
+    )
 
 
 def _normalise_content(content: Any) -> str:
@@ -762,6 +793,7 @@ def _normalise_search_results(payload: Any, limit: int) -> list[dict[str, Any]]:
 __all__ = [
     "FactoidAgent",
     "FactoidAgentConfig",
+    "build_system_prompt_managed_prompt",
     "build_system_prompt",
     "history_to_messages",
     "run_factoid_agent",

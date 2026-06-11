@@ -85,7 +85,11 @@ def test_factoid_generation_invokes_openrouter(settings):
         mock_callbacks.assert_called_once()
         _, callback_kwargs = mock_callbacks.call_args
         assert callback_kwargs["distinct_id"] == "ph-user"
-        assert callback_kwargs["extra_properties"] == {"foo": "bar"}
+        assert callback_kwargs["extra_properties"] == {
+            "$ai_prompt_name": "factoid-generation",
+            "$ai_prompt_source": "code_fallback",
+            "foo": "bar",
+        }
 
 
 @pytest.mark.django_db()

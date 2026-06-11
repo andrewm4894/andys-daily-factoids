@@ -6,7 +6,24 @@ from typing import Optional
 
 from django.conf import settings
 
+from apps.core.prompt_management import ManagedPrompt, get_managed_prompt
 from apps.factoids.models import Factoid
+
+DEFAULT_FACTOID_GENERATION_PROMPT_NAME = "factoid-generation"
+FACTOID_GENERATION_PROMPT_VERSION: int | None = None
+
+FACTOID_GENERATION_PROMPT_FALLBACK = (
+    "{{recent_examples}}Please provide a new, concise, interesting fact{{topic_clause}} "
+    "in one sentence, along with its subject and an emoji that represents the fact.\n\n"
+    "- Do not repeat any of the provided examples.\n"
+    "- Avoid boilerplate phrases like 'Did you know'.\n"
+    "- Keep it to one sentence with minimal commentary.\n"
+    "- Avoid discussing what a fact 'showcases' or 'highlights'.\n"
+    "- Avoid overused topics like jellyfish, octopus, or whales unless specifically requested.\n"
+    "- Think about novel and intriguing facts that people might not know.\n"
+    "- Make it genuinely surprising or mind-blowing.\n\n"
+    "{{response_instructions}}"
+)
 
 
 def build_factoid_generation_prompt(
@@ -16,67 +33,79 @@ def build_factoid_generation_prompt(
     use_factoid_tool: bool = False,
 ) -> str:
     """Build a comprehensive prompt for factoid generation including recent examples."""
+    return build_factoid_generation_managed_prompt(
+        topic=topic,
+        recent_factoids=recent_factoids,
+        num_examples=num_examples,
+        use_factoid_tool=use_factoid_tool,
+    ).content
 
-    prompt_parts = []
 
-    # Add examples section if we have recent factoids
+def build_factoid_generation_managed_prompt(
+    topic: Optional[str] = None,
+    recent_factoids: Optional[list[Factoid]] = None,
+    num_examples: int = settings.FACTOID_GENERATION_EXAMPLES_COUNT,
+    use_factoid_tool: bool = False,
+) -> ManagedPrompt:
+    """Build a factoid generation prompt from PostHog or the local fallback."""
+
+    return get_managed_prompt(
+        name=DEFAULT_FACTOID_GENERATION_PROMPT_NAME,
+        version=FACTOID_GENERATION_PROMPT_VERSION,
+        fallback=FACTOID_GENERATION_PROMPT_FALLBACK,
+        variables={
+            "recent_examples": _format_recent_examples(recent_factoids, num_examples),
+            "topic_clause": f" about {topic}" if topic else "",
+            "response_instructions": _format_response_instructions(use_factoid_tool),
+        },
+    )
+
+
+def _format_recent_examples(
+    recent_factoids: Optional[list[Factoid]],
+    num_examples: int,
+) -> str:
     if recent_factoids:
-        prompt_parts.append(
+        prompt_parts = [
             "Here are some recent examples of interesting factoids "
-            "(note the votes up and down counts which comes from user feedback):"
-        )
-        prompt_parts.append("")
-        prompt_parts.append("## Examples:")
+            "(note the votes up and down counts which comes from user feedback):",
+            "",
+            "## Examples:",
+        ]
 
         for factoid in recent_factoids[:num_examples]:
             votes_info = f"(votes up: {factoid.votes_up}, votes down: {factoid.votes_down})"
             prompt_parts.append(f"- **{factoid.subject}**: {factoid.text} {votes_info}")
 
-        prompt_parts.append("")
+        return "\n".join(prompt_parts) + "\n\n"
 
-    # Main instruction
-    if topic:
-        instruction = (
-            f"Please provide a new, concise, interesting fact about {topic} "
-            "in one sentence, along with its subject and an emoji that represents the fact."
-        )
-    else:
-        instruction = (
-            "Please provide a new, concise, interesting fact in one sentence, "
-            "along with its subject and an emoji that represents the fact."
-        )
+    return ""
 
-    prompt_parts.append(instruction)
-    prompt_parts.append("")
 
-    # Guidelines
-    guidelines = [
-        "- Do not repeat any of the provided examples.",
-        "- Avoid boilerplate phrases like 'Did you know'.",
-        "- Keep it to one sentence with minimal commentary.",
-        "- Avoid discussing what a fact 'showcases' or 'highlights'.",
-        "- Avoid overused topics like jellyfish, octopus, or whales unless specifically requested.",
-        "- Think about novel and intriguing facts that people might not know.",
-        "- Make it genuinely surprising or mind-blowing.",
-    ]
-
-    prompt_parts.extend(guidelines)
-    prompt_parts.append("")
-
+def _format_response_instructions(use_factoid_tool: bool) -> str:
     if use_factoid_tool:
-        prompt_parts.append(
-            "When you are satisfied, call the `make_factoid` tool once with arguments:"
-        )
-        prompt_parts.append(
-            '{"text": "your factoid text", "subject": "category/topic", '
-            '"emoji": "<some suitable emoji>"}'
-        )
-        prompt_parts.append("Do not include additional assistant text once you call the tool.")
-    else:
-        prompt_parts.append("Respond as JSON with exactly these keys:")
-        prompt_parts.append(
-            '{"text": "your factoid text", "subject": "category/topic", '
-            '"emoji": "<some suitable emoji>"}'
+        return "\n".join(
+            [
+                "When you are satisfied, call the `make_factoid` tool once with arguments:",
+                '{"text": "your factoid text", "subject": "category/topic", '
+                '"emoji": "<some suitable emoji>"}',
+                "Do not include additional assistant text once you call the tool.",
+            ]
         )
 
-    return "\n".join(prompt_parts)
+    return "\n".join(
+        [
+            "Respond as JSON with exactly these keys:",
+            '{"text": "your factoid text", "subject": "category/topic", '
+            '"emoji": "<some suitable emoji>"}',
+        ]
+    )
+
+
+__all__ = [
+    "DEFAULT_FACTOID_GENERATION_PROMPT_NAME",
+    "FACTOID_GENERATION_PROMPT_FALLBACK",
+    "FACTOID_GENERATION_PROMPT_VERSION",
+    "build_factoid_generation_managed_prompt",
+    "build_factoid_generation_prompt",
+]

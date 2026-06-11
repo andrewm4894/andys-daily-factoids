@@ -8,7 +8,10 @@ import httpx
 import pytest
 
 from apps.factoids import models
-from apps.factoids.prompts import build_factoid_generation_prompt
+from apps.factoids.prompts import (
+    build_factoid_generation_managed_prompt,
+    build_factoid_generation_prompt,
+)
 from apps.factoids.services.generator import _build_callbacks, _resolve_model_key
 from apps.factoids.services.openrouter import (
     DEFAULT_FACTOID_MODEL,
@@ -53,6 +56,17 @@ def test_prompt_defaults_to_json_response():
 
     assert "Respond as JSON" in prompt
     assert "`make_factoid`" not in prompt
+
+
+def test_managed_generation_prompt_uses_code_defined_name(settings):
+    settings.POSTHOG_PERSONAL_API_KEY = None
+
+    prompt = build_factoid_generation_managed_prompt(topic="space")
+
+    assert prompt.name == "factoid-generation"
+    assert prompt.source == "code_fallback"
+    assert "interesting fact about space" in prompt.content
+    assert prompt.trace_properties()["$ai_prompt_name"] == "factoid-generation"
 
 
 @patch("apps.factoids.services.openrouter.model_supports_tools", return_value=True)

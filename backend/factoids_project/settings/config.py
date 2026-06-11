@@ -80,6 +80,12 @@ class AppSettings(BaseSettings):
         default=False,
         validation_alias=AliasChoices("POSTHOG_DISABLED", "DJANGO_POSTHOG_DISABLED"),
     )
+    posthog_personal_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "POSTHOG_PERSONAL_API_KEY", "DJANGO_POSTHOG_PERSONAL_API_KEY"
+        ),
+    )
     braintrust_api_key: str | None = Field(
         default=None,
         validation_alias=AliasChoices("BRAINTRUST_API_KEY", "DJANGO_BRAINTRUST_API_KEY"),
@@ -331,6 +337,9 @@ def get_settings(env_file: str | os.PathLike[str] | None = None) -> AppSettings:
                         or os.getenv("POSTHOG_DISABLED")
                         or "false"
                     ).lower() == "true"
+                    self.posthog_personal_api_key = os.getenv(
+                        "DJANGO_POSTHOG_PERSONAL_API_KEY"
+                    ) or os.getenv("POSTHOG_PERSONAL_API_KEY")
                     self.braintrust_api_key = os.getenv("DJANGO_BRAINTRUST_API_KEY") or os.getenv(
                         "BRAINTRUST_API_KEY"
                     )
