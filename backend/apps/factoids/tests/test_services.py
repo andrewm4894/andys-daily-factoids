@@ -161,6 +161,54 @@ def test_generate_factoid_completion_falls_back_when_tool_payload_invalid(mock_s
 
 
 @patch("apps.factoids.services.openrouter.model_supports_tools", return_value=False)
+def test_generate_factoid_completion_falls_back_to_default_on_provider_error(mock_supports):
+    from openai import BadRequestError
+
+    bad_request = BadRequestError.__new__(BadRequestError)
+    bad_request.status_code = 400
+
+    with patch("apps.factoids.services.openrouter.ChatOpenAI") as mock_chat_cls:
+        bad_chat = MagicMock()
+        bad_chat.invoke.side_effect = bad_request
+        good_chat = MagicMock()
+        good_chat.invoke.return_value = _fake_message(
+            '{"text": "Fact", "subject": "Science", "emoji": "🧠"}'
+        )
+        mock_chat_cls.side_effect = [bad_chat, good_chat]
+
+        result = generate_factoid_completion(
+            api_key="key",
+            base_url="https://example.com",
+            model="cloudflare/broken-model",
+            temperature=None,
+            prompt="Tell me",
+        )
+
+    assert result.text == "Fact"
+    # First client built for the chosen model, second for the default fallback.
+    assert mock_chat_cls.call_count == 2
+    assert mock_chat_cls.call_args_list[1].kwargs["model"] == DEFAULT_FACTOID_MODEL
+
+
+@patch("apps.factoids.services.openrouter.model_supports_tools", return_value=False)
+def test_generate_factoid_completion_does_not_fall_back_on_non_provider_error(mock_supports):
+    with patch("apps.factoids.services.openrouter.ChatOpenAI") as mock_chat_cls:
+        mock_chat = mock_chat_cls.return_value
+        mock_chat.invoke.side_effect = RuntimeError("boom")
+
+        with pytest.raises(RuntimeError):
+            generate_factoid_completion(
+                api_key="key",
+                base_url="https://example.com",
+                model="cloudflare/broken-model",
+                temperature=None,
+                prompt="Tell me",
+            )
+
+    mock_chat_cls.assert_called_once()
+
+
+@patch("apps.factoids.services.openrouter.model_supports_tools", return_value=False)
 def test_generate_factoid_completion_requires_valid_json(mock_supports):
     with patch("apps.factoids.services.openrouter.ChatOpenAI") as mock_chat_cls:
         mock_chat = mock_chat_cls.return_value
@@ -279,13 +327,48 @@ def test_build_callbacks_uses_distinct_id_and_properties(
 @patch("apps.factoids.services.generator.fetch_openrouter_models")
 @patch("apps.factoids.services.generator.random.choice")
 def test_resolve_model_key_returns_random_choice(mock_choice, mock_fetch):
-    mock_fetch.return_value = [{"id": "model-a"}, {"id": "model-b"}]
-    mock_choice.return_value = "model-b"
+    mock_fetch.return_value = [
+        {"id": "openai/gpt-4o-mini"},
+        {"id": "anthropic/claude-3-haiku"},
+    ]
+    mock_choice.return_value = "anthropic/claude-3-haiku"
 
     result = _resolve_model_key(None, api_key="key", base_url="https://example.com")
 
-    assert result == "model-b"
-    mock_choice.assert_called_once_with(["model-a", "model-b"])
+    assert result == "anthropic/claude-3-haiku"
+    mock_choice.assert_called_once_with(["openai/gpt-4o-mini", "anthropic/claude-3-haiku"])
+
+
+@patch("apps.factoids.services.generator.fetch_openrouter_models")
+@patch("apps.factoids.services.generator.random.choice")
+def test_resolve_model_key_filters_unusable_models(mock_choice, mock_fetch):
+    mock_fetch.return_value = [
+        {"id": "openai/gpt-4o-mini"},  # kept
+        {"id": "cloudflare/some-model"},  # dropped: provider not allowlisted
+        {"id": "meta-llama/llama-3-8b-instruct:free"},  # dropped: free variant
+        {
+            "id": "google/gemini-vision",
+            "architecture": {"output_modalities": ["image"]},
+        },  # dropped: no text output
+        {"id": 123},  # dropped: invalid id
+    ]
+    mock_choice.return_value = "openai/gpt-4o-mini"
+
+    result = _resolve_model_key(None, api_key="key", base_url="https://example.com")
+
+    assert result == "openai/gpt-4o-mini"
+    mock_choice.assert_called_once_with(["openai/gpt-4o-mini"])
+
+
+@patch("apps.factoids.services.generator.fetch_openrouter_models")
+@patch("apps.factoids.services.generator.random.choice")
+def test_resolve_model_key_falls_back_when_no_usable_models(mock_choice, mock_fetch):
+    mock_fetch.return_value = [{"id": "cloudflare/some-model"}, {"id": "model-b"}]
+
+    result = _resolve_model_key(None, api_key="key", base_url="https://example.com")
+
+    assert result == DEFAULT_FACTOID_MODEL
+    mock_choice.assert_not_called()
 
 
 @patch("apps.factoids.services.generator.fetch_openrouter_models", side_effect=Exception("boom"))
