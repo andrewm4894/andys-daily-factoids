@@ -290,8 +290,21 @@ export function FactoidCard({
 
   const handleAskChatGPT = () => {
     const prompt = encodeURIComponent(`Is this factoid true?\n${factoid.text}`);
-    const url = `https://chat.openai.com/?q=${prompt}`;
-    window.open(url, "_blank", "noopener,noreferrer");
+    const url = `https://chatgpt.com/?q=${prompt}`;
+    const popup = window.open(url, "_blank", "noopener,noreferrer");
+    const popupBlocked = !popup;
+
+    if (popupBlocked) {
+      setShowFeedback(false);
+      setShowChat(true);
+    }
+
+    if (typeof posthog?.capture === "function") {
+      posthog.capture("factoid_ask_chatgpt_clicked", {
+        factoid_id: factoid.id,
+        popup_blocked: popupBlocked,
+      });
+    }
   };
 
   const headlineText = isExpanded ? factoid.text : teaserText;

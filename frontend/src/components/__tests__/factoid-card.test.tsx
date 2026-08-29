@@ -19,6 +19,7 @@ jest.mock("../theme-provider", () => ({
 // Mock PostHog
 jest.mock("../../lib/posthog", () => ({
   posthog: {
+    capture: jest.fn(),
     captureTraceMetric: jest.fn(),
     captureTraceFeedback: jest.fn(),
   },
@@ -401,7 +402,7 @@ describe("FactoidCard", () => {
 
   describe("Ask ChatGippity", () => {
     it("should open ChatGPT with prompt in new window", () => {
-      const mockOpen = jest.fn();
+      const mockOpen = jest.fn().mockReturnValue({});
       window.open = mockOpen;
 
       render(<FactoidCard factoid={defaultFactoid} initiallyExpanded={true} />);
@@ -415,10 +416,25 @@ describe("FactoidCard", () => {
         `Is this factoid true?\n${defaultFactoid.text}`
       );
       expect(mockOpen).toHaveBeenCalledWith(
-        `https://chat.openai.com/?q=${expectedPrompt}`,
+        `https://chatgpt.com/?q=${expectedPrompt}`,
         "_blank",
         "noopener,noreferrer"
       );
+    });
+
+    it("should open the in-app chat panel when the popup is blocked", async () => {
+      window.open = jest.fn().mockReturnValue(null);
+
+      render(<FactoidCard factoid={defaultFactoid} initiallyExpanded={true} />);
+
+      const chatGPTButton = screen.getByLabelText(
+        "Ask ChatGippity if this factoid is true"
+      );
+      fireEvent.click(chatGPTButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("chat-panel")).toBeInTheDocument();
+      });
     });
 
     it("should have proper button text and icon", () => {
