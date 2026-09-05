@@ -7,7 +7,7 @@ import json
 from typing import Any
 
 from django.conf import settings
-from django.db.models import F
+from django.db.models import ExpressionWrapper, F, IntegerField
 from django.http import StreamingHttpResponse
 from django.urls import include, path
 from django.views import View
@@ -59,6 +59,24 @@ class FactoidViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.
 
         limit = max(1, min(limit, 100))
         factoids = models.Factoid.objects.order_by("?")[:limit]
+        serializer = self.get_serializer(factoids, many=True)
+        return Response({"results": serializer.data})
+
+    @action(detail=False, methods=["get"], url_path="worst")
+    def worst(self, request):
+        """Return the lowest-scoring factoids, worst first (a "wall of shame")."""
+        try:
+            limit = int(request.query_params.get("limit", 20))
+        except (TypeError, ValueError):
+            limit = 20
+
+        limit = max(1, min(limit, 100))
+        net_score = ExpressionWrapper(F("votes_up") - F("votes_down"), output_field=IntegerField())
+        factoids = (
+            models.Factoid.objects.filter(votes_down__gt=0)
+            .annotate(net_score=net_score)
+            .order_by("net_score", "-votes_down", "created_at")[:limit]
+        )
         serializer = self.get_serializer(factoids, many=True)
         return Response({"results": serializer.data})
 

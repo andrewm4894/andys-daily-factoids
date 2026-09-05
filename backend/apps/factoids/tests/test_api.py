@@ -44,6 +44,34 @@ def test_factoid_list_returns_existing_factoid():
 
 
 @pytest.mark.django_db()
+def test_worst_factoids_rank_lowest_score_first():
+    models.Factoid.objects.create(text="Loved", votes_up=10, votes_down=1)
+    models.Factoid.objects.create(text="Hated", votes_up=0, votes_down=8)
+    models.Factoid.objects.create(text="Mixed", votes_up=3, votes_down=5)
+    # No down votes, so it never joins the wall of shame.
+    models.Factoid.objects.create(text="Unrated", votes_up=0, votes_down=0)
+
+    client = APIClient()
+    response = client.get(reverse("factoids:factoid-worst"))
+
+    assert response.status_code == 200
+    texts = [item["text"] for item in response.json()["results"]]
+    assert texts == ["Hated", "Mixed", "Loved"]
+
+
+@pytest.mark.django_db()
+def test_worst_factoids_respect_limit():
+    for index in range(3):
+        models.Factoid.objects.create(text=f"Meh {index}", votes_down=index + 1)
+
+    client = APIClient()
+    response = client.get(reverse("factoids:factoid-worst"), {"limit": 2})
+
+    assert response.status_code == 200
+    assert len(response.json()["results"]) == 2
+
+
+@pytest.mark.django_db()
 def test_factoid_generation_without_api_key_returns_error(settings):
     settings.OPENROUTER_API_KEY = None
     client = APIClient()

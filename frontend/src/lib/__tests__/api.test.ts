@@ -5,6 +5,7 @@ import {
   CHAT_API_BASE,
   fetchFactoids,
   fetchRandomFactoids,
+  fetchWorstFactoids,
   fetchFactoidById,
   generateFactoid,
   submitVote,
@@ -181,6 +182,36 @@ describe("Factoid API Functions", () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         "http://localhost:8080/api/factoids/random/?limit=10",
+        expect.any(Object)
+      );
+      expect(result).toEqual(mockData.results);
+    });
+  });
+
+  describe("fetchWorstFactoids", () => {
+    it("should fetch worst factoids with default limit", async () => {
+      const mockData = { results: [createMockFactoid()] };
+
+      mockFetch.mockResolvedValueOnce(createMockResponse(mockData) as Response);
+
+      const result = await fetchWorstFactoids();
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://localhost:8080/api/factoids/worst/?limit=20",
+        expect.any(Object)
+      );
+      expect(result).toEqual(mockData.results);
+    });
+
+    it("should fetch worst factoids with custom limit", async () => {
+      const mockData = { results: [createMockFactoid()] };
+
+      mockFetch.mockResolvedValueOnce(createMockResponse(mockData) as Response);
+
+      const result = await fetchWorstFactoids(5);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://localhost:8080/api/factoids/worst/?limit=5",
         expect.any(Object)
       );
       expect(result).toEqual(mockData.results);
