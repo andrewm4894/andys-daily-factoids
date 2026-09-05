@@ -7,6 +7,13 @@ import type { Factoid } from "../../lib/types";
 // Mock the API functions
 jest.mock("../../lib/api", () => ({
   fetchRandomFactoids: jest.fn(),
+  fetchTopVotedFactoids: jest.fn(),
+}));
+
+jest.mock("../../lib/posthog", () => ({
+  posthog: {
+    capture: jest.fn(),
+  },
 }));
 
 // Mock the child components to isolate HomeContent testing
@@ -15,16 +22,23 @@ jest.mock("../generate-factoid-form", () => ({
     models,
     onShuffle,
     shuffleLoading,
+    onTopVoted,
+    topVotedLoading,
     onGenerationError,
   }: {
     models: string[];
     onShuffle?: () => void;
     shuffleLoading?: boolean;
+    onTopVoted?: () => void;
+    topVotedLoading?: boolean;
     onGenerationError?: (error: string | null) => void;
   }) => (
     <div data-testid="generate-factoid-form">
       <button onClick={onShuffle} disabled={shuffleLoading}>
         {shuffleLoading ? "Shuffling..." : "Shuffle"}
+      </button>
+      <button onClick={onTopVoted} disabled={topVotedLoading}>
+        {topVotedLoading ? "Loading..." : "Top voted"}
       </button>
       <button onClick={() => onGenerationError("Test error")}>
         Trigger Error
@@ -56,6 +70,10 @@ jest.mock("../factoid-card", () => ({
 const mockFetchRandomFactoids = api.fetchRandomFactoids as jest.MockedFunction<
   typeof api.fetchRandomFactoids
 >;
+const mockFetchTopVotedFactoids =
+  api.fetchTopVotedFactoids as jest.MockedFunction<
+    typeof api.fetchTopVotedFactoids
+  >;
 
 describe("HomeContent", () => {
   const mockModels = ["gpt-4", "gpt-3.5-turbo", "claude-3"];
@@ -86,6 +104,7 @@ describe("HomeContent", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockFetchRandomFactoids.mockResolvedValue([]);
+    mockFetchTopVotedFactoids.mockResolvedValue([]);
   });
 
   describe("Initial Rendering", () => {
@@ -430,6 +449,86 @@ describe("HomeContent", () => {
       );
 
       consoleSpy.mockRestore();
+    });
+  });
+
+  describe("Top Voted Functionality", () => {
+    it("should replace factoids with the top voted results", async () => {
+      const topFactoids = [
+        createMockFactoid({ id: "top-1", text: "Top factoid 1" }),
+        createMockFactoid({ id: "top-2", text: "Top factoid 2" }),
+      ];
+      mockFetchTopVotedFactoids.mockResolvedValue(topFactoids);
+
+      render(
+        <HomeContent initialFactoids={mockFactoids} models={mockModels} />
+      );
+
+      fireEvent.click(screen.getByText("Top voted"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("factoid-card-top-1")).toBeInTheDocument();
+        expect(screen.getByTestId("factoid-card-top-2")).toBeInTheDocument();
+      });
+
+      expect(mockFetchTopVotedFactoids).toHaveBeenCalledWith(50);
+      expect(
+        screen.queryByTestId("factoid-card-factoid-1")
+      ).not.toBeInTheDocument();
+    });
+
+    it("should keep current factoids when the top voted list is empty", async () => {
+      mockFetchTopVotedFactoids.mockResolvedValue([]);
+
+      render(
+        <HomeContent initialFactoids={mockFactoids} models={mockModels} />
+      );
+
+      fireEvent.click(screen.getByText("Top voted"));
+
+      await waitFor(() => {
+        expect(mockFetchTopVotedFactoids).toHaveBeenCalledWith(50);
+      });
+
+      expect(screen.getByTestId("factoid-card-factoid-1")).toBeInTheDocument();
+    });
+
+    it("should keep current factoids when the request fails", async () => {
+      mockFetchTopVotedFactoids.mockRejectedValue(new Error("API Error"));
+      const consoleSpy = jest.spyOn(console, "error").mockImplementation();
+
+      render(
+        <HomeContent initialFactoids={mockFactoids} models={mockModels} />
+      );
+
+      fireEvent.click(screen.getByText("Top voted"));
+
+      await waitFor(() => {
+        expect(consoleSpy).toHaveBeenCalledWith(
+          "Failed to load top voted factoids",
+          expect.any(Error)
+        );
+      });
+
+      expect(screen.getByTestId("factoid-card-factoid-1")).toBeInTheDocument();
+      consoleSpy.mockRestore();
+    });
+
+    it("should not fetch again while a request is in flight", async () => {
+      mockFetchTopVotedFactoids.mockImplementation(
+        () => new Promise((resolve) => setTimeout(() => resolve([]), 100))
+      );
+
+      render(
+        <HomeContent initialFactoids={mockFactoids} models={mockModels} />
+      );
+
+      const topVotedButton = screen.getByText("Top voted");
+      fireEvent.click(topVotedButton);
+      fireEvent.click(topVotedButton);
+      fireEvent.click(topVotedButton);
+
+      expect(mockFetchTopVotedFactoids).toHaveBeenCalledTimes(1);
     });
   });
 

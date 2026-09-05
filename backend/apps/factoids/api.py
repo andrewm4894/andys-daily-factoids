@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import timedelta
 from typing import Any
 
 from django.conf import settings
-from django.db.models import F
+from django.db.models import ExpressionWrapper, F, IntegerField
 from django.http import StreamingHttpResponse
 from django.urls import include, path
+from django.utils import timezone
 from django.views import View
 from rest_framework import generics, mixins, routers, status, viewsets
 from rest_framework import serializers as drf_serializers
@@ -59,6 +61,31 @@ class FactoidViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.
 
         limit = max(1, min(limit, 100))
         factoids = models.Factoid.objects.order_by("?")[:limit]
+        serializer = self.get_serializer(factoids, many=True)
+        return Response({"results": serializer.data})
+
+    @action(detail=False, methods=["get"], url_path="top")
+    def top(self, request):
+        """Return recent factoids ranked by their net vote score."""
+        try:
+            limit = int(request.query_params.get("limit", 50))
+        except (TypeError, ValueError):
+            limit = 50
+        limit = max(1, min(limit, 100))
+
+        try:
+            days = int(request.query_params.get("days", 30))
+        except (TypeError, ValueError):
+            days = 30
+        days = max(1, min(days, 365))
+
+        cutoff = timezone.now() - timedelta(days=days)
+        score = ExpressionWrapper(F("votes_up") - F("votes_down"), output_field=IntegerField())
+        factoids = (
+            models.Factoid.objects.filter(created_at__gte=cutoff)
+            .annotate(score=score)
+            .order_by("-score", "-votes_up", "-created_at")[:limit]
+        )
         serializer = self.get_serializer(factoids, many=True)
         return Response({"results": serializer.data})
 
