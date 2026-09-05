@@ -135,6 +135,11 @@ export async function fetchRandomFactoids(limit = 50): Promise<Factoid[]> {
   return data.results;
 }
 
+export async function fetchTopVotedFactoids(limit = 50): Promise<Factoid[]> {
+  const data = await request<{ results: Factoid[] }>(`/top/?limit=${limit}`);
+  return data.results;
+}
+
 export async function fetchFactoidById(id: string): Promise<Factoid> {
   return request<Factoid>(`/${id}/`);
 }

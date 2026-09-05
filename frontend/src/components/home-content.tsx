@@ -4,7 +4,8 @@ import { useState } from "react";
 
 import { GenerateFactoidForm } from "@/components/generate-factoid-form";
 import { FactoidCard } from "@/components/factoid-card";
-import { fetchRandomFactoids } from "@/lib/api";
+import { fetchRandomFactoids, fetchTopVotedFactoids } from "@/lib/api";
+import { posthog } from "@/lib/posthog";
 import type { Factoid } from "@/lib/types";
 
 interface HomeContentProps {
@@ -29,6 +30,7 @@ export function HomeContent({ initialFactoids, models }: HomeContentProps) {
   const [activeInitialFactoids, setActiveInitialFactoids] =
     useState(initialFactoids);
   const [isShuffling, setIsShuffling] = useState(false);
+  const [isLoadingTopVoted, setIsLoadingTopVoted] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
 
   if (activeInitialFactoids !== initialFactoids) {
@@ -62,12 +64,33 @@ export function HomeContent({ initialFactoids, models }: HomeContentProps) {
     }
   };
 
+  const handleTopVoted = async () => {
+    if (isLoadingTopVoted) {
+      return;
+    }
+
+    setIsLoadingTopVoted(true);
+    posthog.capture("top_voted_factoids_viewed");
+    try {
+      const topFactoids = await fetchTopVotedFactoids(50);
+      if (topFactoids.length > 0) {
+        setFactoids(topFactoids);
+      }
+    } catch (error) {
+      console.error("Failed to load top voted factoids", error);
+    } finally {
+      setIsLoadingTopVoted(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <GenerateFactoidForm
         models={models}
         onShuffle={handleShuffle}
         shuffleLoading={isShuffling}
+        onTopVoted={handleTopVoted}
+        topVotedLoading={isLoadingTopVoted}
         onGenerationError={setGenerationError}
       />
 

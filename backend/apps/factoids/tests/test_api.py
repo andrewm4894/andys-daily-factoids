@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from unittest.mock import patch
 from urllib.parse import quote
 
 import pytest
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.core.services import InMemoryRateLimiter, RateLimitConfig
@@ -41,6 +43,36 @@ def test_factoid_list_returns_existing_factoid():
     assert response.status_code == 200
     data = response.json()
     assert data["results"][0]["text"] == "Example"
+
+
+@pytest.mark.django_db()
+def test_top_endpoint_orders_by_net_score():
+    low = models.Factoid.objects.create(text="Low", votes_up=1, votes_down=0)
+    high = models.Factoid.objects.create(text="High", votes_up=10, votes_down=1)
+    negative = models.Factoid.objects.create(text="Negative", votes_up=0, votes_down=5)
+
+    client = APIClient()
+    response = client.get(reverse("factoids:factoid-top"))
+
+    assert response.status_code == 200
+    results = response.json()["results"]
+    order = [item["id"] for item in results]
+    assert order == [str(high.id), str(low.id), str(negative.id)]
+
+
+@pytest.mark.django_db()
+def test_top_endpoint_excludes_factoids_outside_window():
+    recent = models.Factoid.objects.create(text="Recent", votes_up=1)
+    old = models.Factoid.objects.create(text="Old", votes_up=100)
+    stale = timezone.now() - timedelta(days=40)
+    models.Factoid.objects.filter(pk=old.pk).update(created_at=stale)
+
+    client = APIClient()
+    response = client.get(reverse("factoids:factoid-top"), {"days": 30})
+
+    assert response.status_code == 200
+    ids = [item["id"] for item in response.json()["results"]]
+    assert ids == [str(recent.id)]
 
 
 @pytest.mark.django_db()

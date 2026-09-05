@@ -615,6 +615,45 @@ describe("GenerateFactoidForm", () => {
     });
   });
 
+  describe("Top Voted Functionality", () => {
+    it("should render top voted button when onTopVoted prop is provided", () => {
+      render(<GenerateFactoidForm {...defaultProps} onTopVoted={jest.fn()} />);
+
+      expect(
+        screen.getByRole("button", { name: /Top voted/i })
+      ).toBeInTheDocument();
+    });
+
+    it("should not render top voted button when onTopVoted prop is absent", () => {
+      render(<GenerateFactoidForm {...defaultProps} />);
+
+      expect(
+        screen.queryByRole("button", { name: /Top voted/i })
+      ).not.toBeInTheDocument();
+    });
+
+    it("should call onTopVoted when the button is clicked", () => {
+      const onTopVoted = jest.fn();
+      render(<GenerateFactoidForm {...defaultProps} onTopVoted={onTopVoted} />);
+
+      fireEvent.click(screen.getByRole("button", { name: /Top voted/i }));
+
+      expect(onTopVoted).toHaveBeenCalledTimes(1);
+    });
+
+    it("should disable the top voted button while loading", () => {
+      render(
+        <GenerateFactoidForm
+          {...defaultProps}
+          onTopVoted={jest.fn()}
+          topVotedLoading={true}
+        />
+      );
+
+      expect(screen.getByRole("button", { name: /Loading/i })).toBeDisabled();
+    });
+  });
+
   describe("Shuffle Functionality", () => {
     it("should call onShuffle when shuffle button is clicked", () => {
       const onShuffle = jest.fn();
