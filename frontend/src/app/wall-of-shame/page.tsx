@@ -1,14 +1,14 @@
 import Link from "next/link";
 
-import { HomeContent } from "@/components/home-content";
 import { ThemeMenu } from "@/components/theme-menu";
-import { fetchFactoids, fetchModels } from "@/lib/api";
+import { WallOfShameContent } from "@/components/wall-of-shame-content";
+import { fetchModels, fetchWorstFactoids } from "@/lib/api";
 
 export const revalidate = 0;
 
-export default async function HomePage() {
+export default async function WallOfShamePage() {
   const [factoids, models] = await Promise.all([
-    fetchFactoids(50),
+    fetchWorstFactoids(50),
     fetchModels(),
   ]);
 
@@ -25,19 +25,11 @@ export default async function HomePage() {
             </Link>
           </h1>
           <p className="text-base text-[color:var(--text-secondary)]">
-            mind blowing and sometimes &apos;meh&apos; factoids from our AI
-            overlords!
+            😒 Wall of Shame &mdash; the worst-voted factoids and the models
+            that made them.
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Link
-            href="/wall-of-shame"
-            title="See the worst-voted factoids"
-            className="inline-flex items-center gap-1 rounded-full border border-[color:var(--surface-card-border)] bg-[color:var(--surface-card)] px-3 py-2 text-sm text-[color:var(--text-secondary)] shadow-sm transition-colors hover:border-[color:var(--surface-card-border-hover)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus-outline)]"
-          >
-            <span aria-hidden>😒</span>
-            <span className="hidden sm:inline">Wall of Shame</span>
-          </Link>
           <Link
             href="https://github.com/andrewm4894/andys-daily-factoids"
             target="_blank"
@@ -65,7 +57,14 @@ export default async function HomePage() {
         </div>
       </header>
 
-      <HomeContent initialFactoids={factoids} models={models} />
+      <Link
+        href="/"
+        className="inline-flex items-center gap-1 text-sm text-[color:var(--text-secondary)] transition-colors hover:text-[color:var(--text-primary)]"
+      >
+        <span aria-hidden>&larr;</span> Back to all factoids
+      </Link>
+
+      <WallOfShameContent factoids={factoids} models={models} />
     </main>
   );
 }
