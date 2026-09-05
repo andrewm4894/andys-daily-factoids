@@ -71,9 +71,7 @@ class FactoidViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.
             limit = 20
 
         limit = max(1, min(limit, 100))
-        net_score = ExpressionWrapper(
-            F("votes_up") - F("votes_down"), output_field=IntegerField()
-        )
+        net_score = ExpressionWrapper(F("votes_up") - F("votes_down"), output_field=IntegerField())
         factoids = (
             models.Factoid.objects.filter(votes_down__gt=0)
             .annotate(net_score=net_score)
