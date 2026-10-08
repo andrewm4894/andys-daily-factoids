@@ -13,6 +13,11 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, ValidationError
 
+try:  # pragma: no cover - import guard
+    from openai import APIStatusError
+except Exception:  # pragma: no cover - openai always present via langchain_openai
+    APIStatusError = None
+
 DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_FACTOID_MODEL = "openai/gpt-4o-mini"
 
@@ -100,7 +105,6 @@ def generate_factoid_completion(
     messages = _PROMPT_TEMPLATE.format_messages(prompt=prompt)
     if supports_tools is None:
         supports_tools = model_supports_tools(model, api_key=api_key, base_url=base_url)
-    runnable = _bind_factoid_tool(chat) if supports_tools else chat
 
     # Configure with callbacks and metadata for trace naming
     invoke_config = {
@@ -109,10 +113,20 @@ def generate_factoid_completion(
     }
 
     try:
-        message = runnable.invoke(messages, config=invoke_config)
-    except Exception:
-        if runnable is not chat:
-            message = chat.invoke(messages, config=invoke_config)
+        message = _invoke_with_optional_tools(chat, messages, invoke_config, supports_tools)
+    except Exception as exc:
+        # A randomly chosen model may reject the payload with a provider 4xx
+        # (BadRequest / RateLimit / NotFound / PermissionDenied). Rather than
+        # failing the whole request, retry once with a known-good default model.
+        if _is_provider_request_error(exc) and model != DEFAULT_FACTOID_MODEL:
+            fallback_kwargs = dict(chat_kwargs, model=DEFAULT_FACTOID_MODEL)
+            fallback_chat = ChatOpenAI(**fallback_kwargs)
+            fallback_supports = model_supports_tools(
+                DEFAULT_FACTOID_MODEL, api_key=api_key, base_url=base_url
+            )
+            message = _invoke_with_optional_tools(
+                fallback_chat, messages, invoke_config, fallback_supports
+            )
         else:
             raise
     raw = message.model_dump()
@@ -121,6 +135,38 @@ def generate_factoid_completion(
     except ValueError:
         text, subject, emoji = _extract_factoid_fields(message)
     return GenerationResult(text=text, subject=subject, emoji=emoji, raw=raw)
+
+
+def _invoke_with_optional_tools(
+    chat: ChatOpenAI,
+    messages: Sequence[BaseMessage],
+    invoke_config: dict[str, Any],
+    supports_tools: bool,
+) -> BaseMessage:
+    """Invoke ``chat``, binding the factoid tool when supported.
+
+    When a tool-bound invocation fails we retry once without tools, mirroring the
+    original behaviour for models that advertise tools but reject the binding.
+    """
+
+    runnable = _bind_factoid_tool(chat) if supports_tools else chat
+    try:
+        return runnable.invoke(messages, config=invoke_config)
+    except Exception:
+        if runnable is not chat:
+            return chat.invoke(messages, config=invoke_config)
+        raise
+
+
+def _is_provider_request_error(exc: Exception) -> bool:
+    """Return ``True`` for provider-side 4xx errors that a model swap may fix."""
+
+    if APIStatusError is not None and isinstance(exc, APIStatusError):
+        status_code = getattr(exc, "status_code", None)
+        return isinstance(status_code, int) and 400 <= status_code < 500
+
+    status_code = getattr(exc, "status_code", None)
+    return isinstance(status_code, int) and 400 <= status_code < 500
 
 
 def fetch_openrouter_models(

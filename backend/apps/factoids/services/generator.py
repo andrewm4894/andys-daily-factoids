@@ -281,6 +281,55 @@ def _resolve_model_key(
     return DEFAULT_FACTOID_MODEL
 
 
+# Provider prefixes known to reliably serve plain text completions for factoid
+# generation. Random selection is constrained to these because the full
+# OpenRouter catalogue includes models (e.g. some Cloudflare-hosted ones) that
+# reject the request payload outright with a provider 4xx error.
+_RANDOM_MODEL_PROVIDER_ALLOWLIST = (
+    "openai/",
+    "anthropic/",
+    "google/",
+    "meta-llama/",
+    "mistralai/",
+    "deepseek/",
+    "qwen/",
+    "x-ai/",
+    "cohere/",
+    "amazon/",
+    "microsoft/",
+    "nvidia/",
+)
+
+
+def _is_usable_factoid_model(item: dict[str, Any]) -> bool:
+    """Return ``True`` when a model is a safe candidate for random selection."""
+
+    model_id = item.get("id")
+    if not isinstance(model_id, str) or not model_id:
+        return False
+
+    # ``:free`` variants carry aggressive provider rate limits that surface as
+    # RateLimitError mid-generation, so exclude them from random picks.
+    if model_id.endswith(":free"):
+        return False
+
+    if not any(model_id.startswith(prefix) for prefix in _RANDOM_MODEL_PROVIDER_ALLOWLIST):
+        return False
+
+    # Require text in/out support when the catalogue advertises modalities so we
+    # never pick an image-only or audio-only model for a text completion.
+    architecture = item.get("architecture")
+    if isinstance(architecture, dict):
+        output_modalities = architecture.get("output_modalities")
+        if isinstance(output_modalities, list) and "text" not in output_modalities:
+            return False
+        input_modalities = architecture.get("input_modalities")
+        if isinstance(input_modalities, list) and "text" not in input_modalities:
+            return False
+
+    return True
+
+
 def _random_openrouter_model(*, api_key: str, base_url: str) -> Optional[str]:
     try:
         models_payload = fetch_openrouter_models(api_key=api_key, base_url=base_url)
@@ -288,9 +337,9 @@ def _random_openrouter_model(*, api_key: str, base_url: str) -> Optional[str]:
         return None
 
     candidates = [
-        item.get("id")
+        item["id"]
         for item in models_payload
-        if isinstance(item, dict) and isinstance(item.get("id"), str)
+        if isinstance(item, dict) and _is_usable_factoid_model(item)
     ]
 
     if not candidates:
