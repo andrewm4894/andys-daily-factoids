@@ -18,6 +18,8 @@ export const THEME_OPTIONS = [
   { value: "aurora", label: "Aurora", icon: "🌌", mode: "dark" },
   { value: "matrix", label: "Matrix", icon: "🖥️", mode: "dark" },
   { value: "rainbow", label: "Rainbow", icon: "🌈", mode: "light" },
+  { value: "posthog", label: "PostHog", icon: "🦔", mode: "light" },
+  { value: "barbie", label: "Barbie", icon: "💖", mode: "light" },
 ] as const;
 
 export type ThemeName = (typeof THEME_OPTIONS)[number]["value"];

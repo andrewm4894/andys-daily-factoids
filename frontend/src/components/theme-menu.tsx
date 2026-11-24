@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { posthog } from "@/lib/posthog";
 import {
   THEME_OPTIONS,
   ThemeName,
@@ -44,6 +45,12 @@ export function ThemeMenu() {
   }, [isOpen]);
 
   const handleSelection = (value: ThemeName) => {
+    if (value !== theme) {
+      posthog.capture("theme_changed", {
+        theme: value,
+        previous_theme: theme,
+      });
+    }
     setTheme(value);
     setIsOpen(false);
   };
